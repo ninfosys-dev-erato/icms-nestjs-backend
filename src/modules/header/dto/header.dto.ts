@@ -1,0 +1,461 @@
+import { IsString, IsOptional, IsBoolean, IsNumber, IsArray, ValidateNested, IsNotEmpty, IsEnum, IsObject, IsUrl } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+// ========================================
+// COMMON TYPES
+// ========================================
+
+export class TranslatableEntityDto {
+  @ApiProperty({ example: 'English text' })
+  @IsString()
+  @IsNotEmpty()
+  en: string;
+
+  @ApiProperty({ example: 'नेपाली पाठ' })
+  @IsString()
+  @IsNotEmpty()
+  ne: string;
+}
+
+export enum HeaderAlignment {
+  LEFT = 'LEFT',
+  CENTER = 'CENTER',
+  RIGHT = 'RIGHT',
+  JUSTIFY = 'JUSTIFY'
+}
+
+export class TypographySettingsDto {
+  @ApiProperty({ example: 'Arial, sans-serif' })
+  @IsString()
+  @IsNotEmpty()
+  fontFamily: string;
+
+  @ApiProperty({ example: 16 })
+  @IsNumber()
+  fontSize: number;
+
+  @ApiProperty({ example: 'normal' })
+  @IsString()
+  fontWeight: 'normal' | 'bold' | 'lighter' | 'bolder' | number;
+
+  @ApiProperty({ example: '#333333' })
+  @IsString()
+  @IsNotEmpty()
+  color: string;
+
+  @ApiProperty({ example: 1.5 })
+  @IsNumber()
+  lineHeight: number;
+
+  @ApiProperty({ example: 0.5 })
+  @IsNumber()
+  letterSpacing: number;
+}
+
+export class LogoItemDto {
+  @ApiProperty({ example: 'media_id' })
+  @IsString()
+  @IsNotEmpty()
+  mediaId: string;
+
+  @ApiProperty()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  altText: TranslatableEntityDto;
+
+  @ApiProperty({ example: 150 })
+  @IsNumber()
+  width: number;
+
+  @ApiProperty({ example: 50 })
+  @IsNumber()
+  height: number;
+}
+
+export class LogoConfigurationDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LogoItemDto)
+  leftLogo?: LogoItemDto;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LogoItemDto)
+  rightLogo?: LogoItemDto;
+
+  @ApiProperty({ example: 'left' })
+  @IsString()
+  logoAlignment: 'left' | 'center' | 'right';
+
+  @ApiProperty({ example: 20 })
+  @IsNumber()
+  logoSpacing: number;
+}
+
+export class LayoutConfigurationDto {
+  @ApiProperty({ example: 80 })
+  @IsNumber()
+  headerHeight: number;
+
+  @ApiProperty({ example: '#ffffff' })
+  @IsString()
+  @IsNotEmpty()
+  backgroundColor: string;
+
+  @ApiPropertyOptional({ example: '#e0e0e0' })
+  @IsOptional()
+  @IsString()
+  borderColor?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  borderWidth?: number;
+
+  @ApiProperty()
+  @ValidateNested()
+  @Type(() => PaddingDto)
+  padding: PaddingDto;
+
+  @ApiProperty()
+  @ValidateNested()
+  @Type(() => MarginDto)
+  margin: MarginDto;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  responsive?: {
+    mobile?: Partial<LayoutConfigurationDto>;
+    tablet?: Partial<LayoutConfigurationDto>;
+    desktop?: Partial<LayoutConfigurationDto>;
+  };
+}
+
+export class PaddingDto {
+  @ApiProperty({ example: 10 })
+  @IsNumber()
+  top: number;
+
+  @ApiProperty({ example: 20 })
+  @IsNumber()
+  right: number;
+
+  @ApiProperty({ example: 10 })
+  @IsNumber()
+  bottom: number;
+
+  @ApiProperty({ example: 20 })
+  @IsNumber()
+  left: number;
+}
+
+export class MarginDto {
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  top: number;
+
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  right: number;
+
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  bottom: number;
+
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  left: number;
+}
+
+// ========================================
+// HEADER CONFIG DTOs
+// ========================================
+
+export class CreateHeaderConfigDto {
+  @ApiProperty()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  name: TranslatableEntityDto;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  order?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+
+  @ApiProperty()
+  @ValidateNested()
+  @Type(() => TypographySettingsDto)
+  typography: TypographySettingsDto;
+
+  @ApiProperty({ enum: HeaderAlignment })
+  @IsEnum(HeaderAlignment)
+  alignment: HeaderAlignment;
+
+  @ApiProperty()
+  @ValidateNested()
+  @Type(() => LogoConfigurationDto)
+  logo: LogoConfigurationDto;
+
+  @ApiProperty()
+  @ValidateNested()
+  @Type(() => LayoutConfigurationDto)
+  layout: LayoutConfigurationDto;
+}
+
+export class UpdateHeaderConfigDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  name?: TranslatableEntityDto;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  order?: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TypographySettingsDto)
+  typography?: TypographySettingsDto;
+
+  @ApiPropertyOptional({ enum: HeaderAlignment })
+  @IsOptional()
+  @IsEnum(HeaderAlignment)
+  alignment?: HeaderAlignment;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LogoConfigurationDto)
+  logo?: LogoConfigurationDto;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LayoutConfigurationDto)
+  layout?: LayoutConfigurationDto;
+}
+
+export class HeaderConfigResponseDto {
+  @ApiProperty({ example: 'header_config_id' })
+  id: string;
+
+  @ApiProperty()
+  name: TranslatableEntityDto;
+
+  @ApiProperty({ example: 1 })
+  order: number;
+
+  @ApiProperty({ example: true })
+  isActive: boolean;
+
+  @ApiProperty({ example: true })
+  isPublished: boolean;
+
+  @ApiProperty()
+  typography: TypographySettingsDto;
+
+  @ApiProperty({ enum: HeaderAlignment })
+  alignment: HeaderAlignment;
+
+  @ApiProperty()
+  logo: LogoConfigurationResponseDto;
+
+  @ApiProperty()
+  layout: LayoutConfigurationDto;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
+
+  @ApiPropertyOptional()
+  createdBy?: any;
+
+  @ApiPropertyOptional()
+  updatedBy?: any;
+}
+
+export class LogoConfigurationResponseDto {
+  @ApiPropertyOptional()
+  leftLogo?: {
+    media: any;
+    altText: TranslatableEntityDto;
+    width: number;
+    height: number;
+  };
+
+  @ApiPropertyOptional()
+  rightLogo?: {
+    media: any;
+    altText: TranslatableEntityDto;
+    width: number;
+    height: number;
+  };
+
+  @ApiProperty({ example: 'left' })
+  logoAlignment: 'left' | 'center' | 'right';
+
+  @ApiProperty({ example: 20 })
+  logoSpacing: number;
+}
+
+export class HeaderConfigQueryDto {
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  page?: number;
+
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @IsNumber()
+  limit?: number;
+
+  @ApiPropertyOptional({ example: 'Main Header' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isPublished?: boolean;
+
+  @ApiPropertyOptional({ example: 'createdAt' })
+  @IsOptional()
+  @IsString()
+  sort?: string;
+
+  @ApiPropertyOptional({ example: 'desc' })
+  @IsOptional()
+  @IsString()
+  order?: 'asc' | 'desc';
+}
+
+// ========================================
+// STATISTICS DTOs
+// ========================================
+
+export class HeaderConfigStatistics {
+  @ApiProperty({ example: 10 })
+  total: number;
+
+  @ApiProperty({ example: 8 })
+  active: number;
+
+  @ApiProperty({ example: 5 })
+  published: number;
+
+  @ApiProperty({ example: { 'LEFT': 3, 'CENTER': 4, 'RIGHT': 2, 'JUSTIFY': 1 } })
+  byAlignment: Record<HeaderAlignment, number>;
+
+  @ApiProperty({ example: 2.5 })
+  averageOrder: number;
+}
+
+// ========================================
+// COMMON DTOs
+// ========================================
+
+export class ValidationError {
+  @ApiProperty({ example: 'name' })
+  field: string;
+
+  @ApiProperty({ example: 'Header name is required' })
+  message: string;
+
+  @ApiProperty({ example: 'REQUIRED_FIELD' })
+  code: string;
+}
+
+export class ValidationResult {
+  @ApiProperty({ example: true })
+  isValid: boolean;
+
+  @ApiProperty({ type: [ValidationError] })
+  errors: ValidationError[];
+}
+
+export class BulkOperationResult {
+  @ApiProperty({ example: 5 })
+  success: number;
+
+  @ApiProperty({ example: 1 })
+  failed: number;
+
+  @ApiProperty({ type: [String] })
+  errors: string[];
+}
+
+export class ImportResult {
+  @ApiProperty({ example: 10 })
+  success: number;
+
+  @ApiProperty({ example: 2 })
+  failed: number;
+
+  @ApiProperty({ type: [String] })
+  errors: string[];
+}
+
+export class PaginationInfo {
+  @ApiProperty({ example: 1 })
+  page: number;
+
+  @ApiProperty({ example: 10 })
+  limit: number;
+
+  @ApiProperty({ example: 50 })
+  total: number;
+
+  @ApiProperty({ example: 5 })
+  totalPages: number;
+
+  @ApiProperty({ example: true })
+  hasNext: boolean;
+
+  @ApiProperty({ example: false })
+  hasPrev: boolean;
+}
+
+export class HeaderPreview {
+  @ApiProperty({ example: '.header { background: #fff; }' })
+  css: string;
+
+  @ApiProperty({ example: '<header class="header">...</header>' })
+  html: string;
+
+  @ApiProperty()
+  config: HeaderConfigResponseDto;
+} 

@@ -74,6 +74,7 @@ model User {
   updatedMenus    Menu[]         @relation("UpdatedMenus")
   createdMenuItems MenuItem[]    @relation("CreatedMenuItems")
   updatedMenuItems MenuItem[]    @relation("UpdatedMenuItems")
+  documentDownloads DocumentDownload[]
 
   @@map("users")
 }
@@ -462,18 +463,128 @@ model MenuItem {
 // HEADER CONFIGURATION
 // ========================================
 
+enum HeaderAlignment {
+  LEFT
+  CENTER
+  RIGHT
+  JUSTIFY
+}
+
 model HeaderConfig {
-  id        String   @id @default(cuid())
-  name      Json // Translatable entity
-  order     Int      @default(0)
-  fontSize  String   @default("16px")
-  color     String   @default("#000000")
-  alignment String   @default("left") // left, center, right
-  logoLeft  String? // S3 path
-  logoRight String? // S3 path
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String          @id @default(cuid())
+  name         Json // Translatable entity
+  order        Int             @default(0)
+  isActive     Boolean         @default(true)
+  isPublished  Boolean         @default(false)
+  typography   Json // Typography settings
+  alignment    HeaderAlignment @default(LEFT)
+  logo         Json // Logo configuration
+  layout       Json // Layout configuration
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@map("header_configs")
+}
+
+// ========================================
+// DOCUMENT MANAGEMENT
+// ========================================
+
+enum DocumentType {
+  PDF
+  DOC
+  DOCX
+  XLS
+  XLSX
+  PPT
+  PPTX
+  TXT
+  RTF
+  CSV
+  ZIP
+  RAR
+  OTHER
+}
+
+enum DocumentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  EXPIRED
+}
+
+enum DocumentCategory {
+  OFFICIAL
+  REPORT
+  FORM
+  POLICY
+  PROCEDURE
+  GUIDELINE
+  NOTICE
+  CIRCULAR
+  OTHER
+}
+
+model Document {
+  id             String           @id @default(cuid())
+  title          Json // Translatable entity
+  description    Json? // Translatable entity
+  fileName       String
+  originalName   String
+  filePath       String
+  fileSize       Int
+  mimeType       String
+  documentType   DocumentType
+  category       DocumentCategory
+  status         DocumentStatus   @default(DRAFT)
+  documentNumber String?
+  version        String?
+  publishDate    DateTime?
+  expiryDate     DateTime?
+  tags           String[]
+  isPublic       Boolean          @default(true)
+  requiresAuth   Boolean          @default(false)
+  order          Int              @default(0)
+  isActive       Boolean          @default(true)
+  downloadCount  Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  // Relations
+  downloads DocumentDownload[]
+  versions  DocumentVersion[]
+
+  @@map("documents")
+}
+
+model DocumentDownload {
+  id           String   @id @default(cuid())
+  documentId   String
+  userId       String?
+  ipAddress    String
+  userAgent    String
+  downloadedAt DateTime @default(now())
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id])
+
+  @@map("document_downloads")
+}
+
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  version     String
+  fileName    String
+  filePath    String
+  fileSize    Int
+  mimeType    String
+  changeLog   Json? // Translatable entity
+  createdAt   DateTime @default(now())
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_versions")
 }
