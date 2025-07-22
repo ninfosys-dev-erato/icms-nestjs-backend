@@ -70,6 +70,10 @@ model User {
   sessions        UserSession[]
   loginAttempts   LoginAttempt[]
   auditLogs       AuditLog[]
+  createdMenus    Menu[]         @relation("CreatedMenus")
+  updatedMenus    Menu[]         @relation("UpdatedMenus")
+  createdMenuItems MenuItem[]    @relation("CreatedMenuItems")
+  updatedMenuItems MenuItem[]    @relation("UpdatedMenuItems")
 
   @@map("users")
 }
@@ -288,7 +292,7 @@ model Media {
   updatedAt    DateTime  @updatedAt
 
   // Relations
-  albums  MediaAlbum[]
+  albums  MediaAlbumMedia[]
   sliders Slider[]
 
   @@map("media")
@@ -300,12 +304,26 @@ model MediaAlbum {
   description Json? // Translatable entity
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime  @updatedAt
 
   // Relations
-  media Media[]
+  media MediaAlbumMedia[]
 
   @@map("media_albums")
+}
+
+model MediaAlbumMedia {
+  id          String   @id @default(cuid())
+  mediaId     String
+  mediaAlbumId String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  media      Media      @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  mediaAlbum MediaAlbum @relation(fields: [mediaAlbumId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaId, mediaAlbumId])
+  @@map("media_album_media")
 }
 
 // ========================================
@@ -375,21 +393,69 @@ model Employee {
 // NAVIGATION SYSTEM
 // ========================================
 
+enum MenuLocation {
+  HEADER
+  FOOTER
+  SIDEBAR
+  MOBILE
+  CUSTOM
+}
+
+enum MenuItemType {
+  LINK
+  CONTENT
+  PAGE
+  CATEGORY
+  CUSTOM
+}
+
 model Menu {
-  id        String   @id @default(cuid())
-  name      Json // Translatable entity
-  parentId  String?
-  url       String?
-  order     Int      @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String       @id @default(cuid())
+  name        Json // Translatable entity
+  description Json? // Translatable entity
+  location    MenuLocation
+  isActive    Boolean      @default(true)
+  isPublished Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  createdById String?
+  updatedById String?
 
   // Relations
-  parent   Menu?  @relation("MenuHierarchy", fields: [parentId], references: [id])
-  children Menu[] @relation("MenuHierarchy")
+  menuItems MenuItem[]
+  createdBy User? @relation("CreatedMenus", fields: [createdById], references: [id])
+  updatedBy User? @relation("UpdatedMenus", fields: [updatedById], references: [id])
 
   @@map("menus")
+}
+
+model MenuItem {
+  id          String       @id @default(cuid())
+  menuId      String
+  parentId    String?
+  title       Json // Translatable entity
+  description Json? // Translatable entity
+  url         String?
+  target      String       @default("self") // self, _blank, _parent, _top
+  icon        String?
+  order       Int          @default(0)
+  isActive    Boolean      @default(true)
+  isPublished Boolean      @default(false)
+  itemType    MenuItemType
+  itemId      String? // Reference to content, page, etc.
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  createdById String?
+  updatedById String?
+
+  // Relations
+  menu      Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  parent    MenuItem?  @relation("MenuItemHierarchy", fields: [parentId], references: [id])
+  children  MenuItem[] @relation("MenuItemHierarchy")
+  createdBy User?      @relation("CreatedMenuItems", fields: [createdById], references: [id])
+  updatedBy User?      @relation("UpdatedMenuItems", fields: [updatedById], references: [id])
+
+  @@map("menu_items")
 }
 
 // ========================================

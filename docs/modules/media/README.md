@@ -403,6 +403,7 @@ interface MediaAlbumService {
   exportAlbum(id: string, format: 'json' | 'zip'): Promise<Buffer>;
 }
 ```
+
 ### S3Service
 ```typescript
 interface S3Service {

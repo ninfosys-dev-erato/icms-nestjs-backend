@@ -1,17 +1,20 @@
-# FAQ System Module
+# FAQ Module
 
 ## Overview
 
-The FAQ System module manages frequently asked questions with bilingual support, search functionality, and ordering capabilities. This module provides a comprehensive solution for organizing and presenting common questions and answers to users.
+The FAQ module manages frequently asked questions with bilingual support (English and Nepali), search functionality, and comprehensive administrative features. This module provides a complete FAQ management system with categorization, reordering, and advanced search capabilities.
 
 ## Module Purpose
 
-- **Question Management:** Create, edit, and organize FAQ entries
-- **Bilingual Support:** Full English and Nepali language support
-- **Search Functionality:** Find relevant questions quickly
-- **Ordering System:** Customizable display order
-- **SEO Optimization:** Search engine friendly FAQ structure
-- **Public Access:** Easy access to common information
+- **FAQ Management:** Create, update, delete, and manage frequently asked questions
+- **Bilingual Support:** Full English and Nepali language support for questions and answers
+- **Search Functionality:** Advanced search with relevance scoring
+- **Categorization:** Organize FAQs by categories (future feature)
+- **Reordering:** Custom ordering of FAQs for better presentation
+- **Statistics:** Comprehensive analytics and usage statistics
+- **Bulk Operations:** Efficient bulk creation and updating of FAQs
+- **Import/Export:** Data import and export capabilities
+- **Random/Popular FAQs:** Special endpoints for featured content
 
 ## Database Schema
 
@@ -19,48 +22,63 @@ The FAQ System module manages frequently asked questions with bilingual support,
 ```typescript
 interface FAQ {
   id: string;
-  question: TranslatableEntity;
-  answer: TranslatableEntity;
+  question: TranslatableEntity; // { en: string, ne: string }
+  answer: TranslatableEntity;   // { en: string, ne: string }
   order: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Future relations
+  category?: FAQCategory;
+  createdBy?: User;
+  updatedBy?: User;
 }
+```
 
-interface TranslatableEntity {
-  en: string;
-  ne: string;
+### FAQ Category Entity (Future)
+```typescript
+interface FAQCategory {
+  id: string;
+  name: TranslatableEntity;
+  description?: TranslatableEntity;
+  order: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
 ## DTOs (Data Transfer Objects)
 
-### CreateFAQDto
+### FAQ DTOs
+
+#### CreateFAQDto
 ```typescript
 interface CreateFAQDto {
-  question: TranslatableEntity;
-  answer: TranslatableEntity;
+  question: TranslatableEntityDto;
+  answer: TranslatableEntityDto;
   order?: number;
   isActive?: boolean;
 }
 ```
 
-### UpdateFAQDto
+#### UpdateFAQDto
 ```typescript
 interface UpdateFAQDto {
-  question?: TranslatableEntity;
-  answer?: TranslatableEntity;
+  question?: TranslatableEntityDto;
+  answer?: TranslatableEntityDto;
   order?: number;
   isActive?: boolean;
 }
 ```
 
-### FAQResponseDto
+#### FAQResponseDto
 ```typescript
 interface FAQResponseDto {
   id: string;
-  question: TranslatableEntity;
-  answer: TranslatableEntity;
+  question: TranslatableEntityDto | TranslatableEntityWithValue;
+  answer: TranslatableEntityDto | TranslatableEntityWithValue;
   order: number;
   isActive: boolean;
   createdAt: Date;
@@ -68,228 +86,54 @@ interface FAQResponseDto {
 }
 ```
 
-### FAQQueryDto
+#### FAQQueryDto
 ```typescript
 interface FAQQueryDto {
-  page?: number;
-  limit?: number;
-  search?: string;
   isActive?: boolean;
-  sort?: string;
-  order?: 'asc' | 'desc';
+  lang?: string;
 }
 ```
 
-## Repository Interface
-
-### FAQRepository
+#### BulkCreateFAQDto
 ```typescript
-interface FAQRepository {
-  // Find FAQ by ID
-  findById(id: string): Promise<FAQ | null>;
-  
-  // Find all FAQs with pagination and filters
-  findAll(query: FAQQueryDto): Promise<PaginatedFAQResult>;
-  
-  // Find active FAQs
-  findActive(query: FAQQueryDto): Promise<PaginatedFAQResult>;
-  
-  // Search FAQs
-  search(searchTerm: string, query: FAQQueryDto): Promise<PaginatedFAQResult>;
-  
-  // Create FAQ
-  create(data: CreateFAQDto): Promise<FAQ>;
-  
-  // Update FAQ
-  update(id: string, data: UpdateFAQDto): Promise<FAQ>;
-  
-  // Delete FAQ
-  delete(id: string): Promise<void>;
-  
-  // Reorder FAQs
-  reorder(orders: { id: string; order: number }[]): Promise<void>;
-  
-  // Get FAQ statistics
-  getStatistics(): Promise<FAQStatistics>;
-  
-  // Find FAQs by search term
-  findBySearchTerm(searchTerm: string): Promise<FAQ[]>;
+interface BulkCreateFAQDto {
+  faqs: CreateFAQDto[];
 }
+```
 
-interface PaginatedFAQResult {
-  data: FAQ[];
-  pagination: PaginationInfo;
+#### BulkUpdateFAQDto
+```typescript
+interface BulkUpdateFAQDto {
+  faqs: { id: string; data: UpdateFAQDto }[];
 }
+```
 
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
+#### ReorderFAQDto
+```typescript
+interface ReorderFAQDto {
+  items: { id: string; order: number }[];
 }
+```
 
+#### FAQStatistics
+```typescript
 interface FAQStatistics {
   total: number;
   active: number;
   inactive: number;
-  averageLength: number;
+  averageOrder: number;
+  lastCreated: Date;
+  lastUpdated: Date;
 }
 ```
 
-## Service Interface
-
-### FAQService
+#### FAQSearchResult
 ```typescript
-interface FAQService {
-  // Get FAQ by ID
-  getFAQById(id: string): Promise<FAQResponseDto>;
-  
-  // Get all FAQs with pagination
-  getAllFAQs(query: FAQQueryDto): Promise<PaginatedFAQResponse>;
-  
-  // Get active FAQs
-  getActiveFAQs(query: FAQQueryDto): Promise<PaginatedFAQResponse>;
-  
-  // Search FAQs
-  searchFAQs(searchTerm: string, query: FAQQueryDto): Promise<PaginatedFAQResponse>;
-  
-  // Create FAQ
-  createFAQ(data: CreateFAQDto): Promise<FAQResponseDto>;
-  
-  // Update FAQ
-  updateFAQ(id: string, data: UpdateFAQDto): Promise<FAQResponseDto>;
-  
-  // Delete FAQ
-  deleteFAQ(id: string): Promise<void>;
-  
-  // Reorder FAQs
-  reorderFAQs(orders: { id: string; order: number }[]): Promise<void>;
-  
-  // Validate FAQ data
-  validateFAQ(data: CreateFAQDto | UpdateFAQDto): Promise<ValidationResult>;
-  
-  // Get FAQ statistics
-  getFAQStatistics(): Promise<FAQStatistics>;
-  
-  // Export FAQs
-  exportFAQs(query: FAQQueryDto, format: 'json' | 'csv' | 'pdf'): Promise<Buffer>;
-  
-  // Import FAQs
-  importFAQs(file: Express.Multer.File): Promise<ImportResult>;
-  
-  // Get FAQ suggestions
-  getSuggestions(searchTerm: string, limit?: number): Promise<FAQResponseDto[]>;
-}
-
-interface PaginatedFAQResponse {
+interface FAQSearchResult {
   data: FAQResponseDto[];
-  pagination: PaginationInfo;
-}
-
-interface ValidationResult {
-  isValid: boolean;
-  errors: ValidationError[];
-}
-
-interface ValidationError {
-  field: string;
-  message: string;
-  code: string;
-}
-
-interface ImportResult {
-  success: number;
-  failed: number;
-  errors: string[];
-}
-```
-
-## Controller Interfaces
-
-### PublicFAQController
-```typescript
-interface PublicFAQController {
-  // Get all active FAQs
-  getAllFAQs(
-    @Query() query: FAQQueryDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Get FAQ by ID
-  getFAQById(
-    @Param('id') id: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Search FAQs
-  searchFAQs(
-    @Query('q') searchTerm: string,
-    @Query() query: FAQQueryDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Get FAQ suggestions
-  getSuggestions(
-    @Query('q') searchTerm: string,
-    @Query('limit') limit?: number,
-    @Res() response: Response
-  ): Promise<void>;
-}
-```
-
-### AdminFAQController
-```typescript
-interface AdminFAQController {
-  // Get FAQ by ID (admin)
-  getFAQById(
-    @Param('id') id: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Create FAQ
-  createFAQ(
-    @Body() data: CreateFAQDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Update FAQ
-  updateFAQ(
-    @Param('id') id: string,
-    @Body() data: UpdateFAQDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Delete FAQ
-  deleteFAQ(
-    @Param('id') id: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Reorder FAQs
-  reorderFAQs(
-    @Body() orders: { id: string; order: number }[],
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Get FAQ statistics
-  getFAQStatistics(
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Export FAQs
-  exportFAQs(
-    @Query() query: FAQQueryDto,
-    @Query('format') format: 'json' | 'csv' | 'pdf',
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Import FAQs
-  importFAQs(
-    @UploadedFile() file: Express.Multer.File,
-    @Res() response: Response
-  ): Promise<void>;
+  total: number;
+  searchTerm: string;
+  relevanceScore: number;
 }
 ```
 
@@ -297,201 +141,233 @@ interface AdminFAQController {
 
 ### Public Endpoints
 
-#### GET /api/v1/faqs
-**Description:** Get all active FAQs
-**Access:** Public
+#### GET /faq
+Get all FAQs with optional filtering
+- **Query Parameters:**
+  - `isActive` (boolean, optional): Filter by active status
+  - `lang` (string, optional): Language preference ('en' or 'ne')
+- **Response:** Array of FAQResponseDto
 
-**Query Parameters:**
-- `page`: Page number
-- `limit`: Items per page
-- `search`: Search term
-- `sort`: Sort field
-- `order`: Sort order (asc/desc)
+#### GET /faq/paginated
+Get FAQs with pagination
+- **Query Parameters:**
+  - `page` (number, optional): Page number (default: 1)
+  - `limit` (number, optional): Items per page (default: 10)
+  - `isActive` (boolean, optional): Filter by active status
+- **Response:** Paginated FAQResponseDto array
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "faq_id",
-      "question": {
-        "en": "How do I apply for a government service?",
-        "ne": "सरकारी सेवाको लागि कसरी आवेदन दिने?"
-      },
-      "answer": {
-        "en": "You can apply online through our portal...",
-        "ne": "तपाईंले हाम्रो पोर्टल मार्फत अनलाइन आवेदन दिन सक्नुहुन्छ..."
-      },
-      "order": 1,
-      "isActive": true,
-      "createdAt": "2024-01-01T00:00:00Z",
-      "updatedAt": "2024-01-01T00:00:00Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 50,
-    "totalPages": 5
-  }
-}
-```
+#### GET /faq/search
+Search FAQs by question and answer content
+- **Query Parameters:**
+  - `q` (string, required): Search term
+  - `isActive` (boolean, optional): Filter by active status
+- **Response:** FAQSearchResult with relevance scoring
 
-#### GET /api/v1/faqs/{id}
-**Description:** Get FAQ by ID
-**Access:** Public
+#### GET /faq/random
+Get random FAQs
+- **Query Parameters:**
+  - `limit` (number, optional): Number of FAQs (default: 5)
+  - `lang` (string, optional): Language preference
+- **Response:** Array of FAQResponseDto
 
-#### GET /api/v1/faqs/search
-**Description:** Search FAQs
-**Access:** Public
+#### GET /faq/popular
+Get popular FAQs
+- **Query Parameters:**
+  - `limit` (number, optional): Number of FAQs (default: 10)
+  - `lang` (string, optional): Language preference
+- **Response:** Array of FAQResponseDto
 
-#### GET /api/v1/faqs/suggestions
-**Description:** Get FAQ suggestions
-**Access:** Public
+#### GET /faq/active
+Get only active FAQs
+- **Query Parameters:**
+  - `lang` (string, optional): Language preference
+- **Response:** Array of FAQResponseDto
+
+#### GET /faq/:id
+Get FAQ by ID
+- **Path Parameters:**
+  - `id` (string, required): FAQ ID
+- **Response:** FAQResponseDto
 
 ### Admin Endpoints
 
-#### GET /api/v1/admin/faqs/{id}
-**Description:** Get FAQ by ID (admin)
-**Access:** Admin, Editor
+All admin endpoints require JWT authentication and appropriate roles (ADMIN or EDITOR).
 
-#### POST /api/v1/admin/faqs
-**Description:** Create FAQ
-**Access:** Admin, Editor
+#### GET /admin/faq
+Get all FAQs (Admin)
+- **Query Parameters:** Same as public endpoint
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
 
-**Request Body:**
-```json
-{
-  "question": {
-    "en": "How do I apply for a government service?",
-    "ne": "सरकारी सेवाको लागि कसरी आवेदन दिने?"
-  },
-  "answer": {
-    "en": "You can apply online through our portal...",
-    "ne": "तपाईंले हाम्रो पोर्टल मार्फत अनलाइन आवेदन दिन सक्नुहुन्छ..."
-  },
-  "order": 1,
-  "isActive": true
-}
-```
+#### GET /admin/faq/paginated
+Get FAQs with pagination (Admin)
+- **Query Parameters:** Same as public endpoint
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
 
-#### PUT /api/v1/admin/faqs/{id}
-**Description:** Update FAQ
-**Access:** Admin, Editor
+#### GET /admin/faq/statistics
+Get FAQ statistics
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
+- **Response:** FAQStatistics
 
-#### DELETE /api/v1/admin/faqs/{id}
-**Description:** Delete FAQ
-**Access:** Admin only
+#### GET /admin/faq/search
+Search FAQs (Admin)
+- **Query Parameters:** Same as public endpoint
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
 
-#### PUT /api/v1/admin/faqs/reorder
-**Description:** Reorder FAQs
-**Access:** Admin, Editor
+#### GET /admin/faq/:id
+Get FAQ by ID (Admin)
+- **Path Parameters:**
+  - `id` (string, required): FAQ ID
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
 
-#### GET /api/v1/admin/faqs/statistics
-**Description:** Get FAQ statistics
-**Access:** Admin, Editor
+#### POST /admin/faq
+Create new FAQ
+- **Body:** CreateFAQDto
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
+- **Response:** FAQResponseDto
 
-#### GET /api/v1/admin/faqs/export
-**Description:** Export FAQs
-**Access:** Admin, Editor
+#### PUT /admin/faq/:id
+Update FAQ
+- **Path Parameters:**
+  - `id` (string, required): FAQ ID
+- **Body:** UpdateFAQDto
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
+- **Response:** FAQResponseDto
 
-#### POST /api/v1/admin/faqs/import
-**Description:** Import FAQs
-**Access:** Admin only
+#### DELETE /admin/faq/:id
+Delete FAQ
+- **Path Parameters:**
+  - `id` (string, required): FAQ ID
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN
 
-## Business Logic
+#### POST /admin/faq/reorder
+Reorder FAQs
+- **Body:** ReorderFAQDto
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
 
-### 1. FAQ Management
-- **Question-Answer pairs** with bilingual support
-- **Ordering system** for display priority
-- **Active/Inactive status** for content management
-- **Search functionality** across questions and answers
+#### POST /admin/faq/bulk-create
+Bulk create FAQs
+- **Body:** BulkCreateFAQDto
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
+- **Response:** Array of FAQResponseDto
 
-### 2. Search Implementation
-- **Full-text search** across question and answer fields
-- **Language-specific search** (English/Nepali)
-- **Fuzzy matching** for better results
-- **Search result ranking** by relevance
+#### PUT /admin/faq/bulk-update
+Bulk update FAQs
+- **Body:** BulkUpdateFAQDto
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
+- **Response:** Array of FAQResponseDto
 
-### 3. Import/Export Functionality
-- **JSON format** for data exchange
-- **CSV format** for spreadsheet compatibility
-- **PDF format** for documentation
-- **Validation** during import process
+#### POST /admin/faq/import
+Import FAQs from external source
+- **Body:** { faqs: CreateFAQDto[] }
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN
+- **Response:** ImportResult
 
-### 4. SEO Optimization
-- **Structured data** (FAQ schema)
-- **Meta tags** for FAQ pages
-- **Sitemap** inclusion
-- **Search engine** friendly URLs
+#### GET /admin/faq/export/all
+Export all FAQs
+- **Authentication:** Required (JWT)
+- **Roles:** ADMIN, EDITOR
+- **Response:** ExportResult
+
+## Features
+
+### Bilingual Support
+- Full English and Nepali language support
+- Automatic language detection and fallback
+- Language-specific content retrieval
+
+### Search Functionality
+- Full-text search in both English and Nepali
+- Relevance scoring based on exact and partial matches
+- Search in both questions and answers
+- Support for active/inactive filtering
+
+### Reordering System
+- Custom ordering of FAQs
+- Bulk reordering capabilities
+- Order validation and conflict resolution
+
+### Statistics and Analytics
+- Total FAQ count
+- Active/inactive distribution
+- Average ordering information
+- Creation and update timestamps
+
+### Bulk Operations
+- Bulk creation of multiple FAQs
+- Bulk updating of existing FAQs
+- Validation and error handling for bulk operations
+
+### Import/Export
+- JSON-based import/export functionality
+- Validation during import
+- Detailed import results with success/failure counts
+
+### Random and Popular FAQs
+- Random FAQ selection for featured content
+- Popular FAQ retrieval (future: based on usage analytics)
+- Configurable limits and language preferences
+
+## Future Enhancements
+
+### FAQ Categories
+- Category-based organization
+- Category-specific endpoints
+- Hierarchical category structure
+
+### Usage Analytics
+- View count tracking
+- Popular FAQ identification
+- User interaction analytics
+
+### Advanced Search
+- Category-based filtering
+- Date range filtering
+- Advanced relevance algorithms
+
+### FAQ Templates
+- Predefined FAQ templates
+- Template-based FAQ creation
+- Template management system
+
+### FAQ Scheduling
+- Scheduled publication/depublication
+- Time-based FAQ visibility
+- Content lifecycle management
 
 ## Error Handling
 
-### Validation Errors
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Validation failed",
-    "details": [
-      {
-        "field": "question",
-        "message": "Question is required",
-        "code": "REQUIRED_FIELD"
-      }
-    ]
-  }
-}
-```
+The module provides comprehensive error handling:
 
-### FAQ Not Found
-```json
-{
-  "success": false,
-  "error": {
-    "code": "NOT_FOUND_ERROR",
-    "message": "FAQ not found",
-    "details": []
-  }
-}
-```
+- **Validation Errors:** Detailed validation messages for all input fields
+- **Not Found Errors:** Proper 404 responses for missing FAQs
+- **Authorization Errors:** 401/403 responses for unauthorized access
+- **Bulk Operation Errors:** Detailed error reporting for bulk operations
+- **Import Errors:** Comprehensive import result with success/failure details
 
-## Performance Considerations
+## Security
 
-### 1. Search Optimization
-- **Database indexing** on search fields
-- **Full-text search** capabilities
-- **Caching** for frequent searches
-- **Pagination** for large result sets
+- JWT-based authentication for admin endpoints
+- Role-based access control (ADMIN, EDITOR)
+- Input validation and sanitization
+- SQL injection prevention through Prisma ORM
+- Rate limiting support
 
-### 2. Caching Strategy
-- **FAQ list caching** for public access
-- **Search result caching** for repeated queries
-- **Statistics caching** for admin dashboard
-- **Cache invalidation** on updates
+## Performance
 
-### 3. Database Optimization
-- **Indexing** on frequently queried fields
-- **Query optimization** for complex searches
-- **Connection pooling** for high concurrency
-
-## Security Considerations
-
-### 1. Input Validation
-- **Question and answer sanitization**
-- **Length limits** for content
-- **HTML sanitization** if rich text is supported
-- **Language validation** for translatable fields
-
-### 2. Access Control
-- **Public read access** for active FAQs
-- **Admin/Editor write access** for management
-- **Role-based permissions** for different operations
-- **Audit logging** for content changes
-
-### 3. Data Protection
-- **Input sanitization** to prevent XSS
-- **Output encoding** for safe display
-- **Access logging** for security monitoring 
+- Efficient database queries with Prisma ORM
+- Pagination support for large datasets
+- Search optimization with relevance scoring
+- Caching support for frequently accessed data
+- Bulk operation optimization 

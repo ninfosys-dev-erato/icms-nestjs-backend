@@ -1,0 +1,1 @@
+export { HRModule } from './hr.module'; 
