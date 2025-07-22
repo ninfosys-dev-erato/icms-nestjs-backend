@@ -1,93 +1,206 @@
-# csiodadeldhura-nest-js-backend
+# Government CMS System Requirements - Backend Specification
 
+## Project Overview
 
+This document outlines the requirements for a **Nest.js Content Management System backend** that will serve:
+- A **Next.js government website frontend** (public-facing)
+- A **Next.js admin CMS frontend** (content management interface)
 
-## Getting started
+The system must be **SEO-optimized** and support **bilingual content** (English and Nepali).
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## User Roles & Access Control
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### Public Users
+- General public viewing the government website
+- Read-only access to published content
 
-## Add your files
+### CMS Administrator Users
+1. **Admin**
+   - Full system access
+   - Can create, edit, and delete users
+   - Can manage all content and settings
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+2. **Editor**
+   - Can create and edit content
+   - Cannot manage users or system settings
 
+3. **Viewer**
+   - Read-only access
+   - Can export or print documents only
+
+## Core System Components
+
+### 1. Office Settings Management
+
+**Office Configuration Table:**
+- `directorate` (translatable entity)
+- `office_name` (translatable entity)
+- `office_address` (translatable entity)
+- `background_photo` (S3 path, linked to media system)
+- `email` (email address)
+- `phone_number` (translatable entity)
+- `x_link` (URL)
+- `map_iframe` (HTML string for embedded maps)
+- `website` (URL)
+- `youtube` (URL)
+
+### 2. Translation System
+
+**Translatable Entity Structure:**
+```json
+{
+  "en": "English content",
+  "ne": "नेपाली सामग्री"
+}
 ```
-cd existing_repo
-git remote add origin https://git.intensivestudy.com.np/icms/csiodadeldhura/csiodadeldhura-nest-js-backend.git
-git branch -M main
-git push -uf origin main
-```
 
-## Integrate with your tools
+**Global Translations Table:**
+- `id` (primary key)
+- `key` (translation identifier)
+- `en_value` (English translation)
+- `ne_value` (Nepali translation)
+- `group_name` (categorization)
 
-- [ ] [Set up project integrations](https://git.intensivestudy.com.np/icms/csiodadeldhura/csiodadeldhura-nest-js-backend/-/settings/integrations)
+### 3. Office Description System
 
-## Collaborate with your team
+**Office Description Types (Enum):**
+- Introduction
+- Objective
+- Work Details
+- Organizational Structure
+- Digital Charter
+- Employee Sanctions
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+**Office Description Table:**
+- `office_description_type` (enum)
+- `content` (translatable entity)
 
-## Test and Deploy
+*Note: Future versions will support rich text formatting (bold, italic, font sizing) and embedded media.*
 
-Use the built-in continuous integration in GitLab.
+### 4. Content Management System
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+**Content Categories:**
+1. **Legal Documents**
+   - Acts, Policies, Directives
 
-***
+2. **News & Information**
+   - News articles, Press releases, Bolpatra (tenders)
 
-# Editing this README
+3. **Publications**
+   - Progress reports, Official publications
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+4. **Downloads**
+   - Downloadable documents and resources
 
-## Suggestions for a good README
+**Features:**
+- Infinite nested categories and subcategories
+- Support for multiple file attachments (PDF documents)
+- Currently plain text with file support (rich content editor planned for future)
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### 5. Important Links
 
-## Name
-Choose a self-explaining name for your project.
+**Footer Links Configuration:**
+- `link_title` (translatable entity)
+- `link_url` (URL)
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### 6. FAQ System
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+**FAQ Management:**
+- `question` (translatable entity)
+- `answer` (translatable entity)
+- `created_at` (timestamp)
+- `updated_at` (timestamp)
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+### 7. Media Management
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+**Media Categories:**
+- Images
+- Audio files
+- Videos
+- External URLs
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+**Features:**
+- Individual media uploads
+- Album/gallery creation with custom names
+- Media grouping and organization
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### 8. Document Management
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+**Document System:**
+- Comprehensive document library
+- Integration with content categories
+- Advanced search and filtering capabilities
+- Relationship with news, regulations, and other content types
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+### 9. Slider/Banner System
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+**Slider Configuration:**
+- `position` (display order)
+- `display_time` (duration)
+- `title` (optional)
+- `media_reference` (linked to media entity)
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+**Features:**
+- Integration with media management system
+- Configurable display settings
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### 10. Human Resources Management
 
-## License
-For open source projects, say how it is licensed.
+**Department Structure:**
+- `department_name` (translatable entity)
+- Self-referential relationships (parent/child departments)
+- `department_head` (reference to employee)
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+**Employee Management:**
+- `name` (translatable entity)
+- `department` (relationship)
+- `position` (job title)
+- `order` (display priority)
+- `mobile_number`
+- `telephone`
+- `email`
+- `room_number`
+
+### 11. Menu & Navigation System
+
+**Features:**
+- Hierarchical menu structure
+- Configurable menu items and sub-menus
+- Accessibility-focused design
+- Custom menu ordering and organization
+
+### 12. Header Configuration
+
+**Office Header Management:**
+- `name` (translatable entity)
+- `order` (display priority)
+- Typography settings (font size, color)
+- `alignment` options
+- Logo management (left and right logo positioning)
+
+## Future Enhancements
+
+### Planned Features:
+- **Global Search Functionality**
+- **Advanced Rich Text Editor** with styling options
+- **Custom Page Builder** (DSL for content creation)
+- **Enhanced SEO Optimization**
+- **Advanced Nepali-English Translation Tools**
+
+## Technical Requirements
+
+### Core Technologies:
+- **Backend:** Nest.js
+- **Database:** PostgreSQL (recommended)
+- **File Storage:** AWS S3
+- **Translation:** Built-in bilingual support (English/Nepali)
+
+### Performance Requirements:
+- SEO-optimized architecture
+- Fast content delivery
+- Responsive design support
+- Scalable media handling
+
+---
+
+*This document serves as the foundation for the Nest.js backend development. Detailed API specifications and database schemas will be developed in subsequent phases.*
