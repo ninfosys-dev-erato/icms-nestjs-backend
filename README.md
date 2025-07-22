@@ -1,206 +1,402 @@
-# Government CMS System Requirements - Backend Specification
+# ICMS Backend - Integrated Content Management System
 
-## Project Overview
+A robust, scalable NestJS backend for government content management with bilingual support (English/Nepali), SEO optimization, and comprehensive content management capabilities.
 
-This document outlines the requirements for a **Nest.js Content Management System backend** that will serve:
-- A **Next.js government website frontend** (public-facing)
-- A **Next.js admin CMS frontend** (content management interface)
+## 🚀 Features
 
-The system must be **SEO-optimized** and support **bilingual content** (English and Nepali).
+- **🔐 Authentication & Authorization**: JWT-based auth with role-based access control
+- **🌐 Bilingual Support**: Full English/Nepali content management
+- **📝 Content Management**: Hierarchical categories, rich content, file attachments
+- **📁 Media Management**: S3/MinIO integration with image processing
+- **👥 User Management**: Multi-role user system with audit logging
+- **🔍 Search & SEO**: Advanced search with SEO optimization
+- **📊 Analytics**: Comprehensive audit and activity tracking
+- **🔄 API Documentation**: Auto-generated Swagger documentation
+- **🛡️ Security**: Rate limiting, input validation, CORS protection
+- **📱 Real-time**: WebSocket support for real-time features
 
-## User Roles & Access Control
+## 🏗️ Architecture
 
-### Public Users
-- General public viewing the government website
-- Read-only access to published content
+- **Framework**: NestJS with TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **Cache**: Redis for session and data caching
+- **Storage**: MinIO/S3 for file storage
+- **Authentication**: JWT with refresh tokens
+- **Documentation**: Swagger/OpenAPI
+- **Testing**: Jest with E2E testing
 
-### CMS Administrator Users
-1. **Admin**
-   - Full system access
-   - Can create, edit, and delete users
-   - Can manage all content and settings
+## 📋 Prerequisites
 
-2. **Editor**
-   - Can create and edit content
-   - Cannot manage users or system settings
+- Node.js 18+ 
+- PostgreSQL 14+
+- Redis 6+
+- MinIO (or AWS S3)
+- Yarn, pnpm, or npm
 
-3. **Viewer**
-   - Read-only access
-   - Can export or print documents only
+## 🛠️ Installation
 
-## Core System Components
+### 1. Clone the Repository
 
-### 1. Office Settings Management
-
-**Office Configuration Table:**
-- `directorate` (translatable entity)
-- `office_name` (translatable entity)
-- `office_address` (translatable entity)
-- `background_photo` (S3 path, linked to media system)
-- `email` (email address)
-- `phone_number` (translatable entity)
-- `x_link` (URL)
-- `map_iframe` (HTML string for embedded maps)
-- `website` (URL)
-- `youtube` (URL)
-
-### 2. Translation System
-
-**Translatable Entity Structure:**
-```json
-{
-  "en": "English content",
-  "ne": "नेपाली सामग्री"
-}
+```bash
+git clone <repository-url>
+cd csiodadeldhura-nest-js-backend
 ```
 
-**Global Translations Table:**
-- `id` (primary key)
-- `key` (translation identifier)
-- `en_value` (English translation)
-- `ne_value` (Nepali translation)
-- `group_name` (categorization)
+### 2. Install Dependencies
 
-### 3. Office Description System
+```bash
+# Using Yarn (recommended)
+yarn install
 
-**Office Description Types (Enum):**
-- Introduction
-- Objective
-- Work Details
-- Organizational Structure
-- Digital Charter
-- Employee Sanctions
+# Using pnpm
+pnpm install
 
-**Office Description Table:**
-- `office_description_type` (enum)
-- `content` (translatable entity)
+# Using npm
+npm install
+```
 
-*Note: Future versions will support rich text formatting (bold, italic, font sizing) and embedded media.*
+### 3. Environment Setup
 
-### 4. Content Management System
+```bash
+# Copy environment template
+cp env.example .env
 
-**Content Categories:**
-1. **Legal Documents**
-   - Acts, Policies, Directives
+# Edit environment variables
+nano .env
+```
 
-2. **News & Information**
-   - News articles, Press releases, Bolpatra (tenders)
+### 4. Database Setup
 
-3. **Publications**
-   - Progress reports, Official publications
+```bash
+# Generate Prisma client
+npm run db:generate
 
-4. **Downloads**
-   - Downloadable documents and resources
+# Run migrations
+npm run db:migrate
 
-**Features:**
-- Infinite nested categories and subcategories
-- Support for multiple file attachments (PDF documents)
-- Currently plain text with file support (rich content editor planned for future)
+# Seed initial data
+npm run db:seed
+```
 
-### 5. Important Links
+### 5. Start Development Server
 
-**Footer Links Configuration:**
-- `link_title` (translatable entity)
-- `link_url` (URL)
+```bash
+# Start in development mode
+npm run start:dev
 
-### 6. FAQ System
+# Start with debugging
+npm run start:debug
+```
 
-**FAQ Management:**
-- `question` (translatable entity)
-- `answer` (translatable entity)
-- `created_at` (timestamp)
-- `updated_at` (timestamp)
+## 🔧 Configuration
 
-### 7. Media Management
+### Environment Variables
 
-**Media Categories:**
-- Images
-- Audio files
-- Videos
-- External URLs
+Key configuration options in `.env`:
 
-**Features:**
-- Individual media uploads
-- Album/gallery creation with custom names
-- Media grouping and organization
+```env
+# Database
+DATABASE_URL="postgresql://icmsdev:dev@123@localhost:5432/icmslocal?schema=public"
 
-### 8. Document Management
+# JWT
+JWT_SECRET=your-super-secret-jwt-key
+JWT_EXPIRES_IN=1h
 
-**Document System:**
-- Comprehensive document library
-- Integration with content categories
-- Advanced search and filtering capabilities
-- Relationship with news, regulations, and other content types
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=dev@123
 
-### 9. Slider/Banner System
+# MinIO/S3
+MINIO_ENDPOINT=localhost
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=icms-dev
+```
 
-**Slider Configuration:**
-- `position` (display order)
-- `display_time` (duration)
-- `title` (optional)
-- `media_reference` (linked to media entity)
+### Database Configuration
 
-**Features:**
-- Integration with media management system
-- Configurable display settings
+Follow the [Arch Linux setup guide](docs/development/setting-up-in-archlinux.md) for complete database setup instructions.
 
-### 10. Human Resources Management
+## 📚 API Documentation
 
-**Department Structure:**
-- `department_name` (translatable entity)
-- Self-referential relationships (parent/child departments)
-- `department_head` (reference to employee)
+Once the server is running, access the API documentation at:
 
-**Employee Management:**
-- `name` (translatable entity)
-- `department` (relationship)
-- `position` (job title)
-- `order` (display priority)
-- `mobile_number`
-- `telephone`
-- `email`
-- `room_number`
+- **Swagger UI**: http://localhost:3000/api/docs
+- **OpenAPI JSON**: http://localhost:3000/api/docs-json
 
-### 11. Menu & Navigation System
+## 🗄️ Database Management
 
-**Features:**
-- Hierarchical menu structure
-- Configurable menu items and sub-menus
-- Accessibility-focused design
-- Custom menu ordering and organization
+### Migration Commands
 
-### 12. Header Configuration
+```bash
+# Generate new migration
+npm run db:migrate
 
-**Office Header Management:**
-- `name` (translatable entity)
-- `order` (display priority)
-- Typography settings (font size, color)
-- `alignment` options
-- Logo management (left and right logo positioning)
+# Apply migrations
+npm run db:migrate:deploy
 
-## Future Enhancements
+# Reset database (development only)
+npm run db:migrate:reset
 
-### Planned Features:
-- **Global Search Functionality**
-- **Advanced Rich Text Editor** with styling options
-- **Custom Page Builder** (DSL for content creation)
-- **Enhanced SEO Optimization**
-- **Advanced Nepali-English Translation Tools**
+# Check migration status
+npm run db:migrate:status
 
-## Technical Requirements
+# Open Prisma Studio
+npm run db:studio
+```
 
-### Core Technologies:
-- **Backend:** Nest.js
-- **Database:** PostgreSQL (recommended)
-- **File Storage:** AWS S3
-- **Translation:** Built-in bilingual support (English/Nepali)
+### Seeding
 
-### Performance Requirements:
-- SEO-optimized architecture
-- Fast content delivery
-- Responsive design support
-- Scalable media handling
+```bash
+# Seed initial data
+npm run db:seed
+
+# Seed with custom data
+npx ts-node prisma/seed.ts
+```
+
+## 🧪 Testing
+
+```bash
+# Run unit tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run E2E tests
+npm run test:e2e
+
+# Generate coverage report
+npm run test:cov
+```
+
+## 📦 Available Scripts
+
+```bash
+# Development
+npm run start:dev          # Start development server
+npm run start:debug        # Start with debugging
+npm run build              # Build for production
+npm run start:prod         # Start production server
+
+# Database
+npm run db:generate        # Generate Prisma client
+npm run db:migrate         # Create new migration
+npm run db:migrate:deploy  # Apply migrations
+npm run db:seed            # Seed database
+npm run db:studio          # Open Prisma Studio
+
+# Code Quality
+npm run lint               # Run ESLint
+npm run format             # Format code with Prettier
+npm run typecheck          # TypeScript type checking
+
+# Testing
+npm run test               # Run unit tests
+npm run test:e2e           # Run E2E tests
+npm run test:cov           # Generate coverage
+```
+
+## 🏛️ Project Structure
+
+```
+src/
+├── common/                 # Shared utilities and types
+│   ├── filters/           # Exception filters
+│   ├── interceptors/      # Response interceptors
+│   └── types/             # Common type definitions
+├── config/                # Configuration files
+├── database/              # Database setup and services
+├── modules/               # Feature modules
+│   ├── auth/              # Authentication module
+│   ├── users/             # User management
+│   ├── content/           # Content management
+│   ├── media/             # Media management
+│   ├── translation/       # Translation system
+│   └── ...                # Other modules
+├── app.module.ts          # Main application module
+└── main.ts               # Application entry point
+```
+
+## 🔐 Authentication
+
+The system uses JWT-based authentication with the following features:
+
+- **Access Tokens**: Short-lived tokens for API access
+- **Refresh Tokens**: Long-lived tokens for token renewal
+- **Role-Based Access**: ADMIN, EDITOR, VIEWER roles
+- **Session Management**: Multiple active sessions per user
+- **Audit Logging**: Complete authentication event tracking
+
+### Default Admin User
+
+After seeding, you can login with:
+
+- **Email**: admin@icms.gov.np
+- **Password**: admin@123
+
+## 🌐 Bilingual Support
+
+The system supports full bilingual content management:
+
+- **Translatable Entities**: All content supports English/Nepali
+- **Fallback Mechanism**: Automatic language fallback
+- **Translation Management**: Centralized translation system
+- **SEO Optimization**: Language-specific URLs and meta tags
+
+## 📝 Content Management
+
+### Features
+
+- **Hierarchical Categories**: Unlimited nested categories
+- **Rich Content**: Support for formatted text and media
+- **File Attachments**: Multiple file types per content
+- **Publishing Workflow**: Draft → Published → Archived
+- **SEO Optimization**: Automatic slug generation and meta tags
+- **Search**: Full-text search across all content
+
+### Content Types
+
+1. **Legal Documents**: Acts, policies, directives
+2. **News & Information**: News articles, press releases
+3. **Publications**: Progress reports, official publications
+4. **Downloads**: Downloadable documents and resources
+
+## 🗄️ Database Schema
+
+The system uses a comprehensive database schema with:
+
+- **User Management**: Users, sessions, audit logs
+- **Content System**: Categories, content, attachments
+- **Media Management**: Media files, albums, sliders
+- **Settings**: Office settings, translations, configurations
+- **HR System**: Departments, employees, organizational structure
+
+See [Database Documentation](docs/database/README.md) for detailed schema information.
+
+## 🔧 Development Guidelines
+
+### Code Style
+
+- Follow TypeScript best practices
+- Use ESLint and Prettier for code formatting
+- Write comprehensive tests
+- Document all public APIs
+
+### Git Workflow
+
+```bash
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Make changes and commit
+git add .
+git commit -m "feat: add new feature"
+
+# Push and create PR
+git push origin feature/your-feature-name
+```
+
+### Testing Strategy
+
+- **Unit Tests**: Test individual components
+- **Integration Tests**: Test module interactions
+- **E2E Tests**: Test complete workflows
+- **Performance Tests**: Load testing for critical paths
+
+## 🚀 Deployment
+
+### Production Setup
+
+1. **Environment Configuration**
+   ```bash
+   NODE_ENV=production
+   DATABASE_URL="postgresql://..."
+   REDIS_URL="redis://..."
+   ```
+
+2. **Database Migration**
+   ```bash
+   npm run db:migrate:deploy
+   ```
+
+3. **Build Application**
+   ```bash
+   npm run build
+   ```
+
+4. **Start Production Server**
+   ```bash
+   npm run start:prod
+   ```
+
+### Docker Deployment
+
+```bash
+# Build Docker image
+docker build -t icms-backend .
+
+# Run container
+docker run -p 3000:3000 icms-backend
+```
+
+## 📊 Monitoring
+
+### Health Checks
+
+- **Application Health**: `/api/v1/health`
+- **Database Health**: `/api/v1/health/database`
+- **Redis Health**: `/api/v1/health/redis`
+
+### Logging
+
+The application uses structured logging with:
+
+- **Request Logging**: All API requests and responses
+- **Error Logging**: Detailed error tracking
+- **Audit Logging**: User actions and system events
+- **Performance Logging**: Response times and resource usage
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
+
+### Development Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Setup pre-commit hooks
+npm run prepare
+
+# Start development server
+npm run start:dev
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
+
+## 🔗 Related Projects
+
+- **Frontend**: [ICMS Frontend](https://github.com/your-repo/icms-frontend)
+- **Admin Panel**: [ICMS Admin](https://github.com/your-repo/icms-admin)
+- **Mobile App**: [ICMS Mobile](https://github.com/your-repo/icms-mobile)
 
 ---
 
-*This document serves as the foundation for the Nest.js backend development. Detailed API specifications and database schemas will be developed in subsequent phases.*
+**Built with ❤️ for the Government of Nepal**

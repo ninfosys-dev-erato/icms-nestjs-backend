@@ -1,0 +1,413 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================================
+// ENUMS
+// ========================================
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+enum OfficeDescriptionType {
+  INTRODUCTION
+  OBJECTIVE
+  WORK_DETAILS
+  ORGANIZATIONAL_STRUCTURE
+  DIGITAL_CHARTER
+  EMPLOYEE_SANCTIONS
+}
+
+// ========================================
+// USER MANAGEMENT
+// ========================================
+
+model User {
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  password               String
+  firstName              String
+  lastName               String
+  role                   UserRole  @default(VIEWER)
+  isActive               Boolean   @default(true)
+  isEmailVerified        Boolean   @default(false)
+  lastLoginAt            DateTime?
+  passwordChangedAt      DateTime?
+  emailVerificationToken String?
+  passwordResetToken     String?
+  passwordResetExpires   DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  // Relations
+  createdContents Content[]      @relation("CreatedBy")
+  updatedContents Content[]      @relation("UpdatedBy")
+  departmentHead  Department[]   @relation("DepartmentHead")
+  sessions        UserSession[]
+  loginAttempts   LoginAttempt[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  refreshToken String   @unique
+  ipAddress    String
+  userAgent    String
+  isActive     Boolean  @default(true)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model LoginAttempt {
+  id            String   @id @default(cuid())
+  email         String
+  ipAddress     String
+  userAgent     String
+  success       Boolean
+  failureReason String?
+  attemptedAt   DateTime @default(now())
+  User          User?    @relation(fields: [userId], references: [id])
+  userId        String?
+
+  @@map("login_attempts")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  details    Json
+  ipAddress  String
+  userAgent  String
+  createdAt  DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ========================================
+// TRANSLATION SYSTEM
+// ========================================
+
+model GlobalTranslation {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  enValue   String
+  neValue   String
+  groupName String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("global_translations")
+}
+
+// ========================================
+// OFFICE SETTINGS
+// ========================================
+
+model OfficeSettings {
+  id              String   @id @default(cuid())
+  directorate     Json // Translatable entity
+  officeName      Json // Translatable entity
+  officeAddress   Json // Translatable entity
+  backgroundPhoto String? // S3 path
+  email           String
+  phoneNumber     Json // Translatable entity
+  xLink           String?
+  mapIframe       String? // HTML string
+  website         String?
+  youtube         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("office_settings")
+}
+
+model OfficeDescription {
+  id                    String                @id @default(cuid())
+  officeDescriptionType OfficeDescriptionType
+  content               Json // Translatable entity
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@map("office_descriptions")
+}
+
+// ========================================
+// CONTENT MANAGEMENT
+// ========================================
+
+model Category {
+  id          String   @id @default(cuid())
+  name        Json // Translatable entity
+  description Json? // Translatable entity
+  slug        String   @unique
+  parentId    String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  contents Content[]
+
+  @@map("categories")
+}
+
+model Content {
+  id          String        @id @default(cuid())
+  title       Json // Translatable entity
+  content     Json // Translatable entity
+  excerpt     Json? // Translatable entity
+  slug        String        @unique
+  categoryId  String
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  featured    Boolean       @default(false)
+  order       Int           @default(0)
+  createdById String
+  updatedById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  category    Category            @relation(fields: [categoryId], references: [id])
+  attachments ContentAttachment[]
+  createdBy   User                @relation("CreatedBy", fields: [createdById], references: [id])
+  updatedBy   User                @relation("UpdatedBy", fields: [updatedById], references: [id])
+
+  @@map("contents")
+}
+
+model ContentAttachment {
+  id        String   @id @default(cuid())
+  contentId String
+  fileName  String
+  filePath  String // S3 path
+  fileSize  Int
+  mimeType  String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  // Relations
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("content_attachments")
+}
+
+// ========================================
+// IMPORTANT LINKS
+// ========================================
+
+model ImportantLink {
+  id        String   @id @default(cuid())
+  linkTitle Json // Translatable entity
+  linkUrl   String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("important_links")
+}
+
+// ========================================
+// FAQ SYSTEM
+// ========================================
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  Json // Translatable entity
+  answer    Json // Translatable entity
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+// ========================================
+// MEDIA MANAGEMENT
+// ========================================
+
+model Media {
+  id           String    @id @default(cuid())
+  fileName     String
+  originalName String
+  filePath     String // S3 path
+  fileSize     Int
+  mimeType     String
+  mediaType    MediaType
+  altText      Json? // Translatable entity
+  caption      Json? // Translatable entity
+  width        Int?
+  height       Int?
+  duration     Int? // For video/audio in seconds
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  albums  MediaAlbum[]
+  sliders Slider[]
+
+  @@map("media")
+}
+
+model MediaAlbum {
+  id          String   @id @default(cuid())
+  name        Json // Translatable entity
+  description Json? // Translatable entity
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  media Media[]
+
+  @@map("media_albums")
+}
+
+// ========================================
+// SLIDER/BANNER SYSTEM
+// ========================================
+
+model Slider {
+  id          String   @id @default(cuid())
+  position    Int      @default(0)
+  displayTime Int      @default(5000) // milliseconds
+  title       Json? // Translatable entity
+  mediaId     String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  media Media @relation(fields: [mediaId], references: [id])
+
+  @@map("sliders")
+}
+
+// ========================================
+// HUMAN RESOURCES
+// ========================================
+
+model Department {
+  id               String   @id @default(cuid())
+  departmentName   Json // Translatable entity
+  parentId         String?
+  departmentHeadId String?
+  order            Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  parent         Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children       Department[] @relation("DepartmentHierarchy")
+  employees      Employee[]
+  departmentHead User?        @relation("DepartmentHead", fields: [departmentHeadId], references: [id])
+
+  @@map("departments")
+}
+
+model Employee {
+  id           String   @id @default(cuid())
+  name         Json // Translatable entity
+  departmentId String
+  position     Json // Translatable entity
+  order        Int      @default(0)
+  mobileNumber String?
+  telephone    String?
+  email        String?
+  roomNumber   String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@map("employees")
+}
+
+// ========================================
+// NAVIGATION SYSTEM
+// ========================================
+
+model Menu {
+  id        String   @id @default(cuid())
+  name      Json // Translatable entity
+  parentId  String?
+  url       String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  parent   Menu?  @relation("MenuHierarchy", fields: [parentId], references: [id])
+  children Menu[] @relation("MenuHierarchy")
+
+  @@map("menus")
+}
+
+// ========================================
+// HEADER CONFIGURATION
+// ========================================
+
+model HeaderConfig {
+  id        String   @id @default(cuid())
+  name      Json // Translatable entity
+  order     Int      @default(0)
+  fontSize  String   @default("16px")
+  color     String   @default("#000000")
+  alignment String   @default("left") // left, center, right
+  logoLeft  String? // S3 path
+  logoRight String? // S3 path
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("header_configs")
+}
