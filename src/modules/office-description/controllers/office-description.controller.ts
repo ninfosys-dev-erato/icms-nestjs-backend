@@ -17,7 +17,7 @@ import {
 import { ApiResponseBuilder } from '../../../common/types/api-response';
 
 @ApiTags('Office Descriptions')
-@Controller('api/v1/office-descriptions')
+@Controller('office-descriptions')
 export class OfficeDescriptionController {
   constructor(private readonly officeDescriptionService: OfficeDescriptionService) {}
 

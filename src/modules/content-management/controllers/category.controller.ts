@@ -13,7 +13,7 @@ import { CategoryResponseDto } from '../dto/content-management.dto';
 import { ApiResponseBuilder } from '@/common/types/api-response';
 
 @ApiTags('Categories')
-@Controller('api/v1/categories')
+@Controller('categories')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 

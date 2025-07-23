@@ -31,7 +31,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { ApiResponseBuilder } from '@/common/types/api-response';
 
 @ApiTags('Admin Important Links')
-@Controller('api/v1/admin/important-links')
+@Controller('admin/important-links')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'EDITOR')
 @ApiBearerAuth()

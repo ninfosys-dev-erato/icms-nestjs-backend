@@ -28,7 +28,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ApiResponseBuilder } from '@/common/types/api-response';
 
 @ApiTags('Users')
-@Controller('api/v1/users')
+@Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

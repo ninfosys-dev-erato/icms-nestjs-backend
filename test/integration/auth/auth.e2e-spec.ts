@@ -6,8 +6,6 @@ import { PassportModule } from '@nestjs/passport';
 import { ThrottlerModule } from '@nestjs/throttler';
 import * as request from 'supertest';
 import { PrismaService } from '@/database/prisma.service';
-import { AuthModule } from '@/modules/auth/auth.module';
-import { DatabaseModule } from '@/database/database.module';
 import { AppModule } from '@/app.module';
 import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import { ApiResponseInterceptor } from '@/common/interceptors/api-response.interceptor';
@@ -21,25 +19,7 @@ describe('AuthController (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({
-          isGlobal: true,
-          envFilePath: '.env.test',
-        }),
-        DatabaseModule,
-        AuthModule,
-        PassportModule,
-        JwtModule.register({
-          secret: process.env.JWT_SECRET || 'test-secret',
-          signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1h' },
-        }),
-        ThrottlerModule.forRoot([
-          {
-            ttl: 60000,
-            limit: 10,
-          },
-        ]),
-      ],
+      imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
@@ -50,6 +30,9 @@ describe('AuthController (e2e)', () => {
     }));
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ApiResponseInterceptor());
+    
+    // Set global prefix to match main app
+    app.setGlobalPrefix('api/v1');
 
     prisma = app.get<PrismaService>(PrismaService);
     await app.init();
@@ -93,7 +76,7 @@ describe('AuthController (e2e)', () => {
 
     it('should register a new user successfully', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(validRegisterData)
         .expect(201);
 
@@ -115,7 +98,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(invalidData)
         .expect(400);
 
@@ -126,13 +109,13 @@ describe('AuthController (e2e)', () => {
     it('should fail when email already exists', async () => {
       // First registration
       await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(validRegisterData)
         .expect(201);
 
       // Second registration with same email
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(validRegisterData)
         .expect(409);
 
@@ -147,7 +130,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(invalidData)
         .expect(400);
 
@@ -162,7 +145,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(invalidData)
         .expect(400);
 
@@ -183,7 +166,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
 
       testUser = response.body.data.user;
@@ -196,7 +179,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send(loginData)
         .expect(200);
 
@@ -215,7 +198,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send(loginData)
         .expect(401);
 
@@ -230,7 +213,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send(loginData)
         .expect(401);
 
@@ -246,7 +229,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send(loginData)
         .expect(200);
 
@@ -264,7 +247,7 @@ describe('AuthController (e2e)', () => {
       // Attempt multiple failed logins
       for (let i = 0; i < 6; i++) {
         const response = await request(app.getHttpServer())
-          .post('/auth/login')
+          .post('/api/v1/auth/login')
           .send(loginData);
 
         if (i < 5) {
@@ -291,7 +274,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const registerResponse = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
 
       testUserToken = registerResponse.body.data.accessToken;
@@ -299,7 +282,7 @@ describe('AuthController (e2e)', () => {
 
     it('should logout successfully with valid token', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/logout')
+        .post('/api/v1/auth/logout')
         .set('Authorization', `Bearer ${testUserToken}`)
         .expect(200);
 
@@ -309,7 +292,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail without authentication token', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/logout')
+        .post('/api/v1/auth/logout')
         .expect(401);
 
       expect(response.body.success).toBe(false);
@@ -317,7 +300,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail with invalid token', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/logout')
+        .post('/api/v1/auth/logout')
         .set('Authorization', 'Bearer invalid-token')
         .expect(401);
 
@@ -338,12 +321,12 @@ describe('AuthController (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
 
       // Login to get a valid refresh token
       const loginResponse = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({
           email: 'refresh@example.com',
           password: 'Password123!',
@@ -354,7 +337,7 @@ describe('AuthController (e2e)', () => {
 
     it('should refresh token successfully', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/refresh')
+        .post('/api/v1/auth/refresh')
         .send({ refreshToken: testUserRefreshToken })
         .expect(200);
 
@@ -366,7 +349,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail with invalid refresh token', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/refresh')
+        .post('/api/v1/auth/refresh')
         .send({ refreshToken: 'invalid-refresh-token' })
         .expect(401);
 
@@ -375,7 +358,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail without refresh token', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/refresh')
+        .post('/api/v1/auth/refresh')
         .send({})
         .expect(400);
 
@@ -396,13 +379,13 @@ describe('AuthController (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
     });
 
     it('should send reset email for existing user', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/forgot-password')
+        .post('/api/v1/auth/forgot-password')
         .send({ email: 'forgot@example.com' })
         .expect(200);
 
@@ -412,7 +395,7 @@ describe('AuthController (e2e)', () => {
 
     it('should not reveal if email exists or not', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/forgot-password')
+        .post('/api/v1/auth/forgot-password')
         .send({ email: 'nonexistent@example.com' })
         .expect(200);
 
@@ -422,7 +405,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail with invalid email format', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/forgot-password')
+        .post('/api/v1/auth/forgot-password')
         .send({ email: 'invalid-email' })
         .expect(400);
 
@@ -442,7 +425,7 @@ describe('AuthController (e2e)', () => {
 
       // This test is commented out as it requires a valid token
       // const response = await request(app.getHttpServer())
-      //   .post('/auth/reset-password')
+      //   .post('/api/v1/auth/reset-password')
       //   .send(resetData)
       //   .expect(200);
 
@@ -458,7 +441,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/reset-password')
+        .post('/api/v1/auth/reset-password')
         .send(resetData)
         .expect(400);
 
@@ -473,7 +456,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/reset-password')
+        .post('/api/v1/auth/reset-password')
         .send(resetData)
         .expect(400);
 
@@ -494,7 +477,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const registerResponse = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
 
       testUserToken = registerResponse.body.data.accessToken;
@@ -508,7 +491,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/change-password')
+        .post('/api/v1/auth/change-password')
         .set('Authorization', `Bearer ${testUserToken}`)
         .send(changeData)
         .expect(200);
@@ -525,7 +508,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/change-password')
+        .post('/api/v1/auth/change-password')
         .set('Authorization', `Bearer ${testUserToken}`)
         .send(changeData)
         .expect(400);
@@ -541,7 +524,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/change-password')
+        .post('/api/v1/auth/change-password')
         .set('Authorization', `Bearer ${testUserToken}`)
         .send(changeData)
         .expect(400);
@@ -557,7 +540,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const response = await request(app.getHttpServer())
-        .post('/auth/change-password')
+        .post('/api/v1/auth/change-password')
         .send(changeData)
         .expect(401);
 
@@ -604,13 +587,13 @@ describe('AuthController (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
     });
 
     it('should resend verification email', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/resend-verification')
+        .post('/api/v1/auth/resend-verification')
         .send({ email: 'resend@example.com' })
         .expect(200);
 
@@ -620,7 +603,7 @@ describe('AuthController (e2e)', () => {
 
     it('should not reveal if email exists or not', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/resend-verification')
+        .post('/api/v1/auth/resend-verification')
         .send({ email: 'nonexistent@example.com' })
         .expect(200);
 
@@ -642,7 +625,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const registerResponse = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
 
       testUserToken = registerResponse.body.data.accessToken;
@@ -684,7 +667,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const registerResponse = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
 
       testUserToken = registerResponse.body.data.accessToken;
@@ -693,7 +676,7 @@ describe('AuthController (e2e)', () => {
     it('should return user sessions', async () => {
       // First ensure user has a session by logging in
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({
           email: 'sessions@example.com',
           password: 'Password123!',
@@ -732,7 +715,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const registerResponse = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
 
       testUserToken = registerResponse.body.data.accessToken;
@@ -741,7 +724,7 @@ describe('AuthController (e2e)', () => {
     it('should revoke specific session', async () => {
       // First ensure user has a session by logging in
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({
           email: 'revoke@example.com',
           password: 'Password123!',
@@ -766,7 +749,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail without authentication', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/sessions/some-session-id/revoke')
+        .post('/api/v1/auth/sessions/some-session-id/revoke')
         .expect(401);
 
       expect(response.body.success).toBe(false);
@@ -786,7 +769,7 @@ describe('AuthController (e2e)', () => {
       };
 
       const registerResponse = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send(registerData);
 
       testUserToken = registerResponse.body.data.accessToken;
@@ -794,7 +777,7 @@ describe('AuthController (e2e)', () => {
 
     it('should revoke all user sessions', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/sessions/revoke-all')
+        .post('/api/v1/auth/sessions/revoke-all')
         .set('Authorization', `Bearer ${testUserToken}`)
         .expect(200);
 
@@ -804,7 +787,7 @@ describe('AuthController (e2e)', () => {
 
     it('should fail without authentication', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/sessions/revoke-all')
+        .post('/api/v1/auth/sessions/revoke-all')
         .expect(401);
 
       expect(response.body.success).toBe(false);
@@ -821,7 +804,7 @@ describe('AuthController (e2e)', () => {
       // Make multiple requests to trigger rate limiting
       for (let i = 0; i < 6; i++) {
         const response = await request(app.getHttpServer())
-          .post('/auth/login')
+          .post('/api/v1/auth/login')
           .send(loginData);
 
         if (i < 5) {
@@ -838,7 +821,7 @@ describe('AuthController (e2e)', () => {
   describe('Input Validation', () => {
     it('should validate email format in login', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({
           email: 'invalid-email-format',
           password: 'Password123!',
@@ -851,7 +834,7 @@ describe('AuthController (e2e)', () => {
 
     it('should validate required fields in register', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({})
         .expect(400);
 

@@ -6,9 +6,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import * as request from 'supertest';
 
 import { PrismaService } from '@/database/prisma.service';
-import { ContentManagementModule } from '@/modules/content-management/content-management.module';
-import { AuthModule } from '@/modules/auth/auth.module';
-import { DatabaseModule } from '@/database/database.module';
+import { AppModule } from '@/app.module';
 import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import { ApiResponseInterceptor } from '@/common/interceptors/api-response.interceptor';
 
@@ -30,21 +28,7 @@ describe('Category Management (e2e)', () => {
     process.env.JWT_REFRESH_EXPIRES_IN = '7d';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({
-          isGlobal: true,
-        }),
-        DatabaseModule,
-        AuthModule,
-        ContentManagementModule,
-        PassportModule,
-        ThrottlerModule.forRoot([
-          {
-            ttl: 60000,
-            limit: 10,
-          },
-        ]),
-      ],
+      imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
@@ -55,6 +39,9 @@ describe('Category Management (e2e)', () => {
     }));
     app.useGlobalFilters(new HttpExceptionFilter());
     app.useGlobalInterceptors(new ApiResponseInterceptor());
+    
+    // Set global prefix to match main app
+    app.setGlobalPrefix('api/v1');
 
     prisma = app.get<PrismaService>(PrismaService);
     await app.init();
@@ -94,7 +81,7 @@ describe('Category Management (e2e)', () => {
     try {
       // Create admin user
       const adminResponse = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({
           email: 'admin@category.com',
           password: 'AdminPass123!',
@@ -114,7 +101,7 @@ describe('Category Management (e2e)', () => {
 
       // Create editor user
       const editorResponse = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({
           email: 'editor@category.com',
           password: 'EditorPass123!',
@@ -134,7 +121,7 @@ describe('Category Management (e2e)', () => {
 
       // Create viewer user
       const viewerResponse = await request(app.getHttpServer())
-        .post('/auth/register')
+        .post('/api/v1/auth/register')
         .send({
           email: 'viewer@category.com',
           password: 'ViewerPass123!',
@@ -170,7 +157,7 @@ describe('Category Management (e2e)', () => {
       try {
         // Create a test category
         const categoryResponse = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: {
@@ -241,7 +228,7 @@ describe('Category Management (e2e)', () => {
       it('should handle nested categories correctly', async () => {
         // Create parent category
         const parentResponse = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Parent Category', ne: 'मूल श्रेणी' },
@@ -254,7 +241,7 @@ describe('Category Management (e2e)', () => {
 
         // Create child category
         const childResponse = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Child Category', ne: 'सानो श्रेणी' },
@@ -367,7 +354,7 @@ describe('Category Management (e2e)', () => {
         };
 
         const response = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send(categoryData)
           .expect(201);
@@ -392,7 +379,7 @@ describe('Category Management (e2e)', () => {
         };
 
         const response = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send(categoryData)
           .expect(201);
@@ -404,7 +391,7 @@ describe('Category Management (e2e)', () => {
 
       it('should fail to create category without authentication', async () => {
         const response = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .send({
             name: { en: 'Test', ne: 'परीक्षण' },
           })
@@ -417,7 +404,7 @@ describe('Category Management (e2e)', () => {
       it('should fail to create category with duplicate slug', async () => {
         // First create a category
         await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'First Category', ne: 'पहिलो श्रेणी' },
@@ -426,7 +413,7 @@ describe('Category Management (e2e)', () => {
 
         // Try to create another with same slug
         const response = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Second Category', ne: 'दोस्रो श्रेणी' },
@@ -440,7 +427,7 @@ describe('Category Management (e2e)', () => {
 
       it('should validate required fields', async () => {
         const response = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({})
           .expect(500); // The service throws an error when name is undefined
@@ -450,7 +437,7 @@ describe('Category Management (e2e)', () => {
 
       it('should validate name structure', async () => {
         const response = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Only English' }, // Missing Nepali translation
@@ -468,7 +455,7 @@ describe('Category Management (e2e)', () => {
       it('should get category by ID successfully', async () => {
         // First create a category
         const createResponse = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Test Category', ne: 'परीक्षण श्रेणी' },
@@ -505,7 +492,7 @@ describe('Category Management (e2e)', () => {
 
       beforeEach(async () => {
         const createResponse = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Original Category', ne: 'मूल श्रेणी' },
@@ -580,7 +567,7 @@ describe('Category Management (e2e)', () => {
       it('should fail to update category with duplicate slug', async () => {
         // Create another category first
         await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Another Category', ne: 'अर्को श्रेणी' },
@@ -605,7 +592,7 @@ describe('Category Management (e2e)', () => {
       it('should delete category successfully', async () => {
         // First create a category
         const createResponse = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'To Delete', ne: 'मेटाउन' },
@@ -644,7 +631,7 @@ describe('Category Management (e2e)', () => {
       it('should fail to delete category with children', async () => {
         // Create parent category
         const parentResponse = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Parent Category', ne: 'मूल श्रेणी' },
@@ -656,7 +643,7 @@ describe('Category Management (e2e)', () => {
 
         // Create child category
         await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Child Category', ne: 'सानो श्रेणी' },
@@ -679,7 +666,7 @@ describe('Category Management (e2e)', () => {
       it('should reorder categories successfully', async () => {
         // Create three categories
         const category1 = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Category 1', ne: 'श्रेणी १' },
@@ -688,7 +675,7 @@ describe('Category Management (e2e)', () => {
           });
 
         const category2 = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Category 2', ne: 'श्रेणी २' },
@@ -697,7 +684,7 @@ describe('Category Management (e2e)', () => {
           });
 
         const category3 = await request(app.getHttpServer())
-          .post('/admin/categories')
+          .post('/api/v1/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Category 3', ne: 'श्रेणी ३' },

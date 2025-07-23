@@ -31,7 +31,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { ApiResponseBuilder } from '@/common/types/api-response';
 
 @ApiTags('Admin Office Descriptions')
-@Controller('api/v1/admin/office-descriptions')
+@Controller('admin/office-descriptions')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'EDITOR')
 @ApiBearerAuth()
