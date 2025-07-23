@@ -389,32 +389,34 @@ export class DocumentRepository {
   }
 
   async bulkUpdate(ids: string[], data: Partial<UpdateDocumentDto>): Promise<Document[]> {
-    const updates = ids.map(id => 
-      this.prisma.document.update({
-        where: { id },
-        data: {
-          title: data.title as any,
-          description: data.description as any,
-          category: data.category,
-          status: data.status,
-          documentNumber: data.documentNumber,
-          version: data.version,
-          publishDate: data.publishDate,
-          expiryDate: data.expiryDate,
-          tags: data.tags,
-          isPublic: data.isPublic,
-          requiresAuth: data.requiresAuth,
-          order: data.order,
-          isActive: data.isActive,
-        },
-        include: {
-          downloads: true,
-          versions: true
-        }
-      })
-    );
+    return this.prisma.$transaction(async (tx) => {
+      const updates = ids.map(id => 
+        tx.document.update({
+          where: { id },
+          data: {
+            title: data.title as any,
+            description: data.description as any,
+            category: data.category,
+            status: data.status,
+            documentNumber: data.documentNumber,
+            version: data.version,
+            publishDate: data.publishDate,
+            expiryDate: data.expiryDate,
+            tags: data.tags,
+            isPublic: data.isPublic,
+            requiresAuth: data.requiresAuth,
+            order: data.order,
+            isActive: data.isActive,
+          },
+          include: {
+            downloads: true,
+            versions: true
+          }
+        })
+      );
 
-    return Promise.all(updates) as any;
+      return Promise.all(updates) as any;
+    });
   }
 
   async findExpiredDocuments(): Promise<Document[]> {

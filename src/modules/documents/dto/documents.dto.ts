@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum, IsArray, ValidateNested, IsNotEmpty, IsUrl, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum, IsArray, ValidateNested, IsNotEmpty, IsUrl, IsDateString, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -299,11 +299,13 @@ export class DocumentResponseDto {
 export class DocumentQueryDto {
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 
@@ -311,6 +313,11 @@ export class DocumentQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({ example: 'official' })
+  @IsOptional()
+  @IsString()
+  q?: string;
 
   @ApiPropertyOptional({ enum: DocumentType })
   @IsOptional()
@@ -329,11 +336,13 @@ export class DocumentQueryDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Type(() => Boolean)
   @IsBoolean()
   isPublic?: boolean;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Type(() => Boolean)
   @IsBoolean()
   isActive?: boolean;
 
@@ -362,6 +371,11 @@ export class DocumentQueryDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  @ApiPropertyOptional({ enum: ['json', 'csv', 'pdf'], example: 'json' })
+  @IsOptional()
+  @IsEnum(['json', 'csv', 'pdf'])
+  format?: 'json' | 'csv' | 'pdf';
 }
 
 // ========================================
@@ -571,6 +585,44 @@ export class BulkOperationResult {
 
   @ApiProperty({ type: [String] })
   errors: string[];
+}
+
+export class BulkOperationDto {
+  @ApiProperty({ example: ['document_id_1', 'document_id_2'] })
+  @IsArray()
+  @IsString({ each: true })
+  ids: string[];
+}
+
+export class BulkUpdateDto {
+  @ApiProperty({ example: ['document_id_1', 'document_id_2'] })
+  @IsArray()
+  @IsString({ each: true })
+  ids: string[];
+
+  @ApiProperty()
+  @ValidateNested()
+  @Type(() => UpdateDocumentDto)
+  updates: Partial<UpdateDocumentDto>;
+}
+
+// Alternative DTO for bulk update that doesn't use nested validation
+export class BulkUpdateRequestDto {
+  @ApiProperty({ example: ['document_id_1', 'document_id_2'] })
+  @IsArray()
+  @IsString({ each: true })
+  ids: string[];
+
+  @ApiProperty({ 
+    example: { 
+      category: 'POLICY', 
+      status: 'PUBLISHED', 
+      isPublic: true 
+    },
+    description: 'Update fields for documents'
+  })
+  @IsObject()
+  updates: Record<string, any>;
 }
 
 export class ImportResult {

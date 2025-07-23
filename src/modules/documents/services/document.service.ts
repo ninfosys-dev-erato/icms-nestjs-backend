@@ -68,7 +68,7 @@ export class DocumentService {
       hasPrev: boolean;
     };
   }> {
-    return this.getAllDocuments({ ...query, isActive: true, status: DocumentStatus.PUBLISHED });
+    return this.getAllDocuments({ ...query, isActive: true, isPublic: true, status: DocumentStatus.PUBLISHED });
   }
 
   async getDocumentsByType(documentType: DocumentType, query?: DocumentQueryDto): Promise<{
@@ -164,6 +164,7 @@ export class DocumentService {
 
     const validationResult = await this.validateDocument(documentData);
     if (!validationResult.isValid) {
+      console.log('Document validation errors:', validationResult.errors);
       throw new BadRequestException({
         message: 'Document validation failed',
         errors: validationResult.errors,

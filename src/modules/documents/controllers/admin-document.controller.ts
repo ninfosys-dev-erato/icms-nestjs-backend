@@ -12,7 +12,12 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
-  Req
+  Req,
+  UsePipes,
+  ValidationPipe,
+  PipeTransform,
+  Injectable,
+  ArgumentMetadata
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response, Request } from 'express';
@@ -38,11 +43,21 @@ import {
   DocumentStatistics,
   DocumentAnalytics,
   BulkOperationResult,
+  BulkOperationDto,
+  BulkUpdateDto,
+  BulkUpdateRequestDto,
   DocumentType,
   DocumentCategory,
   DocumentStatus
 } from '../dto/documents.dto';
 import { ApiResponseBuilder } from '../../../common/types/api-response';
+
+@Injectable()
+export class NoValidationPipe implements PipeTransform {
+  transform(value: any, metadata: ArgumentMetadata) {
+    return value;
+  }
+}
 
 @ApiTags('Admin Documents')
 @ApiBearerAuth()
@@ -191,32 +206,7 @@ export class AdminDocumentController {
     }
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get document by ID (Admin)' })
-  @ApiResponse({ status: 200, description: 'Document retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Document not found' })
-  @ApiParam({ name: 'id', description: 'Document ID' })
-  @Roles('ADMIN', 'EDITOR')
-  async getDocumentById(
-    @Res() response: Response,
-    @Param('id') id: string
-  ): Promise<void> {
-    try {
-      const document = await this.documentService.getDocumentById(id);
-      
-      const apiResponse = ApiResponseBuilder.success(document);
 
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'DOCUMENT_NOT_FOUND',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
-  }
 
   @Post('upload')
   @ApiOperation({ summary: 'Upload document (Admin)' })
@@ -228,21 +218,74 @@ export class AdminDocumentController {
   async uploadDocument(
     @Res() response: Response,
     @UploadedFile() file: Express.Multer.File,
-    @Body() metadata?: Partial<CreateDocumentDto>
+    @Body() metadata?: any
   ): Promise<void> {
     try {
       if (!file) {
         throw new BadRequestException('No file uploaded');
       }
 
-      const document = await this.documentService.uploadDocument(file, metadata);
+      // Transform form data to proper types
+      const transformedMetadata: Partial<CreateDocumentDto> = {
+        ...metadata,
+        title: metadata.title || (metadata['title[en]'] || metadata['title[ne]'] ? {
+          en: metadata['title[en]'] || metadata.title?.en || '',
+          ne: metadata['title[ne]'] || metadata.title?.ne || ''
+        } : undefined),
+        description: metadata.description || (metadata['description[en]'] || metadata['description[ne]'] ? {
+          en: metadata['description[en]'] || metadata.description?.en || '',
+          ne: metadata['description[ne]'] || metadata.description?.ne || ''
+        } : undefined),
+        isPublic: metadata.isPublic !== undefined ? (metadata.isPublic === 'true' || metadata.isPublic === true) : undefined,
+        requiresAuth: metadata.requiresAuth !== undefined ? (metadata.requiresAuth === 'true' || metadata.requiresAuth === true) : undefined,
+        isActive: metadata.isActive !== undefined ? (metadata.isActive === 'true' || metadata.isActive === true) : undefined,
+        order: metadata.order ? parseInt(metadata.order) : undefined,
+        fileSize: metadata.fileSize ? parseInt(metadata.fileSize) : undefined,
+      };
+
+      // Remove the bracket notation fields from metadata to avoid conflicts
+      delete transformedMetadata['title[en]'];
+      delete transformedMetadata['title[ne]'];
+      delete transformedMetadata['description[en]'];
+      delete transformedMetadata['description[ne]'];
+
+      const document = await this.documentService.uploadDocument(file, transformedMetadata);
       
       const apiResponse = ApiResponseBuilder.success(document);
 
       response.status(201).json(apiResponse);
     } catch (error) {
+      console.log('Upload error:', error.message);
+      console.log('Upload error details:', error);
+      
       const apiResponse = ApiResponseBuilder.error(
         'DOCUMENT_UPLOAD_ERROR',
+        error.message
+      );
+
+      response.status(400).json(apiResponse);
+    }
+  }
+
+  @Put('bulk-update')
+  @ApiOperation({ summary: 'Bulk update documents (Admin)' })
+  @ApiResponse({ status: 200, description: 'Bulk update completed' })
+  @ApiResponse({ status: 400, description: 'Update failed' })
+  @Roles('ADMIN', 'EDITOR')
+  @UsePipes(NoValidationPipe)
+  async bulkUpdate(
+    @Res() response: Response,
+    @Body() data: any
+  ): Promise<void> {
+    try {
+      const result = await this.documentService.bulkUpdate(data.ids, data.updates);
+      
+      const apiResponse = ApiResponseBuilder.success(result);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'DOCUMENT_BULK_UPDATE_ERROR',
         error.message
       );
 
@@ -435,6 +478,33 @@ export class AdminDocumentController {
     }
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Get document by ID (Admin)' })
+  @ApiResponse({ status: 200, description: 'Document retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @Roles('ADMIN', 'EDITOR')
+  async getDocumentById(
+    @Res() response: Response,
+    @Param('id') id: string
+  ): Promise<void> {
+    try {
+      const document = await this.documentService.getDocumentById(id);
+      
+      const apiResponse = ApiResponseBuilder.success(document);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'DOCUMENT_NOT_FOUND',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
+  }
+
   @Post('import')
   @ApiOperation({ summary: 'Import documents (Admin)' })
   @ApiResponse({ status: 201, description: 'Documents imported successfully' })
@@ -468,7 +538,7 @@ export class AdminDocumentController {
   @Roles('ADMIN')
   async bulkDelete(
     @Res() response: Response,
-    @Body() data: { ids: string[] }
+    @Body() data: BulkOperationDto
   ): Promise<void> {
     try {
       const result = await this.documentService.bulkDelete(data.ids);
@@ -486,28 +556,5 @@ export class AdminDocumentController {
     }
   }
 
-  @Put('bulk-update')
-  @ApiOperation({ summary: 'Bulk update documents (Admin)' })
-  @ApiResponse({ status: 200, description: 'Bulk update completed' })
-  @ApiResponse({ status: 400, description: 'Update failed' })
-  @Roles('ADMIN', 'EDITOR')
-  async bulkUpdate(
-    @Res() response: Response,
-    @Body() data: { ids: string[]; updates: Partial<UpdateDocumentDto> }
-  ): Promise<void> {
-    try {
-      const result = await this.documentService.bulkUpdate(data.ids, data.updates);
-      
-      const apiResponse = ApiResponseBuilder.success(result);
 
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'DOCUMENT_BULK_UPDATE_ERROR',
-        error.message
-      );
-
-      response.status(400).json(apiResponse);
-    }
-  }
 } 
