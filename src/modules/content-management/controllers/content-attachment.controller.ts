@@ -29,31 +29,11 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
-import { ApiResponseBuilder } from '../../../common/types/api-response';
-
-class ReorderData {
-  orders: Array<{ id: string; order: number }>;
-}
-
-// Simple DTO with validation decorators
-class SimpleReorderDto {
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SimpleReorderItemDto)
-  orders: SimpleReorderItemDto[];
-}
-
-class SimpleReorderItemDto {
-  @IsString()
-  id: string;
-
-  @IsNumber()
-  order: number;
-}
+import { ApiResponseBuilder } from '@/common/types/api-response';
 
 // Custom pipe that doesn't validate
 class NoValidationPipe extends ValidationPipe {
-  transform(value: any, metadata: any) {
+  transform(value: any) {
     return value;
   }
 }
@@ -80,32 +60,13 @@ export class ContentAttachmentController {
 
       response.status(200).json(apiResponse);
     } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
       const apiResponse = ApiResponseBuilder.error(
-        'ATTACHMENTS_RETRIEVAL_ERROR',
+        'ATTACHMENT_RETRIEVAL_ERROR',
         error.message
       );
 
-      response.status(500).json(apiResponse);
-    }
-  }
-
-  @Get('statistics')
-  @ApiOperation({ summary: 'Get attachment statistics' })
-  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
-  async getStatistics(@Res() response: Response): Promise<void> {
-    try {
-      const statistics = await this.attachmentService.getAttachmentStatistics();
-      
-      const apiResponse = ApiResponseBuilder.success(statistics);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'STATISTICS_RETRIEVAL_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
+      response.status(status).json(apiResponse);
     }
   }
 
@@ -126,7 +87,7 @@ export class ContentAttachmentController {
     } catch (error) {
       const status = error.message.includes('not found') ? 404 : 500;
       const apiResponse = ApiResponseBuilder.error(
-        'ATTACHMENT_NOT_FOUND',
+        'ATTACHMENT_RETRIEVAL_ERROR',
         error.message
       );
 
@@ -139,14 +100,14 @@ export class ContentAttachmentController {
   @ApiOperation({ summary: 'Upload attachment' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Attachment uploaded successfully' })
-  @ApiResponse({ status: 400, description: 'File validation error' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
   async uploadAttachment(
-    @Body() data: CreateAttachmentDto,
     @UploadedFile() file: Express.Multer.File,
+    @Body() createAttachmentDto: CreateAttachmentDto,
     @Res() response: Response,
   ): Promise<void> {
     try {
-      const attachment = await this.attachmentService.uploadAttachment(data.contentId, file);
+      const attachment = await this.attachmentService.uploadAttachment(createAttachmentDto.contentId, file);
       
       const apiResponse = ApiResponseBuilder.success(attachment);
 
@@ -165,21 +126,20 @@ export class ContentAttachmentController {
   @Put(':id')
   @ApiOperation({ summary: 'Update attachment' })
   @ApiResponse({ status: 200, description: 'Attachment updated successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 404, description: 'Attachment not found' })
   async updateAttachment(
     @Param('id') id: string,
-    @Body() data: UpdateAttachmentDto,
+    @Body() updateAttachmentDto: UpdateAttachmentDto,
     @Res() response: Response,
   ): Promise<void> {
     try {
-      const attachment = await this.attachmentService.updateAttachment(id, data);
+      const attachment = await this.attachmentService.updateAttachment(id, updateAttachmentDto);
       
       const apiResponse = ApiResponseBuilder.success(attachment);
 
       response.status(200).json(apiResponse);
     } catch (error) {
-      const status = error.status || 500;
+      const status = error.message.includes('not found') ? 404 : 500;
       const apiResponse = ApiResponseBuilder.error(
         'ATTACHMENT_UPDATE_ERROR',
         error.message
@@ -214,6 +174,28 @@ export class ContentAttachmentController {
     }
   }
 
+  @Get('statistics')
+  @ApiOperation({ summary: 'Get attachment statistics' })
+  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
+  async getAttachmentStatistics(
+    @Res() response: Response,
+  ): Promise<void> {
+    try {
+      const statistics = await this.attachmentService.getAttachmentStatistics();
+      
+      const apiResponse = ApiResponseBuilder.success(statistics);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'ATTACHMENT_STATISTICS_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
   @Get(':id/download')
   @ApiOperation({ summary: 'Download attachment' })
   @ApiResponse({ status: 200, description: 'Attachment downloaded successfully' })
@@ -241,23 +223,28 @@ export class ContentAttachmentController {
   }
 
   @Put('reorder')
+  @UsePipes(new NoValidationPipe())
   @ApiOperation({ summary: 'Reorder attachments' })
   @ApiResponse({ status: 200, description: 'Attachments reordered successfully' })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 404, description: 'Attachment not found' })
   async reorderAttachments(
-    @Body() data: ReorderDto,
+    @Body() data: any,
     @Res() response: Response,
   ): Promise<void> {
     try {
-      // Validate that orders array is not empty
-      if (!data.orders || data.orders.length === 0) {
+      // Manual validation
+      if (!data || !data.orders || !Array.isArray(data.orders) || data.orders.length === 0) {
         throw new BadRequestException('Orders array is required and must not be empty');
       }
 
       // Validate that all attachments exist and belong to the same content
       let contentId: string | null = null;
       for (const order of data.orders) {
+        if (!order.id || typeof order.order !== 'number') {
+          throw new BadRequestException('Each order item must have id and order properties');
+        }
+        
         const attachment = await this.attachmentService.getAttachmentById(order.id);
         if (!attachment) {
           throw new BadRequestException(`Attachment with id ${order.id} not found`);
