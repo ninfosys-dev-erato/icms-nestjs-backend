@@ -8,7 +8,7 @@ import { MenuItemQueryDto } from '../dto/menu-item.dto';
 import { ApiResponseBuilder } from '@/common/types/api-response';
 
 @ApiTags('Public Navigation')
-@Controller('api/v1')
+@Controller('')
 export class PublicNavigationController {
   constructor(
     private readonly menuService: MenuService,

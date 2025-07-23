@@ -46,7 +46,7 @@ export class TestUtils {
     };
 
     const response = await request(app.getHttpServer())
-      .post('/api/v1/auth/register')
+      .post('/auth/register')
       .send(registerData)
       .expect(201);
 
@@ -67,7 +67,7 @@ export class TestUtils {
     password: string
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const response = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
+      .post('/auth/login')
       .send({ email, password })
       .expect(200);
 

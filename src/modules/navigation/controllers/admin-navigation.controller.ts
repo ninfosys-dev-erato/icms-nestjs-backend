@@ -35,7 +35,7 @@ import {
 import { ApiResponseBuilder } from '@/common/types/api-response';
 
 @ApiTags('Admin Navigation')
-@Controller('api/v1/admin')
+@Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminNavigationController {
   constructor(

@@ -31,7 +31,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { ApiResponseBuilder } from '@/common/types/api-response';
 
 @ApiTags('Authentication')
-@Controller('api/v1/auth')
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

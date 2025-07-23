@@ -17,7 +17,7 @@ import {
 import { ApiResponseBuilder } from '../../../common/types/api-response';
 
 @ApiTags('Important Links')
-@Controller('api/v1/important-links')
+@Controller('important-links')
 export class ImportantLinksController {
   constructor(private readonly importantLinksService: ImportantLinksService) {}
 

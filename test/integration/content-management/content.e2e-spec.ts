@@ -101,7 +101,7 @@ describe('Content Management (e2e)', () => {
     try {
       // Create admin user
       const adminResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'admin@content.com',
           password: 'AdminPass123!',
@@ -121,7 +121,7 @@ describe('Content Management (e2e)', () => {
 
       // Create editor user
       const editorResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'editor@content.com',
           password: 'EditorPass123!',
@@ -141,7 +141,7 @@ describe('Content Management (e2e)', () => {
 
       // Create viewer user
       const viewerResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'viewer@content.com',
           password: 'ViewerPass123!',
@@ -173,7 +173,7 @@ describe('Content Management (e2e)', () => {
   const createTestCategory = async () => {
     try {
       const categoryResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/categories')
+        .post('/admin/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           name: {
@@ -206,7 +206,7 @@ describe('Content Management (e2e)', () => {
     beforeEach(async () => {
       // Create published content for testing
       await request(app.getHttpServer())
-        .post('/api/v1/admin/content')
+        .post('/admin/content')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           title: {
@@ -247,7 +247,7 @@ describe('Content Management (e2e)', () => {
       it('should return only published content', async () => {
         // Create draft content
         await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: {
@@ -286,7 +286,7 @@ describe('Content Management (e2e)', () => {
         // Create multiple content items
         for (let i = 1; i <= 15; i++) {
           await request(app.getHttpServer())
-            .post('/api/v1/admin/content')
+            .post('/admin/content')
             .set('Authorization', `Bearer ${adminToken}`)
             .send({
               title: {
@@ -453,7 +453,7 @@ describe('Content Management (e2e)', () => {
       it('should not return draft content by slug', async () => {
         // Create draft content
         await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: {
@@ -493,7 +493,7 @@ describe('Content Management (e2e)', () => {
       it('should get content by category successfully', async () => {
         // First create some published content for this category
         await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: {
@@ -545,7 +545,7 @@ describe('Content Management (e2e)', () => {
       beforeEach(async () => {
         // Create test content
         await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: {
@@ -628,7 +628,7 @@ describe('Content Management (e2e)', () => {
         };
 
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send(contentData)
           .expect(201);
@@ -655,7 +655,7 @@ describe('Content Management (e2e)', () => {
         };
 
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send(contentData)
           .expect(201);
@@ -667,7 +667,7 @@ describe('Content Management (e2e)', () => {
 
       it('should fail to create content without authentication', async () => {
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .send({
             title: { en: 'Test', ne: 'परीक्षण' },
             content: { en: 'Test content', ne: 'परीक्षण सामग्री' },
@@ -681,7 +681,7 @@ describe('Content Management (e2e)', () => {
 
       it('should fail to create content with invalid category', async () => {
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: { en: 'Test', ne: 'परीक्षण' },
@@ -695,7 +695,7 @@ describe('Content Management (e2e)', () => {
 
       it('should validate required fields', async () => {
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({})
           .expect(400);
@@ -705,7 +705,7 @@ describe('Content Management (e2e)', () => {
 
       it('should validate title structure', async () => {
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: { en: '', ne: '' }, // Invalid: empty titles
@@ -723,7 +723,7 @@ describe('Content Management (e2e)', () => {
 
       beforeEach(async () => {
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: {
@@ -770,7 +770,7 @@ describe('Content Management (e2e)', () => {
 
       beforeEach(async () => {
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: {
@@ -834,7 +834,7 @@ describe('Content Management (e2e)', () => {
       it('should delete content successfully', async () => {
         // First create content
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: {
@@ -883,7 +883,7 @@ describe('Content Management (e2e)', () => {
       it('should publish content successfully', async () => {
         // First create draft content
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/content')
+          .post('/admin/content')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             title: {
@@ -914,7 +914,7 @@ describe('Content Management (e2e)', () => {
 
       it('should fail to publish non-existent content', async () => {
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/content/non-existent-id/publish')
+          .post('/admin/content/non-existent-id/publish')
           .set('Authorization', `Bearer ${adminToken}`)
           .expect(404);
 

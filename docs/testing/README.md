@@ -476,7 +476,7 @@ describe('OfficeSettings E2E', () => {
 
       // Act
       const response = await request(app.getHttpServer())
-        .post('/api/v1/admin/office-settings')
+        .post('/admin/office-settings')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(createDto)
         .expect(201);
@@ -494,7 +494,7 @@ describe('OfficeSettings E2E', () => {
 
       // Act & Assert
       await request(app.getHttpServer())
-        .post('/api/v1/admin/office-settings')
+        .post('/admin/office-settings')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(invalidDto)
         .expect(400);
@@ -529,7 +529,7 @@ describe('Authentication E2E', () => {
 
       // Act
       const response = await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
+        .post('/auth/login')
         .send(loginDto)
         .expect(200);
 
@@ -548,7 +548,7 @@ describe('Authentication E2E', () => {
 
       // Act & Assert
       await request(app.getHttpServer())
-        .post('/api/v1/auth/login')
+        .post('/auth/login')
         .send(loginDto)
         .expect(401);
     });

@@ -99,7 +99,7 @@ describe('Content Attachment Management (e2e)', () => {
     try {
       // Create admin user
       const adminResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'admin@attachment.com',
           password: 'AdminPass123!',
@@ -119,7 +119,7 @@ describe('Content Attachment Management (e2e)', () => {
 
       // Create editor user
       const editorResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'editor@attachment.com',
           password: 'EditorPass123!',
@@ -139,7 +139,7 @@ describe('Content Attachment Management (e2e)', () => {
 
       // Create viewer user
       const viewerResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'viewer@attachment.com',
           password: 'ViewerPass123!',
@@ -172,7 +172,7 @@ describe('Content Attachment Management (e2e)', () => {
     try {
       // Create test category
       const categoryResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/categories')
+        .post('/admin/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           name: {
@@ -196,7 +196,7 @@ describe('Content Attachment Management (e2e)', () => {
 
       // Create test content
       const contentResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/content')
+        .post('/admin/content')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           title: {
@@ -264,7 +264,7 @@ describe('Content Attachment Management (e2e)', () => {
         // First create an attachment
         const testFile = createTestFile('test.txt');
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', testFile, 'test.txt')
           .field('contentId', testContent.id)
@@ -300,7 +300,7 @@ describe('Content Attachment Management (e2e)', () => {
         const testFile = createTestFile('test.txt', 'This is a test file content');
 
         const response = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', testFile, 'test.txt')
           .field('contentId', testContent.id)
@@ -317,7 +317,7 @@ describe('Content Attachment Management (e2e)', () => {
         const testFile = createTestFile('test.txt');
 
         const response = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .attach('file', testFile, 'test.txt')
           .field('contentId', testContent.id)
           .expect(401);
@@ -330,7 +330,7 @@ describe('Content Attachment Management (e2e)', () => {
         const testFile = createTestFile('test.txt');
 
         const response = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', testFile, 'test.txt')
           .field('contentId', 'non-existent-content-id')
@@ -341,7 +341,7 @@ describe('Content Attachment Management (e2e)', () => {
 
       it('should fail to upload without file', async () => {
         const response = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .field('contentId', testContent.id)
           .expect(500);
@@ -353,7 +353,7 @@ describe('Content Attachment Management (e2e)', () => {
         const testFile = createTestFile('test.exe');
 
         const response = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', testFile, 'test.exe')
           .field('contentId', testContent.id)
@@ -368,7 +368,7 @@ describe('Content Attachment Management (e2e)', () => {
         const largeFile = Buffer.alloc(11 * 1024 * 1024);
 
         const response = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', largeFile, 'large.txt')
           .field('contentId', testContent.id)
@@ -385,7 +385,7 @@ describe('Content Attachment Management (e2e)', () => {
       beforeEach(async () => {
         const testFile = createTestFile('original.txt');
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', testFile, 'original.txt')
           .field('contentId', testContent.id);
@@ -438,7 +438,7 @@ describe('Content Attachment Management (e2e)', () => {
         // First create an attachment
         const testFile = createTestFile('to-delete.txt');
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', testFile, 'to-delete.txt')
           .field('contentId', testContent.id);
@@ -516,7 +516,7 @@ describe('Content Attachment Management (e2e)', () => {
         // First create an attachment
         const testFile = createTestFile('download-test.txt', 'Download test content');
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', testFile, 'download-test.txt')
           .field('contentId', testContent.id);
@@ -550,19 +550,19 @@ describe('Content Attachment Management (e2e)', () => {
       it('should reorder attachments successfully', async () => {
         // Create multiple attachments
         const attachment1 = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', createTestFile('file1.txt'), 'file1.txt')
           .field('contentId', testContent.id);
 
         const attachment2 = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', createTestFile('file2.txt'), 'file2.txt')
           .field('contentId', testContent.id);
 
         const attachment3 = await request(app.getHttpServer())
-          .post('/api/v1/attachments')
+          .post('/attachments')
           .set('Authorization', `Bearer ${adminToken}`)
           .attach('file', createTestFile('file3.txt'), 'file3.txt')
           .field('contentId', testContent.id);

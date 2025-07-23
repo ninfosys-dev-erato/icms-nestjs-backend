@@ -94,7 +94,7 @@ describe('Content Management Integration (e2e)', () => {
     try {
       // Create admin user
       const adminResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'admin@integration.com',
           password: 'AdminPass123!',
@@ -114,7 +114,7 @@ describe('Content Management Integration (e2e)', () => {
 
       // Create editor user
       const editorResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'editor@integration.com',
           password: 'EditorPass123!',
@@ -134,7 +134,7 @@ describe('Content Management Integration (e2e)', () => {
 
       // Create viewer user
       const viewerResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'viewer@integration.com',
           password: 'ViewerPass123!',
@@ -180,7 +180,7 @@ describe('Content Management Integration (e2e)', () => {
       };
 
       const categoryResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/categories')
+        .post('/admin/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(categoryData)
         .expect(201);
@@ -212,7 +212,7 @@ describe('Content Management Integration (e2e)', () => {
       };
 
       const contentResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/content')
+        .post('/admin/content')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(contentData)
         .expect(201);
@@ -227,7 +227,7 @@ describe('Content Management Integration (e2e)', () => {
       // Step 3: Upload attachment
       const testFile = Buffer.from('Integration test file content');
       const attachmentResponse = await request(app.getHttpServer())
-        .post('/api/v1/attachments')
+        .post('/attachments')
         .set('Authorization', `Bearer ${adminToken}`)
         .attach('file', testFile, 'integration-test.txt')
         .field('contentId', content.id)
@@ -369,7 +369,7 @@ describe('Content Management Integration (e2e)', () => {
     beforeEach(async () => {
       // Create test category
       const categoryResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/categories')
+        .post('/admin/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           name: { en: 'Test Category', ne: 'परीक्षण श्रेणी' },
@@ -381,7 +381,7 @@ describe('Content Management Integration (e2e)', () => {
 
       // Create test content
       const contentResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/content')
+        .post('/admin/content')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           title: { en: 'Test Content', ne: 'परीक्षण सामग्री' },
@@ -474,7 +474,7 @@ describe('Content Management Integration (e2e)', () => {
     it('should handle invalid data gracefully', async () => {
       // Test invalid category creation
       const invalidCategoryResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/categories')
+        .post('/admin/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           name: { en: '' }, // Invalid: empty name
@@ -485,7 +485,7 @@ describe('Content Management Integration (e2e)', () => {
 
       // Test invalid content creation
       const invalidContentResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/content')
+        .post('/admin/content')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           title: { en: 'Test', ne: 'परीक्षण' }, // Missing required fields like content and categoryId
@@ -537,7 +537,7 @@ describe('Content Management Integration (e2e)', () => {
     it('should maintain referential integrity', async () => {
       // Create category and content
       const categoryResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/categories')
+        .post('/admin/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           name: { en: 'Integrity Test', ne: 'अखण्डता परीक्षण' },
@@ -548,7 +548,7 @@ describe('Content Management Integration (e2e)', () => {
       const category = categoryResponse.body.data;
 
       const contentResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/content')
+        .post('/admin/content')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
           title: { en: 'Integrity Content', ne: 'अखण्डता सामग्री' },
@@ -591,14 +591,14 @@ describe('Content Management Integration (e2e)', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/api/v1/admin/categories')
+        .post('/admin/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(categoryData)
         .expect(201);
 
       // Try to create another category with same slug
       const duplicateResponse = await request(app.getHttpServer())
-        .post('/api/v1/admin/categories')
+        .post('/admin/categories')
         .set('Authorization', `Bearer ${adminToken}`)
         .send(categoryData)
         .expect(409);

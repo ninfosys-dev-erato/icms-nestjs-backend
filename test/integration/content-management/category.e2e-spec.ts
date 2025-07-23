@@ -94,7 +94,7 @@ describe('Category Management (e2e)', () => {
     try {
       // Create admin user
       const adminResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'admin@category.com',
           password: 'AdminPass123!',
@@ -114,7 +114,7 @@ describe('Category Management (e2e)', () => {
 
       // Create editor user
       const editorResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'editor@category.com',
           password: 'EditorPass123!',
@@ -134,7 +134,7 @@ describe('Category Management (e2e)', () => {
 
       // Create viewer user
       const viewerResponse = await request(app.getHttpServer())
-        .post('/api/v1/auth/register')
+        .post('/auth/register')
         .send({
           email: 'viewer@category.com',
           password: 'ViewerPass123!',
@@ -170,7 +170,7 @@ describe('Category Management (e2e)', () => {
       try {
         // Create a test category
         const categoryResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: {
@@ -241,7 +241,7 @@ describe('Category Management (e2e)', () => {
       it('should handle nested categories correctly', async () => {
         // Create parent category
         const parentResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Parent Category', ne: 'मूल श्रेणी' },
@@ -254,7 +254,7 @@ describe('Category Management (e2e)', () => {
 
         // Create child category
         const childResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Child Category', ne: 'सानो श्रेणी' },
@@ -367,7 +367,7 @@ describe('Category Management (e2e)', () => {
         };
 
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send(categoryData)
           .expect(201);
@@ -392,7 +392,7 @@ describe('Category Management (e2e)', () => {
         };
 
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send(categoryData)
           .expect(201);
@@ -404,7 +404,7 @@ describe('Category Management (e2e)', () => {
 
       it('should fail to create category without authentication', async () => {
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .send({
             name: { en: 'Test', ne: 'परीक्षण' },
           })
@@ -417,7 +417,7 @@ describe('Category Management (e2e)', () => {
       it('should fail to create category with duplicate slug', async () => {
         // First create a category
         await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'First Category', ne: 'पहिलो श्रेणी' },
@@ -426,7 +426,7 @@ describe('Category Management (e2e)', () => {
 
         // Try to create another with same slug
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Second Category', ne: 'दोस्रो श्रेणी' },
@@ -440,7 +440,7 @@ describe('Category Management (e2e)', () => {
 
       it('should validate required fields', async () => {
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({})
           .expect(500); // The service throws an error when name is undefined
@@ -450,7 +450,7 @@ describe('Category Management (e2e)', () => {
 
       it('should validate name structure', async () => {
         const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Only English' }, // Missing Nepali translation
@@ -468,7 +468,7 @@ describe('Category Management (e2e)', () => {
       it('should get category by ID successfully', async () => {
         // First create a category
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Test Category', ne: 'परीक्षण श्रेणी' },
@@ -505,7 +505,7 @@ describe('Category Management (e2e)', () => {
 
       beforeEach(async () => {
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Original Category', ne: 'मूल श्रेणी' },
@@ -580,7 +580,7 @@ describe('Category Management (e2e)', () => {
       it('should fail to update category with duplicate slug', async () => {
         // Create another category first
         await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Another Category', ne: 'अर्को श्रेणी' },
@@ -605,7 +605,7 @@ describe('Category Management (e2e)', () => {
       it('should delete category successfully', async () => {
         // First create a category
         const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'To Delete', ne: 'मेटाउन' },
@@ -644,7 +644,7 @@ describe('Category Management (e2e)', () => {
       it('should fail to delete category with children', async () => {
         // Create parent category
         const parentResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Parent Category', ne: 'मूल श्रेणी' },
@@ -656,7 +656,7 @@ describe('Category Management (e2e)', () => {
 
         // Create child category
         await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Child Category', ne: 'सानो श्रेणी' },
@@ -679,7 +679,7 @@ describe('Category Management (e2e)', () => {
       it('should reorder categories successfully', async () => {
         // Create three categories
         const category1 = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Category 1', ne: 'श्रेणी १' },
@@ -688,7 +688,7 @@ describe('Category Management (e2e)', () => {
           });
 
         const category2 = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Category 2', ne: 'श्रेणी २' },
@@ -697,7 +697,7 @@ describe('Category Management (e2e)', () => {
           });
 
         const category3 = await request(app.getHttpServer())
-          .post('/api/v1/admin/categories')
+          .post('/admin/categories')
           .set('Authorization', `Bearer ${adminToken}`)
           .send({
             name: { en: 'Category 3', ne: 'श्रेणी ३' },
