@@ -122,3 +122,4 @@ build/Release
 
 # File upload directories
 uploads/
+*.pdf
