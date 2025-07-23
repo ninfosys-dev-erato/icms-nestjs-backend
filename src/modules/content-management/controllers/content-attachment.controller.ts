@@ -70,6 +70,83 @@ export class ContentAttachmentController {
     }
   }
 
+  @Get('statistics')
+  @ApiOperation({ summary: 'Get attachment statistics' })
+  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
+  async getAttachmentStatistics(
+    @Res() response: Response,
+  ): Promise<void> {
+    try {
+      const statistics = await this.attachmentService.getAttachmentStatistics();
+      
+      const apiResponse = ApiResponseBuilder.success(statistics);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'ATTACHMENT_STATISTICS_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Put('reorder')
+  @UsePipes(new NoValidationPipe())
+  @ApiOperation({ summary: 'Reorder attachments' })
+  @ApiResponse({ status: 200, description: 'Attachments reordered successfully' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 404, description: 'Attachment not found' })
+  async reorderAttachments(
+    @Body() data: any,
+    @Res() response: Response,
+  ): Promise<void> {
+    try {
+      // Manual validation
+      if (!data || !data.orders || !Array.isArray(data.orders) || data.orders.length === 0) {
+        throw new BadRequestException('Orders array is required and must not be empty');
+      }
+
+      // Validate that all attachments exist and belong to the same content
+      let contentId: string | null = null;
+      for (const order of data.orders) {
+        if (!order.id || typeof order.order !== 'number') {
+          throw new BadRequestException('Each order item must have id and order properties');
+        }
+        
+        const attachment = await this.attachmentService.getAttachmentById(order.id);
+        if (!attachment) {
+          throw new BadRequestException(`Attachment with id ${order.id} not found`);
+        }
+        
+        if (contentId === null) {
+          contentId = attachment.contentId;
+        } else if (contentId !== attachment.contentId) {
+          throw new BadRequestException('All attachments must belong to the same content');
+        }
+      }
+
+      if (!contentId) {
+        throw new BadRequestException('No valid content ID found');
+      }
+
+      await this.attachmentService.reorderAttachments(contentId, data.orders);
+      
+      const apiResponse = ApiResponseBuilder.success({ message: 'Attachments reordered successfully' });
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.status || (error instanceof BadRequestException ? 400 : 500);
+      const apiResponse = ApiResponseBuilder.error(
+        'ATTACHMENT_REORDER_ERROR',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get attachment by ID' })
   @ApiResponse({ status: 200, description: 'Attachment retrieved successfully' })
@@ -174,28 +251,6 @@ export class ContentAttachmentController {
     }
   }
 
-  @Get('statistics')
-  @ApiOperation({ summary: 'Get attachment statistics' })
-  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
-  async getAttachmentStatistics(
-    @Res() response: Response,
-  ): Promise<void> {
-    try {
-      const statistics = await this.attachmentService.getAttachmentStatistics();
-      
-      const apiResponse = ApiResponseBuilder.success(statistics);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'ATTACHMENT_STATISTICS_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
-    }
-  }
-
   @Get(':id/download')
   @ApiOperation({ summary: 'Download attachment' })
   @ApiResponse({ status: 200, description: 'Attachment downloaded successfully' })
@@ -210,66 +265,17 @@ export class ContentAttachmentController {
       // Set headers and send buffer directly, bypassing the interceptor
       response.setHeader('Content-Type', result.mimeType);
       response.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
-      response.end(result.buffer);
+      response.setHeader('Content-Length', result.buffer.length.toString());
+      response.setHeader('Cache-Control', 'no-cache');
+      response.setHeader('Pragma', 'no-cache');
+      response.setHeader('Expires', '0');
+      
+      // Send the buffer directly without any processing
+      response.send(result.buffer);
     } catch (error) {
       const status = error.message.includes('not found') ? 404 : 500;
       const apiResponse = ApiResponseBuilder.error(
         'ATTACHMENT_DOWNLOAD_ERROR',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
-  }
-
-  @Put('reorder')
-  @UsePipes(new NoValidationPipe())
-  @ApiOperation({ summary: 'Reorder attachments' })
-  @ApiResponse({ status: 200, description: 'Attachments reordered successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error' })
-  @ApiResponse({ status: 404, description: 'Attachment not found' })
-  async reorderAttachments(
-    @Body() data: any,
-    @Res() response: Response,
-  ): Promise<void> {
-    try {
-      // Manual validation
-      if (!data || !data.orders || !Array.isArray(data.orders) || data.orders.length === 0) {
-        throw new BadRequestException('Orders array is required and must not be empty');
-      }
-
-      // Validate that all attachments exist and belong to the same content
-      let contentId: string | null = null;
-      for (const order of data.orders) {
-        if (!order.id || typeof order.order !== 'number') {
-          throw new BadRequestException('Each order item must have id and order properties');
-        }
-        
-        const attachment = await this.attachmentService.getAttachmentById(order.id);
-        if (!attachment) {
-          throw new BadRequestException(`Attachment with id ${order.id} not found`);
-        }
-        
-        if (contentId === null) {
-          contentId = attachment.contentId;
-        } else if (contentId !== attachment.contentId) {
-          throw new BadRequestException('All attachments must belong to the same content');
-        }
-      }
-
-      if (!contentId) {
-        throw new BadRequestException('No valid content ID found');
-      }
-
-      await this.attachmentService.reorderAttachments(contentId, data.orders);
-      
-      const apiResponse = ApiResponseBuilder.success({ message: 'Attachments reordered successfully' });
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.status || 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'ATTACHMENT_REORDER_ERROR',
         error.message
       );
 
