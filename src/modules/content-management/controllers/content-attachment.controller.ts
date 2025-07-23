@@ -13,12 +13,18 @@ import {
   BadRequestException,
   ValidationPipe,
   UsePipes,
+  HttpCode,
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
 import { IsArray, ValidateNested, IsString, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Observable } from 'rxjs';
 
 import { ContentAttachmentService } from '../services/content-attachment.service';
 import { 
@@ -35,6 +41,14 @@ import { ApiResponseBuilder } from '@/common/types/api-response';
 class NoValidationPipe extends ValidationPipe {
   transform(value: any) {
     return value;
+  }
+}
+
+// Custom interceptor that bypasses the API response interceptor
+@Injectable()
+class DownloadInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    return next.handle();
   }
 }
 
@@ -252,9 +266,11 @@ export class ContentAttachmentController {
   }
 
   @Get(':id/download')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Download attachment' })
   @ApiResponse({ status: 200, description: 'Attachment downloaded successfully' })
   @ApiResponse({ status: 404, description: 'Attachment not found' })
+  @UseInterceptors(DownloadInterceptor)
   async downloadAttachment(
     @Param('id') id: string,
     @Res({ passthrough: false }) response: Response,
