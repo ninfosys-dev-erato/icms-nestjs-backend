@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // ========================================
@@ -304,33 +304,60 @@ export class ContentResponseDto {
 
 export class ContentQueryDto {
   @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   limit?: number;
 
   @ApiPropertyOptional({ example: 'policy' })
+  @IsOptional()
+  @IsString()
   search?: string;
 
   @ApiPropertyOptional({ example: 'category-id' })
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @ApiPropertyOptional({ enum: ContentStatus })
+  @IsOptional()
+  @IsEnum(ContentStatus)
   status?: ContentStatus;
 
   @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  @IsBoolean()
   featured?: boolean;
 
   @ApiPropertyOptional({ example: '2024-01-01' })
+  @IsOptional()
+  @IsString()
   dateFrom?: string;
 
   @ApiPropertyOptional({ example: '2024-12-31' })
+  @IsOptional()
+  @IsString()
   dateTo?: string;
 
   @ApiPropertyOptional({ example: 'createdAt' })
+  @IsOptional()
+  @IsString()
   sort?: string;
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], example: 'desc' })
+  @IsOptional()
+  @IsString()
   order?: 'asc' | 'desc';
 }
 
@@ -339,21 +366,25 @@ export class CreateAttachmentDto {
   @IsString()
   contentId: string;
 
-  @ApiProperty({ example: 'document.pdf' })
+  @ApiPropertyOptional({ example: 'document.pdf' })
+  @IsOptional()
   @IsString()
-  fileName: string;
+  fileName?: string;
 
-  @ApiProperty({ example: 'uploads/documents/document.pdf' })
+  @ApiPropertyOptional({ example: 'uploads/documents/document.pdf' })
+  @IsOptional()
   @IsString()
-  filePath: string;
+  filePath?: string;
 
-  @ApiProperty({ example: 1024000 })
+  @ApiPropertyOptional({ example: 1024000 })
+  @IsOptional()
   @IsNumber()
-  fileSize: number;
+  fileSize?: number;
 
-  @ApiProperty({ example: 'application/pdf' })
+  @ApiPropertyOptional({ example: 'application/pdf' })
+  @IsOptional()
   @IsString()
-  mimeType: string;
+  mimeType?: string;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()

@@ -79,12 +79,12 @@ export class ContentRepository {
 
     if (search) {
       where.OR = [
-        { title: { path: '$.en', string_contains: search } },
-        { title: { path: '$.ne', string_contains: search } },
-        { content: { path: '$.en', string_contains: search } },
-        { content: { path: '$.ne', string_contains: search } },
-        { excerpt: { path: '$.en', string_contains: search } },
-        { excerpt: { path: '$.ne', string_contains: search } },
+        { title: { path: ['en'], string_contains: search } },
+        { title: { path: ['ne'], string_contains: search } },
+        { content: { path: ['en'], string_contains: search } },
+        { content: { path: ['ne'], string_contains: search } },
+        { excerpt: { path: ['en'], string_contains: search } },
+        { excerpt: { path: ['ne'], string_contains: search } },
       ];
     }
 

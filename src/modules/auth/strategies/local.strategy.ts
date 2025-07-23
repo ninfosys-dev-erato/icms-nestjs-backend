@@ -17,6 +17,8 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(email: string, password: string): Promise<any> {
+    // Note: Rate limiting is handled in AuthService.login method
+    // This strategy only validates credentials
     const user = await this.authRepository.findByEmail(email);
     
     if (!user || !user.isActive) {

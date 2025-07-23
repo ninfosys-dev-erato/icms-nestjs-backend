@@ -6,6 +6,66 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 // COMMON TYPES
 // ========================================
 
+export class PaddingDto {
+  @ApiProperty({ example: 10 })
+  @IsNumber()
+  top: number;
+
+  @ApiProperty({ example: 20 })
+  @IsNumber()
+  right: number;
+
+  @ApiProperty({ example: 10 })
+  @IsNumber()
+  bottom: number;
+
+  @ApiProperty({ example: 20 })
+  @IsNumber()
+  left: number;
+}
+
+export class MarginDto {
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  top: number;
+
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  right: number;
+
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  bottom: number;
+
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  left: number;
+}
+
+export class LogoConfigurationResponseDto {
+  @ApiPropertyOptional()
+  leftLogo?: {
+    media: any;
+    altText: TranslatableEntityDto;
+    width: number;
+    height: number;
+  };
+
+  @ApiPropertyOptional()
+  rightLogo?: {
+    media: any;
+    altText: TranslatableEntityDto;
+    width: number;
+    height: number;
+  };
+
+  @ApiProperty({ example: 'left' })
+  logoAlignment: 'left' | 'center' | 'right';
+
+  @ApiProperty({ example: 20 })
+  logoSpacing: number;
+}
+
 export class TranslatableEntityDto {
   @ApiProperty({ example: 'English text' })
   @IsString()
@@ -132,42 +192,6 @@ export class LayoutConfigurationDto {
     tablet?: Partial<LayoutConfigurationDto>;
     desktop?: Partial<LayoutConfigurationDto>;
   };
-}
-
-export class PaddingDto {
-  @ApiProperty({ example: 10 })
-  @IsNumber()
-  top: number;
-
-  @ApiProperty({ example: 20 })
-  @IsNumber()
-  right: number;
-
-  @ApiProperty({ example: 10 })
-  @IsNumber()
-  bottom: number;
-
-  @ApiProperty({ example: 20 })
-  @IsNumber()
-  left: number;
-}
-
-export class MarginDto {
-  @ApiProperty({ example: 0 })
-  @IsNumber()
-  top: number;
-
-  @ApiProperty({ example: 0 })
-  @IsNumber()
-  right: number;
-
-  @ApiProperty({ example: 0 })
-  @IsNumber()
-  bottom: number;
-
-  @ApiProperty({ example: 0 })
-  @IsNumber()
-  left: number;
 }
 
 // ========================================
@@ -300,30 +324,6 @@ export class HeaderConfigResponseDto {
 
   @ApiPropertyOptional()
   updatedBy?: any;
-}
-
-export class LogoConfigurationResponseDto {
-  @ApiPropertyOptional()
-  leftLogo?: {
-    media: any;
-    altText: TranslatableEntityDto;
-    width: number;
-    height: number;
-  };
-
-  @ApiPropertyOptional()
-  rightLogo?: {
-    media: any;
-    altText: TranslatableEntityDto;
-    width: number;
-    height: number;
-  };
-
-  @ApiProperty({ example: 'left' })
-  logoAlignment: 'left' | 'center' | 'right';
-
-  @ApiProperty({ example: 20 })
-  logoSpacing: number;
 }
 
 export class HeaderConfigQueryDto {

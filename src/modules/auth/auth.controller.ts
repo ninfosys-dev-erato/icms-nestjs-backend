@@ -36,7 +36,6 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  @UseGuards(LocalAuthGuard)
   @ApiOperation({ summary: 'Login user' })
   @ApiResponse({ status: 200, description: 'Login successful', type: AuthResponseDto })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })

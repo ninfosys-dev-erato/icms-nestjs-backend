@@ -40,7 +40,7 @@ export class AuthService {
   ) {}
 
   async login(data: LoginDto, ipAddress: string, userAgent: string): Promise<AuthResponseDto> {
-    // Validate login attempt
+    // Validate login attempt (rate limiting)
     const validation = await this.validateLoginAttempt(data.email, ipAddress);
     if (!validation.isValid) {
       throw new UnauthorizedException('Too many failed attempts. Please try again later.');

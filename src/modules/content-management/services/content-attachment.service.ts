@@ -31,6 +31,12 @@ export class ContentAttachmentService {
   }
 
   async getAttachmentsByContent(contentId: string): Promise<ContentAttachmentResponseDto[]> {
+    // Validate content exists
+    const content = await this.contentRepository.findById(contentId);
+    if (!content) {
+      throw new NotFoundException('Content not found');
+    }
+    
     return this.attachmentRepository.getAttachmentsWithDownloadUrls(contentId);
   }
 

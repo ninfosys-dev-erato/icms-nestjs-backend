@@ -75,6 +75,7 @@ model User {
   createdMenuItems MenuItem[]    @relation("CreatedMenuItems")
   updatedMenuItems MenuItem[]    @relation("UpdatedMenuItems")
   documentDownloads DocumentDownload[]
+  searchQueries   SearchQuery[]  @relation("SearchQueries")
 
   @@map("users")
 }
@@ -587,4 +588,87 @@ model DocumentVersion {
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@map("document_versions")
+}
+
+// ========================================
+// SEARCH
+// ========================================
+
+enum ContentType {
+  CONTENT
+  DOCUMENT
+  MEDIA
+  FAQ
+  USER
+  DEPARTMENT
+  EMPLOYEE
+}
+
+model SearchIndex {
+  id            String      @id @default(cuid())
+  contentId     String
+  contentType   ContentType
+  title         Json // Translatable entity
+  content       Json // Translatable entity
+  description   Json? // Translatable entity
+  tags          String[]
+  language      String
+  isPublished   Boolean     @default(true)
+  isActive      Boolean     @default(true)
+  searchScore   Float       @default(0)
+  lastIndexedAt DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("search_indices")
+}
+
+model SearchQuery {
+  id            String      @id @default(cuid())
+  userId        String?
+  query         String
+  language      String
+  contentType   ContentType?
+  filters       Json?
+  resultsCount  Int
+  executionTime Float
+  ipAddress     String
+  userAgent     String
+  createdAt     DateTime    @default(now())
+
+  // Relations
+  user          User?       @relation("SearchQueries", fields: [userId], references: [id])
+  results       SearchResult[]
+
+  @@map("search_queries")
+}
+
+model SearchResult {
+  id             String      @id @default(cuid())
+  searchQueryId  String
+  contentId      String
+  contentType    ContentType
+  title          String
+  snippet        String
+  relevanceScore Float
+  rank           Int
+
+  // Relations
+  searchQuery    SearchQuery @relation(fields: [searchQueryId], references: [id], onDelete: Cascade)
+
+  @@map("search_results")
+}
+
+model SearchSuggestion {
+  id         String      @id @default(cuid())
+  term       String
+  language   String
+  contentType ContentType?
+  frequency  Int         @default(1)
+  lastUsedAt DateTime    @default(now())
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@map("search_suggestions")
 }

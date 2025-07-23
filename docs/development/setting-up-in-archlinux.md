@@ -123,10 +123,12 @@ GRANT ALL PRIVILEGES ON DATABASE icmslocal TO icmsdev;
 -- Grant schema privileges
 GRANT ALL ON SCHEMA public TO icmsdev;
 
+ALTER USER icmsdev CREATEDB;
+
 -- Exit PostgreSQL
 \q
 ```
-
+'postgresql://test:test@localhost:5432/icms_test'
 ### Test Database Connection
 
 ```bash

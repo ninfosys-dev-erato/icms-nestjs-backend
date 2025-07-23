@@ -34,17 +34,29 @@ import { ApiResponseBuilder } from '@/common/types/api-response';
 export class AdminCategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get category by ID (admin)' })
-  @ApiResponse({ status: 200, description: 'Category details', type: CategoryResponseDto })
-  async getCategoryById(
+  @Get()
+  @ApiOperation({ summary: 'Get all categories (admin)' })
+  @ApiResponse({ status: 200, description: 'Categories retrieved successfully', type: [CategoryResponseDto] })
+  async getAllCategories(
     @Res() response: Response,
-    @Param('id') id: string,
   ): Promise<void> {
-    const category = await this.categoryService.getCategoryById(id);
+    const categories = await this.categoryService.getAllCategories();
 
     response.status(HttpStatus.OK).json(
-      ApiResponseBuilder.success(category),
+      ApiResponseBuilder.success(categories),
+    );
+  }
+
+  @Get('statistics')
+  @ApiOperation({ summary: 'Get category statistics' })
+  @ApiResponse({ status: 200, description: 'Category statistics', type: CategoryStatistics })
+  async getCategoryStatistics(
+    @Res() response: Response,
+  ): Promise<void> {
+    const statistics = await this.categoryService.getCategoryStatistics();
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success(statistics),
     );
   }
 
@@ -58,6 +70,34 @@ export class AdminCategoryController {
     const category = await this.categoryService.createCategory(data);
 
     response.status(HttpStatus.CREATED).json(
+      ApiResponseBuilder.success(category),
+    );
+  }
+
+  @Put('reorder')
+  @ApiOperation({ summary: 'Reorder categories' })
+  @ApiResponse({ status: 200, description: 'Categories reordered' })
+  async reorderCategories(
+    @Res() response: Response,
+    @Body() data: ReorderDto,
+  ): Promise<void> {
+    await this.categoryService.reorderCategories(data.orders);
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success({ message: 'Categories reordered successfully' }),
+    );
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get category by ID (admin)' })
+  @ApiResponse({ status: 200, description: 'Category details', type: CategoryResponseDto })
+  async getCategoryById(
+    @Res() response: Response,
+    @Param('id') id: string,
+  ): Promise<void> {
+    const category = await this.categoryService.getCategoryById(id);
+
+    response.status(HttpStatus.OK).json(
       ApiResponseBuilder.success(category),
     );
   }
@@ -89,33 +129,6 @@ export class AdminCategoryController {
 
     response.status(HttpStatus.OK).json(
       ApiResponseBuilder.success({ message: 'Category deleted successfully' }),
-    );
-  }
-
-  @Put('reorder')
-  @ApiOperation({ summary: 'Reorder categories' })
-  @ApiResponse({ status: 200, description: 'Categories reordered' })
-  async reorderCategories(
-    @Res() response: Response,
-    @Body() data: ReorderDto,
-  ): Promise<void> {
-    await this.categoryService.reorderCategories(data.orders);
-
-    response.status(HttpStatus.OK).json(
-      ApiResponseBuilder.success({ message: 'Categories reordered successfully' }),
-    );
-  }
-
-  @Get('statistics')
-  @ApiOperation({ summary: 'Get category statistics' })
-  @ApiResponse({ status: 200, description: 'Category statistics', type: CategoryStatistics })
-  async getCategoryStatistics(
-    @Res() response: Response,
-  ): Promise<void> {
-    const statistics = await this.categoryService.getCategoryStatistics();
-
-    response.status(HttpStatus.OK).json(
-      ApiResponseBuilder.success(statistics),
     );
   }
 } 

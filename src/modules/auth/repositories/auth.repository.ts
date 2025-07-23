@@ -136,8 +136,16 @@ export class AuthRepository {
   }
 
   async verifyEmail(token: string): Promise<User> {
+    const user = await (this.prisma as any).user.findFirst({
+      where: { emailVerificationToken: token },
+    });
+    
+    if (!user) {
+      throw new Error('Invalid verification token');
+    }
+    
     return (this.prisma as any).user.update({
-      where: { id: (await (this.prisma as any).user.findFirst({ where: { emailVerificationToken: token } }))?.id || '' },
+      where: { id: user.id },
       data: {
         isEmailVerified: true,
         emailVerificationToken: null,
@@ -205,7 +213,7 @@ export class AuthRepository {
   }
 
   async findByVerificationToken(token: string): Promise<User | null> {
-    return (this.prisma as any).user.findUnique({
+    return (this.prisma as any).user.findFirst({
       where: { emailVerificationToken: token },
     });
   }

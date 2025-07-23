@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 import { ContentService } from '../services/content.service';
 import { 
@@ -27,9 +27,10 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { ApiResponseBuilder } from '../../../common/types/api-response';
 
 @ApiTags('Admin Content')
-@Controller('admin/content')
+@Controller('api/v1/admin/content')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'EDITOR')
+@ApiBearerAuth()
 export class AdminContentController {
   constructor(private readonly contentService: ContentService) {}
 

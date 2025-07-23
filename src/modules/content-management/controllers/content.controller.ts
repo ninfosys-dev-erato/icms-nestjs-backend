@@ -9,13 +9,17 @@ import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 import { ContentService } from '../services/content.service';
-import { ContentQueryDto } from '../dto/content-management.dto';
+import { ContentAttachmentService } from '../services/content-attachment.service';
+import { ContentQueryDto, ContentStatus } from '../dto/content-management.dto';
 import { ApiResponseBuilder } from '../../../common/types/api-response';
 
 @ApiTags('Content')
-@Controller('content')
+@Controller('api/v1/content')
 export class ContentController {
-  constructor(private readonly contentService: ContentService) {}
+  constructor(
+    private readonly contentService: ContentService,
+    private readonly attachmentService: ContentAttachmentService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Get all published content (Public)' })
@@ -25,7 +29,7 @@ export class ContentController {
     @Res() response: Response,
   ): Promise<void> {
     try {
-      const result = await this.contentService.getAllContent(query);
+      const result = await this.contentService.getPublishedContent(query);
       
       const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
 
@@ -68,7 +72,7 @@ export class ContentController {
     @Res() response: Response,
   ): Promise<void> {
     try {
-      const result = await this.contentService.searchContent(query.search || '', query);
+      const result = await this.contentService.searchContent(query.search || '', { ...query, status: ContentStatus.PUBLISHED });
       
       const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
 
@@ -92,7 +96,7 @@ export class ContentController {
     @Res() response: Response,
   ): Promise<void> {
     try {
-      const content = await this.contentService.getContentBySlug(slug);
+      const content = await this.contentService.getPublishedContentBySlug(slug);
       
       const apiResponse = ApiResponseBuilder.success(content);
 
@@ -117,7 +121,7 @@ export class ContentController {
     @Res() response: Response,
   ): Promise<void> {
     try {
-      const result = await this.contentService.getContentByCategory(categorySlug, query);
+      const result = await this.contentService.getPublishedContentByCategory(categorySlug, query);
       
       const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
 
@@ -130,6 +134,29 @@ export class ContentController {
       );
 
       response.status(status).json(apiResponse);
+    }
+  }
+
+  @Get(':contentId/attachments')
+  @ApiOperation({ summary: 'Get attachments by content ID' })
+  @ApiResponse({ status: 200, description: 'Attachments retrieved successfully' })
+  async getAttachmentsByContent(
+    @Param('contentId') contentId: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    try {
+      const attachments = await this.attachmentService.getAttachmentsByContent(contentId);
+      
+      const apiResponse = ApiResponseBuilder.success(attachments);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'ATTACHMENTS_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
     }
   }
 } 
