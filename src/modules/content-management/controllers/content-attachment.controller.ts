@@ -270,8 +270,9 @@ export class ContentAttachmentController {
       response.setHeader('Pragma', 'no-cache');
       response.setHeader('Expires', '0');
       
-      // Send the buffer directly without any processing
-      response.send(result.buffer);
+      // Write the buffer directly to the response stream
+      response.write(result.buffer);
+      response.end();
     } catch (error) {
       const status = error.message.includes('not found') ? 404 : 500;
       const apiResponse = ApiResponseBuilder.error(
