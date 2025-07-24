@@ -7,14 +7,12 @@ import {
   AuditLogStatistics,
 } from '../dto/auth.dto';
 
-type AuditLog = any;
-
 @Injectable()
 export class AuditLogRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateAuditLogDto): Promise<AuditLog> {
-    return (this.prisma as any).auditLog.create({
+  async create(data: CreateAuditLogDto): Promise<any> {
+    return this.prisma.auditLog.create({
       data: {
         userId: data.userId,
         action: data.action,
@@ -34,7 +32,7 @@ export class AuditLogRepository {
     const where = { userId };
 
     const [logs, total] = await Promise.all([
-      (this.prisma as any).auditLog.findMany({
+      this.prisma.auditLog.findMany({
         where,
         skip,
         take: limit,
@@ -51,13 +49,13 @@ export class AuditLogRepository {
           },
         },
       }),
-      (this.prisma as any).auditLog.count({ where }),
+      this.prisma.auditLog.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data: logs,
+      data: logs as any,
       pagination: {
         page,
         limit,
@@ -76,7 +74,7 @@ export class AuditLogRepository {
     const where = { action };
 
     const [logs, total] = await Promise.all([
-      (this.prisma as any).auditLog.findMany({
+      this.prisma.auditLog.findMany({
         where,
         skip,
         take: limit,
@@ -93,13 +91,13 @@ export class AuditLogRepository {
           },
         },
       }),
-      (this.prisma as any).auditLog.count({ where }),
+      this.prisma.auditLog.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data: logs,
+      data: logs as any,
       pagination: {
         page,
         limit,
@@ -118,7 +116,7 @@ export class AuditLogRepository {
     const where = { resource };
 
     const [logs, total] = await Promise.all([
-      (this.prisma as any).auditLog.findMany({
+      this.prisma.auditLog.findMany({
         where,
         skip,
         take: limit,
@@ -135,13 +133,13 @@ export class AuditLogRepository {
           },
         },
       }),
-      (this.prisma as any).auditLog.count({ where }),
+      this.prisma.auditLog.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data: logs,
+      data: logs as any,
       pagination: {
         page,
         limit,
@@ -159,15 +157,15 @@ export class AuditLogRepository {
 
     const where = {
       OR: [
-        { action: { contains: searchTerm, mode: 'insensitive' } },
-        { resource: { contains: searchTerm, mode: 'insensitive' } },
-        { resourceId: { contains: searchTerm, mode: 'insensitive' } },
+        { action: { contains: searchTerm, mode: 'insensitive' as any } },
+        { resource: { contains: searchTerm, mode: 'insensitive' as any } },
+        { resourceId: { contains: searchTerm, mode: 'insensitive' as any } },
       ],
     };
 
     const [logs, total] = await Promise.all([
-      (this.prisma as any).auditLog.findMany({
-        where,
+      this.prisma.auditLog.findMany({
+        where: where as any,
         skip,
         take: limit,
         orderBy: { [sort]: order },
@@ -183,13 +181,13 @@ export class AuditLogRepository {
           },
         },
       }),
-      (this.prisma as any).auditLog.count({ where }),
+      this.prisma.auditLog.count({ where: where as any }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data: logs,
+      data: logs as any,
       pagination: {
         page,
         limit,
@@ -209,20 +207,20 @@ export class AuditLogRepository {
       byUser,
       byDate,
     ] = await Promise.all([
-      (this.prisma as any).auditLog.count(),
-      (this.prisma as any).auditLog.groupBy({
+      this.prisma.auditLog.count(),
+      this.prisma.auditLog.groupBy({
         by: ['action'],
         _count: { action: true },
       }),
-      (this.prisma as any).auditLog.groupBy({
+      this.prisma.auditLog.groupBy({
         by: ['resource'],
         _count: { resource: true },
       }),
-      (this.prisma as any).auditLog.groupBy({
+      this.prisma.auditLog.groupBy({
         by: ['userId'],
         _count: { userId: true },
       }),
-      (this.prisma as any).auditLog.groupBy({
+      this.prisma.auditLog.groupBy({
         by: ['createdAt'],
         _count: { createdAt: true },
       }),
@@ -261,7 +259,7 @@ export class AuditLogRepository {
   async cleanOldLogs(daysOld: number): Promise<void> {
     const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
     
-    await (this.prisma as any).auditLog.deleteMany({
+    await this.prisma.auditLog.deleteMany({
       where: {
         createdAt: {
           lt: cutoffDate,

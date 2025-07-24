@@ -76,6 +76,8 @@ model User {
   updatedMenuItems MenuItem[]    @relation("UpdatedMenuItems")
   documentDownloads DocumentDownload[]
   searchQueries   SearchQuery[]  @relation("SearchQueries")
+  createdHeaderConfigs HeaderConfig[] @relation("CreatedHeaderConfigs")
+  updatedHeaderConfigs HeaderConfig[] @relation("UpdatedHeaderConfigs")
 
   @@map("users")
 }
@@ -481,8 +483,14 @@ model HeaderConfig {
   alignment    HeaderAlignment @default(LEFT)
   logo         Json // Logo configuration
   layout       Json // Layout configuration
+  createdById  String?
+  updatedById  String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+
+  // Relations
+  createdBy User? @relation("CreatedHeaderConfigs", fields: [createdById], references: [id])
+  updatedBy User? @relation("UpdatedHeaderConfigs", fields: [updatedById], references: [id])
 
   @@map("header_configs")
 }

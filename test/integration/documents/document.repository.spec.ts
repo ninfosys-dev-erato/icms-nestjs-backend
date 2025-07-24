@@ -55,7 +55,8 @@ describe('DocumentRepository', () => {
               aggregate: jest.fn(),
               updateMany: jest.fn(),
               deleteMany: jest.fn()
-            }
+            },
+            $transaction: jest.fn()
           }
         }
       ],
@@ -647,13 +648,22 @@ describe('DocumentRepository', () => {
       };
 
       const updatedDocument = { ...mockDocument, ...updates };
-      (prismaService.document.update as jest.Mock)
-        .mockResolvedValueOnce(updatedDocument)
-        .mockResolvedValueOnce(updatedDocument);
+      
+      // Mock the transaction to execute the callback with a mock transaction object
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        const mockTx = {
+          document: {
+            update: jest.fn()
+              .mockResolvedValueOnce(updatedDocument)
+              .mockResolvedValueOnce(updatedDocument)
+          }
+        };
+        return await callback(mockTx);
+      });
 
       const result = await repository.bulkUpdate(ids, updates);
 
-      expect(prismaService.document.update).toHaveBeenCalledTimes(2);
+      expect(prismaService.$transaction).toHaveBeenCalled();
       expect(result).toEqual([updatedDocument, updatedDocument]);
     });
   });

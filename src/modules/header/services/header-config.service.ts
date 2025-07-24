@@ -428,7 +428,7 @@ export class HeaderConfigService {
       name: headerConfig.name,
       order: headerConfig.order,
       isActive: headerConfig.isActive,
-      isPublished: headerConfig.isActive, // Using isActive as isPublished since isPublished is not in schema
+      isPublished: headerConfig.isPublished,
       typography: headerConfig.typography,
       alignment: headerConfig.alignment,
       logo: {

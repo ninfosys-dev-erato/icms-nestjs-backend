@@ -437,6 +437,15 @@ export class DocumentService {
       errors: [],
     };
 
+    // Validate required fields
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new BadRequestException('IDs array is required and must not be empty');
+    }
+
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+      throw new BadRequestException('Updates object is required and must not be empty');
+    }
+
     for (const id of ids) {
       try {
         await this.updateDocument(id, data);

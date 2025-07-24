@@ -8,21 +8,20 @@ import {
   UserStatistics,
 } from '../dto/auth.dto';
 
-type User = any;
 type UserRole = 'ADMIN' | 'EDITOR' | 'VIEWER';
 
 @Injectable()
 export class AuthRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findById(id: string): Promise<User | null> {
-    return (this.prisma as any).user.findUnique({
+  async findById(id: string): Promise<any> {
+    return this.prisma.user.findUnique({
       where: { id },
     });
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return (this.prisma as any).user.findUnique({
+  async findByEmail(email: string): Promise<any> {
+    return this.prisma.user.findUnique({
       where: { email },
     });
   }
@@ -54,13 +53,13 @@ export class AuthRepository {
     }
 
     const [users, total] = await Promise.all([
-      (this.prisma as any).user.findMany({
+      this.prisma.user.findMany({
         where,
         skip,
         take: limit,
         orderBy: { [sort]: order },
       }),
-      (this.prisma as any).user.count({ where }),
+      this.prisma.user.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -90,8 +89,8 @@ export class AuthRepository {
     return this.findAll({ ...query, search: searchTerm });
   }
 
-  async create(data: CreateUserDto): Promise<User> {
-    return (this.prisma as any).user.create({
+  async create(data: CreateUserDto): Promise<any> {
+    return this.prisma.user.create({
       data: {
         email: data.email,
         password: data.password,
@@ -103,21 +102,21 @@ export class AuthRepository {
     });
   }
 
-  async update(id: string, data: UpdateUserDto): Promise<User> {
-    return (this.prisma as any).user.update({
+  async update(id: string, data: UpdateUserDto): Promise<any> {
+    return this.prisma.user.update({
       where: { id },
       data,
     });
   }
 
   async delete(id: string): Promise<void> {
-    await (this.prisma as any).user.delete({
+    await this.prisma.user.delete({
       where: { id },
     });
   }
 
-  async updatePassword(id: string, hashedPassword: string): Promise<User> {
-    return (this.prisma as any).user.update({
+  async updatePassword(id: string, hashedPassword: string): Promise<any> {
+    return this.prisma.user.update({
       where: { id },
       data: {
         password: hashedPassword,
@@ -126,8 +125,17 @@ export class AuthRepository {
     });
   }
 
-  async updateLastLogin(id: string): Promise<User> {
-    return (this.prisma as any).user.update({
+  async updateLastLogin(id: string): Promise<any> {
+    // First check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new Error(`User with id ${id} not found`);
+    }
+
+    return this.prisma.user.update({
       where: { id },
       data: {
         lastLoginAt: new Date(),
@@ -135,8 +143,8 @@ export class AuthRepository {
     });
   }
 
-  async verifyEmail(token: string): Promise<User> {
-    const user = await (this.prisma as any).user.findFirst({
+  async verifyEmail(token: string): Promise<any> {
+    const user = await this.prisma.user.findFirst({
       where: { emailVerificationToken: token },
     });
     
@@ -144,7 +152,7 @@ export class AuthRepository {
       throw new Error('Invalid verification token');
     }
     
-    return (this.prisma as any).user.update({
+    return this.prisma.user.update({
       where: { id: user.id },
       data: {
         isEmailVerified: true,
@@ -153,8 +161,8 @@ export class AuthRepository {
     });
   }
 
-  async setPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<User> {
-    return (this.prisma as any).user.update({
+  async setPasswordResetToken(email: string, token: string, expiresAt: Date): Promise<any> {
+    return this.prisma.user.update({
       where: { email },
       data: {
         passwordResetToken: token,
@@ -163,14 +171,24 @@ export class AuthRepository {
     });
   }
 
-  async resetPassword(token: string, hashedPassword: string): Promise<User> {
-    return (this.prisma as any).user.update({
+  async resetPassword(token: string, hashedPassword: string): Promise<any> {
+    // First find the user by reset token
+    const user = await this.prisma.user.findFirst({
       where: {
         passwordResetToken: token,
         passwordResetExpires: {
           gt: new Date(),
         },
       },
+    });
+
+    if (!user) {
+      throw new Error('Invalid or expired reset token');
+    }
+
+    // Then update the user by ID
+    return this.prisma.user.update({
+      where: { id: user.id },
       data: {
         password: hashedPassword,
         passwordResetToken: null,
@@ -188,11 +206,11 @@ export class AuthRepository {
       unverified,
       byRole,
     ] = await Promise.all([
-      (this.prisma as any).user.count(),
-      (this.prisma as any).user.count({ where: { isActive: true } }),
-      (this.prisma as any).user.count({ where: { isEmailVerified: true } }),
-      (this.prisma as any).user.count({ where: { isEmailVerified: false } }),
-      (this.prisma as any).user.groupBy({
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { isActive: true } }),
+      this.prisma.user.count({ where: { isEmailVerified: true } }),
+      this.prisma.user.count({ where: { isEmailVerified: false } }),
+      this.prisma.user.groupBy({
         by: ['role'],
         _count: { role: true },
       }),
@@ -212,14 +230,14 @@ export class AuthRepository {
     };
   }
 
-  async findByVerificationToken(token: string): Promise<User | null> {
-    return (this.prisma as any).user.findFirst({
+  async findByVerificationToken(token: string): Promise<any> {
+    return this.prisma.user.findFirst({
       where: { emailVerificationToken: token },
     });
   }
 
-  async findByResetToken(token: string): Promise<User | null> {
-    return (this.prisma as any).user.findFirst({
+  async findByResetToken(token: string): Promise<any> {
+    return this.prisma.user.findFirst({
       where: {
         passwordResetToken: token,
         passwordResetExpires: {

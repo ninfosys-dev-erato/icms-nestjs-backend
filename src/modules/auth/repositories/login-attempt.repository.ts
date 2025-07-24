@@ -5,14 +5,12 @@ import {
   LoginAttemptStatistics,
 } from '../dto/auth.dto';
 
-type LoginAttempt = any;
-
 @Injectable()
 export class LoginAttemptRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateLoginAttemptDto): Promise<LoginAttempt> {
-    return (this.prisma as any).loginAttempt.create({
+  async create(data: CreateLoginAttemptDto): Promise<any> {
+    return this.prisma.loginAttempt.create({
       data: {
         email: data.email,
         ipAddress: data.ipAddress,
@@ -23,16 +21,16 @@ export class LoginAttemptRepository {
     });
   }
 
-  async findByEmail(email: string, limit?: number): Promise<LoginAttempt[]> {
-    return (this.prisma as any).loginAttempt.findMany({
+  async findByEmail(email: string, limit?: number): Promise<any[]> {
+    return this.prisma.loginAttempt.findMany({
       where: { email },
       take: limit,
       orderBy: { attemptedAt: 'desc' },
     });
   }
 
-  async findByIP(ipAddress: string, limit?: number): Promise<LoginAttempt[]> {
-    return (this.prisma as any).loginAttempt.findMany({
+  async findByIP(ipAddress: string, limit?: number): Promise<any[]> {
+    return this.prisma.loginAttempt.findMany({
       where: { ipAddress },
       take: limit,
       orderBy: { attemptedAt: 'desc' },
@@ -42,7 +40,7 @@ export class LoginAttemptRepository {
   async getFailedAttemptsCount(email: string, timeWindow: number): Promise<number> {
     const cutoffTime = new Date(Date.now() - timeWindow);
     
-    return (this.prisma as any).loginAttempt.count({
+    return this.prisma.loginAttempt.count({
       where: {
         email,
         success: false,
@@ -56,7 +54,7 @@ export class LoginAttemptRepository {
   async getIPFailedAttemptsCount(ipAddress: string, timeWindow: number): Promise<number> {
     const cutoffTime = new Date(Date.now() - timeWindow);
     
-    return (this.prisma as any).loginAttempt.count({
+    return this.prisma.loginAttempt.count({
       where: {
         ipAddress,
         success: false,
@@ -70,7 +68,7 @@ export class LoginAttemptRepository {
   async cleanOldAttempts(daysOld: number): Promise<void> {
     const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
     
-    await (this.prisma as any).loginAttempt.deleteMany({
+    await this.prisma.loginAttempt.deleteMany({
       where: {
         attemptedAt: {
           lt: cutoffDate,
@@ -87,14 +85,14 @@ export class LoginAttemptRepository {
       byEmail,
       byIP,
     ] = await Promise.all([
-      (this.prisma as any).loginAttempt.count(),
-      (this.prisma as any).loginAttempt.count({ where: { success: true } }),
-      (this.prisma as any).loginAttempt.count({ where: { success: false } }),
-      (this.prisma as any).loginAttempt.groupBy({
+      this.prisma.loginAttempt.count(),
+      this.prisma.loginAttempt.count({ where: { success: true } }),
+      this.prisma.loginAttempt.count({ where: { success: false } }),
+      this.prisma.loginAttempt.groupBy({
         by: ['email'],
         _count: { email: true },
       }),
-      (this.prisma as any).loginAttempt.groupBy({
+      this.prisma.loginAttempt.groupBy({
         by: ['ipAddress'],
         _count: { ipAddress: true },
       }),

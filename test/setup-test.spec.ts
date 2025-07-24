@@ -3,6 +3,19 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from '@/database/prisma.service';
 import { DatabaseModule } from '@/database/database.module';
 
+// Set test environment variables before importing modules
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5433/icms_test';
+process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only';
+process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret-key-for-testing-only';
+process.env.JWT_EXPIRES_IN = '1h';
+process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+process.env.BCRYPT_ROUNDS = '10';
+process.env.MAX_LOGIN_ATTEMPTS = '5';
+process.env.LOGIN_ATTEMPT_WINDOW = '15';
+process.env.SESSION_EXPIRY_DAYS = '7';
+process.env.REMEMBER_ME_EXPIRY_DAYS = '30';
+
 describe('Test Setup', () => {
   let module: TestingModule;
   let prisma: PrismaService;

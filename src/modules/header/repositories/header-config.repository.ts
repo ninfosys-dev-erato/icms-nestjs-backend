@@ -33,9 +33,8 @@ export class HeaderConfigRepository {
       where.isActive = query.isActive;
     }
 
-    // Note: isPublished is not in the current schema, so we filter by isActive instead
     if (query.isPublished !== undefined) {
-      where.isActive = query.isPublished;
+      where.isPublished = query.isPublished;
     }
 
     const orderBy: any = {};
@@ -111,7 +110,7 @@ export class HeaderConfigRepository {
     data: HeaderConfig[];
     pagination: PaginationInfo;
   }> {
-    const where: any = { isActive: true }; // Using isActive as isPublished since isPublished is not in schema
+    const where: any = { isActive: true, isPublished: true };
 
     const page = query.page || 1;
     const limit = query.limit || 10;
@@ -179,9 +178,8 @@ export class HeaderConfigRepository {
       where.isActive = query.isActive;
     }
 
-    // Note: isPublished is not in the current schema, so we filter by isActive instead
     if (query.isPublished !== undefined) {
-      where.isActive = query.isPublished;
+      where.isPublished = query.isPublished;
     }
 
     const orderBy = { order: 'asc' as const };
@@ -217,10 +215,13 @@ export class HeaderConfigRepository {
         name: data.name as any,
         order: data.order || 0,
         isActive: data.isActive ?? true,
+        isPublished: data.isPublished ?? false,
         typography: data.typography as any,
         alignment: data.alignment,
         logo: data.logo as any,
-        layout: data.layout as any
+        layout: data.layout as any,
+        createdById: userId,
+        updatedById: userId
       }
     });
   }
@@ -231,10 +232,13 @@ export class HeaderConfigRepository {
     if (data.name !== undefined) updateData.name = data.name as any;
     if (data.order !== undefined) updateData.order = data.order;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.isPublished !== undefined) updateData.isPublished = data.isPublished;
     if (data.typography !== undefined) updateData.typography = data.typography as any;
     if (data.alignment !== undefined) updateData.alignment = data.alignment;
     if (data.logo !== undefined) updateData.logo = data.logo as any;
     if (data.layout !== undefined) updateData.layout = data.layout as any;
+    
+    updateData.updatedById = userId;
 
     return this.prisma.headerConfig.update({
       where: { id },
@@ -249,18 +253,22 @@ export class HeaderConfigRepository {
   }
 
   async publish(id: string, userId: string): Promise<HeaderConfig> {
-    // Since isPublished is not in the current schema, we'll just return the updated config
     return this.prisma.headerConfig.update({
       where: { id },
-      data: { isActive: true }
+      data: { 
+        isPublished: true,
+        updatedById: userId
+      }
     });
   }
 
   async unpublish(id: string, userId: string): Promise<HeaderConfig> {
-    // Since isPublished is not in the current schema, we'll just return the updated config
     return this.prisma.headerConfig.update({
       where: { id },
-      data: { isActive: false }
+      data: { 
+        isPublished: false,
+        updatedById: userId
+      }
     });
   }
 
@@ -278,16 +286,18 @@ export class HeaderConfigRepository {
   async getActiveHeaderConfig(): Promise<HeaderConfig | null> {
     return this.prisma.headerConfig.findFirst({
       where: { 
-        isActive: true
+        isActive: true,
+        isPublished: true
       },
       orderBy: { order: 'asc' }
     });
   }
 
   async getStatistics(): Promise<HeaderConfigStatistics> {
-    const [total, active, byAlignment, averageOrder] = await Promise.all([
+    const [total, active, published, byAlignment, averageOrder] = await Promise.all([
       this.prisma.headerConfig.count(),
       this.prisma.headerConfig.count({ where: { isActive: true } }),
+      this.prisma.headerConfig.count({ where: { isPublished: true } }),
       this.prisma.headerConfig.groupBy({
         by: ['alignment'],
         _count: { alignment: true }
@@ -305,7 +315,7 @@ export class HeaderConfigRepository {
     return {
       total,
       active,
-      published: active, // Using active as published since isPublished is not in schema
+      published,
       byAlignment: alignmentStats as any,
       averageOrder: averageOrder._avg.order || 0
     };

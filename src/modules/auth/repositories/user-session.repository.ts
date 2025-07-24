@@ -6,32 +6,30 @@ import {
   SessionStatistics,
 } from '../dto/auth.dto';
 
-type UserSession = any;
-
 @Injectable()
 export class UserSessionRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findById(id: string): Promise<UserSession | null> {
-    return (this.prisma as any).userSession.findUnique({
+  async findById(id: string): Promise<any> {
+    return this.prisma.userSession.findUnique({
       where: { id },
     });
   }
 
-  async findByToken(token: string): Promise<UserSession | null> {
-    return (this.prisma as any).userSession.findUnique({
+  async findByToken(token: string): Promise<any> {
+    return this.prisma.userSession.findUnique({
       where: { token },
     });
   }
 
-  async findByRefreshToken(refreshToken: string): Promise<UserSession | null> {
-    return (this.prisma as any).userSession.findUnique({
+  async findByRefreshToken(refreshToken: string): Promise<any> {
+    return this.prisma.userSession.findUnique({
       where: { refreshToken },
     });
   }
 
-  async findActiveByUser(userId: string): Promise<UserSession[]> {
-    return (this.prisma as any).userSession.findMany({
+  async findActiveByUser(userId: string): Promise<any[]> {
+    return this.prisma.userSession.findMany({
       where: {
         userId,
         isActive: true,
@@ -42,8 +40,8 @@ export class UserSessionRepository {
     });
   }
 
-  async create(data: CreateSessionDto): Promise<UserSession> {
-    return (this.prisma as any).userSession.create({
+  async create(data: CreateSessionDto): Promise<any> {
+    return this.prisma.userSession.create({
       data: {
         userId: data.userId,
         token: data.token,
@@ -55,35 +53,35 @@ export class UserSessionRepository {
     });
   }
 
-  async update(id: string, data: UpdateSessionDto): Promise<UserSession> {
-    return (this.prisma as any).userSession.update({
+  async update(id: string, data: UpdateSessionDto): Promise<any> {
+    return this.prisma.userSession.update({
       where: { id },
       data,
     });
   }
 
   async delete(id: string): Promise<void> {
-    await (this.prisma as any).userSession.delete({
+    await this.prisma.userSession.delete({
       where: { id },
     });
   }
 
   async deactivate(id: string): Promise<void> {
-    await (this.prisma as any).userSession.update({
+    await this.prisma.userSession.update({
       where: { id },
       data: { isActive: false },
     });
   }
 
   async deactivateAllUserSessions(userId: string): Promise<void> {
-    await (this.prisma as any).userSession.updateMany({
+    await this.prisma.userSession.updateMany({
       where: { userId },
       data: { isActive: false },
     });
   }
 
   async cleanExpiredSessions(): Promise<void> {
-    await (this.prisma as any).userSession.deleteMany({
+    await this.prisma.userSession.deleteMany({
       where: {
         expiresAt: {
           lt: new Date(),
@@ -99,8 +97,8 @@ export class UserSessionRepository {
       expired,
       byUser,
     ] = await Promise.all([
-      (this.prisma as any).userSession.count(),
-      (this.prisma as any).userSession.count({
+      this.prisma.userSession.count(),
+      this.prisma.userSession.count({
         where: {
           isActive: true,
           expiresAt: {
@@ -108,14 +106,14 @@ export class UserSessionRepository {
           },
         },
       }),
-      (this.prisma as any).userSession.count({
+      this.prisma.userSession.count({
         where: {
           expiresAt: {
             lt: new Date(),
           },
         },
       }),
-      (this.prisma as any).userSession.groupBy({
+      this.prisma.userSession.groupBy({
         by: ['userId'],
         _count: { userId: true },
       }),

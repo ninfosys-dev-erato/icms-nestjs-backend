@@ -121,6 +121,7 @@ describe('AuthService', () => {
       // Verify user exists in database
       const user = await authRepository.findByEmail(validRegisterData.email);
       expect(user).toBeDefined();
+      expect(user).not.toBeNull();
       expect(user.password).not.toBe(validRegisterData.password);
       
       // Verify password is hashed
@@ -133,23 +134,26 @@ describe('AuthService', () => {
     let testUser: any;
 
     beforeEach(async () => {
-      // Create a test user
-      const registerData = {
-        email: 'login@example.com',
-        password: 'Password123!',
-        confirmPassword: 'Password123!',
+      // Create a test user directly through repository to ensure it exists
+      const hashedPassword = await bcrypt.hash('Password123!', 10);
+      const uniqueEmail = `login-${Date.now()}-${Math.random()}@example.com`;
+      testUser = await authRepository.create({
+        email: uniqueEmail,
+        password: hashedPassword,
         firstName: 'Login',
         lastName: 'User',
-        role: 'VIEWER' as UserRole,
-      };
-
-      await service.register(registerData);
-      testUser = await authRepository.findByEmail('login@example.com');
+        role: 'VIEWER',
+        isActive: true,
+      });
+      
+      // Verify user was created
+      expect(testUser).toBeDefined();
+      expect(testUser.id).toBeDefined();
     });
 
     it('should login successfully with valid credentials', async () => {
       const loginData = {
-        email: 'login@example.com',
+        email: testUser.email,
         password: 'Password123!',
       };
 
@@ -174,7 +178,7 @@ describe('AuthService', () => {
 
     it('should fail with invalid password', async () => {
       const loginData = {
-        email: 'login@example.com',
+        email: testUser.email,
         password: 'WrongPassword123!',
       };
 
@@ -187,7 +191,7 @@ describe('AuthService', () => {
       await authRepository.update(testUser.id, { isActive: false });
 
       const loginData = {
-        email: 'login@example.com',
+        email: testUser.email,
         password: 'Password123!',
       };
 
@@ -197,7 +201,7 @@ describe('AuthService', () => {
 
     it('should create session on successful login', async () => {
       const loginData = {
-        email: 'login@example.com',
+        email: testUser.email,
         password: 'Password123!',
       };
 
@@ -212,21 +216,21 @@ describe('AuthService', () => {
 
     it('should record login attempt', async () => {
       const loginData = {
-        email: 'login@example.com',
+        email: testUser.email,
         password: 'Password123!',
       };
 
       await service.login(loginData, '127.0.0.1', 'Test Browser');
 
       // Verify login attempt was recorded
-      const attempts = await loginAttemptRepository.findByEmail('login@example.com');
+      const attempts = await loginAttemptRepository.findByEmail(testUser.email);
       expect(attempts.length).toBeGreaterThan(0);
       expect(attempts[0].success).toBe(true);
     });
 
     it('should record failed login attempt', async () => {
       const loginData = {
-        email: 'login@example.com',
+        email: testUser.email,
         password: 'WrongPassword123!',
       };
 
@@ -237,7 +241,7 @@ describe('AuthService', () => {
       }
 
       // Verify failed login attempt was recorded
-      const attempts = await loginAttemptRepository.findByEmail('login@example.com');
+      const attempts = await loginAttemptRepository.findByEmail(testUser.email);
       expect(attempts.length).toBeGreaterThan(0);
       expect(attempts[0].success).toBe(false);
     });
@@ -295,24 +299,23 @@ describe('AuthService', () => {
     let sessionId: string;
 
     beforeEach(async () => {
-      // Create a test user and session
-      const registerData = {
-        email: 'logout@example.com',
-        password: 'Password123!',
-        confirmPassword: 'Password123!',
+      // Create a test user directly through repository
+      const hashedPassword = await bcrypt.hash('Password123!', 10);
+      const uniqueEmail = `logout-${Date.now()}-${Math.random()}@example.com`;
+      testUser = await authRepository.create({
+        email: uniqueEmail,
+        password: hashedPassword,
         firstName: 'Logout',
         lastName: 'User',
-        role: 'VIEWER' as UserRole,
-      };
-
-      await service.register(registerData);
-      testUser = await authRepository.findByEmail('logout@example.com');
+        role: 'VIEWER',
+        isActive: true,
+      });
 
       // Create a session with unique token
       const session = await userSessionRepository.create({
         userId: testUser.id,
-        token: `logout-token-${Date.now()}`,
-        refreshToken: `logout-refresh-${Date.now()}`,
+        token: `logout-token-${Date.now()}-${Math.random()}`,
+        refreshToken: `logout-refresh-${Date.now()}-${Math.random()}`,
         ipAddress: '127.0.0.1',
         userAgent: 'Test Browser',
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -343,24 +346,23 @@ describe('AuthService', () => {
     let refreshToken: string;
 
     beforeEach(async () => {
-      // Create a test user
-      const registerData = {
-        email: 'refresh@example.com',
-        password: 'Password123!',
-        confirmPassword: 'Password123!',
+      // Create a test user directly through repository
+      const hashedPassword = await bcrypt.hash('Password123!', 10);
+      const uniqueEmail = `refresh-${Date.now()}-${Math.random()}@example.com`;
+      testUser = await authRepository.create({
+        email: uniqueEmail,
+        password: hashedPassword,
         firstName: 'Refresh',
         lastName: 'User',
-        role: 'VIEWER' as UserRole,
-      };
-
-      await service.register(registerData);
-      testUser = await authRepository.findByEmail('refresh@example.com');
+        role: 'VIEWER',
+        isActive: true,
+      });
 
       // Create a session with refresh token
       const session = await userSessionRepository.create({
         userId: testUser.id,
-        token: `refresh-token-${Date.now()}`,
-        refreshToken: `refresh-refresh-${Date.now()}`,
+        token: `refresh-token-${Date.now()}-${Math.random()}`,
+        refreshToken: `refresh-refresh-${Date.now()}-${Math.random()}`,
         ipAddress: '127.0.0.1',
         userAgent: 'Test Browser',
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -406,18 +408,17 @@ describe('AuthService', () => {
     let testUser: any;
 
     beforeEach(async () => {
-      // Create a test user
-      const registerData = {
-        email: 'change@example.com',
-        password: 'Password123!',
-        confirmPassword: 'Password123!',
+      // Create a test user directly through repository
+      const hashedPassword = await bcrypt.hash('Password123!', 10);
+      const uniqueEmail = `change-${Date.now()}-${Math.random()}@example.com`;
+      testUser = await authRepository.create({
+        email: uniqueEmail,
+        password: hashedPassword,
         firstName: 'Change',
         lastName: 'User',
-        role: 'VIEWER' as UserRole,
-      };
-
-      await service.register(registerData);
-      testUser = await authRepository.findByEmail('change@example.com');
+        role: 'VIEWER',
+        isActive: true,
+      });
     });
 
     it('should change password successfully', async () => {
@@ -462,24 +463,23 @@ describe('AuthService', () => {
     let testUser: any;
 
     beforeEach(async () => {
-      // Create a test user
-      const registerData = {
-        email: 'sessions@example.com',
-        password: 'Password123!',
-        confirmPassword: 'Password123!',
+      // Create a test user directly through repository
+      const hashedPassword = await bcrypt.hash('Password123!', 10);
+      const uniqueEmail = `sessions-${Date.now()}-${Math.random()}@example.com`;
+      testUser = await authRepository.create({
+        email: uniqueEmail,
+        password: hashedPassword,
         firstName: 'Sessions',
         lastName: 'User',
-        role: 'VIEWER' as UserRole,
-      };
-
-      await service.register(registerData);
-      testUser = await authRepository.findByEmail('sessions@example.com');
+        role: 'VIEWER',
+        isActive: true,
+      });
 
       // Create multiple sessions
       await userSessionRepository.create({
         userId: testUser.id,
-        token: 'token-1',
-        refreshToken: 'refresh-1',
+        token: `token-1-${Date.now()}-${Math.random()}`,
+        refreshToken: `refresh-1-${Date.now()}-${Math.random()}`,
         ipAddress: '127.0.0.1',
         userAgent: 'Browser 1',
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -487,8 +487,8 @@ describe('AuthService', () => {
 
       await userSessionRepository.create({
         userId: testUser.id,
-        token: 'token-2',
-        refreshToken: 'refresh-2',
+        token: `token-2-${Date.now()}-${Math.random()}`,
+        refreshToken: `refresh-2-${Date.now()}-${Math.random()}`,
         ipAddress: '127.0.0.2',
         userAgent: 'Browser 2',
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -511,24 +511,23 @@ describe('AuthService', () => {
     let sessionId: string;
 
     beforeEach(async () => {
-      // Create a test user
-      const registerData = {
-        email: 'revoke@example.com',
-        password: 'Password123!',
-        confirmPassword: 'Password123!',
+      // Create a test user directly through repository
+      const hashedPassword = await bcrypt.hash('Password123!', 10);
+      const uniqueEmail = `revoke-${Date.now()}-${Math.random()}@example.com`;
+      testUser = await authRepository.create({
+        email: uniqueEmail,
+        password: hashedPassword,
         firstName: 'Revoke',
         lastName: 'User',
-        role: 'VIEWER' as UserRole,
-      };
-
-      await service.register(registerData);
-      testUser = await authRepository.findByEmail('revoke@example.com');
+        role: 'VIEWER',
+        isActive: true,
+      });
 
       // Create a session with unique token
       const session = await userSessionRepository.create({
         userId: testUser.id,
-        token: `test-token-${Date.now()}`,
-        refreshToken: `test-refresh-token-${Date.now()}`,
+        token: `test-token-${Date.now()}-${Math.random()}`,
+        refreshToken: `test-refresh-token-${Date.now()}-${Math.random()}`,
         ipAddress: '127.0.0.1',
         userAgent: 'Test Browser',
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -573,24 +572,23 @@ describe('AuthService', () => {
     let testUser: any;
 
     beforeEach(async () => {
-      // Create a test user
-      const registerData = {
-        email: 'revokeall@example.com',
-        password: 'Password123!',
-        confirmPassword: 'Password123!',
+      // Create a test user directly through repository
+      const hashedPassword = await bcrypt.hash('Password123!', 10);
+      const uniqueEmail = `revokeall-${Date.now()}-${Math.random()}@example.com`;
+      testUser = await authRepository.create({
+        email: uniqueEmail,
+        password: hashedPassword,
         firstName: 'RevokeAll',
         lastName: 'User',
-        role: 'VIEWER' as UserRole,
-      };
-
-      await service.register(registerData);
-      testUser = await authRepository.findByEmail('revokeall@example.com');
+        role: 'VIEWER',
+        isActive: true,
+      });
 
       // Create multiple sessions with unique tokens
       await userSessionRepository.create({
         userId: testUser.id,
-        token: `revokeall-token-1-${Date.now()}`,
-        refreshToken: `revokeall-refresh-1-${Date.now()}`,
+        token: `revokeall-token-1-${Date.now()}-${Math.random()}`,
+        refreshToken: `revokeall-refresh-1-${Date.now()}-${Math.random()}`,
         ipAddress: '127.0.0.1',
         userAgent: 'Browser 1',
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -598,8 +596,8 @@ describe('AuthService', () => {
 
       await userSessionRepository.create({
         userId: testUser.id,
-        token: `revokeall-token-2-${Date.now() + 1}`,
-        refreshToken: `revokeall-refresh-2-${Date.now() + 1}`,
+        token: `revokeall-token-2-${Date.now()}-${Math.random()}`,
+        refreshToken: `revokeall-refresh-2-${Date.now()}-${Math.random()}`,
         ipAddress: '127.0.0.2',
         userAgent: 'Browser 2',
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),

@@ -32,6 +32,7 @@ import {
   CreateHeaderConfigDto, 
   UpdateHeaderConfigDto, 
   HeaderConfigQueryDto, 
+  HeaderConfigSearchDto,
   HeaderConfigResponseDto,
   HeaderConfigStatistics,
   BulkOperationResult
@@ -108,11 +109,10 @@ export class AdminHeaderController {
   @Roles('ADMIN', 'EDITOR')
   async searchHeaderConfigs(
     @Res() response: Response,
-    @Query('q') searchTerm: string,
-    @Query() query?: HeaderConfigQueryDto
+    @Query() query: HeaderConfigSearchDto
   ): Promise<void> {
     try {
-      const result = await this.headerConfigService.searchHeaderConfigs(searchTerm, query);
+      const result = await this.headerConfigService.searchHeaderConfigs(query.q, query);
       
       const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
 
