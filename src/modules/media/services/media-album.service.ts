@@ -75,11 +75,11 @@ export class MediaAlbumService {
       throw new NotFoundException('Album not found');
     }
 
-    // TODO: Validate media exists
-    // const media = await this.mediaRepository.findById(mediaId);
-    // if (!media) {
-    //   throw new NotFoundException('Media not found');
-    // }
+    // Validate media exists
+    const media = await this.mediaAlbumRepository.findMediaById(mediaId);
+    if (!media) {
+      throw new NotFoundException('Media not found');
+    }
 
     await this.mediaAlbumRepository.addMediaToAlbum(albumId, mediaId);
   }

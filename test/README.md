@@ -1,383 +1,276 @@
-# ICMS Backend Test Suite
+# Test Setup and Troubleshooting Guide
 
-This directory contains comprehensive integration and unit tests for the ICMS Backend authentication system.
+This guide helps you set up and run tests for the ICMS Backend with proper isolation and deadlock prevention.
 
-## 📁 Test Structure
+## Quick Start
+
+### 1. Setup Test Database
+
+```bash
+# Run the test database setup script
+./test/setup-test-db.sh
+```
+
+### 2. Run Tests
+
+```bash
+# Run all tests with proper isolation
+./test/run-tests.sh
+
+# Or run tests directly
+npm run test:e2e
+```
+
+## Test Environment
+
+The test environment uses:
+- **Database**: PostgreSQL on port 5433 (separate from development)
+- **Isolation**: Each test runs in isolation with proper cleanup
+- **Authentication**: JWT tokens generated for each test
+- **Deadlock Prevention**: Sequential data creation and proper cleanup
+
+## Test Structure
 
 ```
 test/
-├── integration/
-│   └── auth/
-│       ├── auth.e2e-spec.ts          # End-to-end integration tests
-│       └── auth.service.spec.ts      # Unit tests for auth service
-├── jest-e2e.json                     # Jest E2E configuration
-├── jest-e2e.setup.ts                 # Jest E2E setup
-├── test-utils.ts                     # Test utility functions
-├── run-tests.sh                      # Test runner script
-└── README.md                         # This file
+├── integration/           # Integration tests
+│   ├── auth/             # Authentication tests
+│   ├── hr/               # HR management tests
+│   ├── header/           # Header configuration tests
+│   └── ...               # Other module tests
+├── test-utils.ts         # Shared test utilities
+├── jest-e2e.setup.ts     # Jest configuration
+├── jest-e2e.json         # Jest settings
+├── setup-test-db.sh      # Database setup script
+└── run-tests.sh          # Test runner script
 ```
 
-## 🚀 Quick Start
+## Key Features
 
-### Prerequisites
+### 1. Database Isolation
+- Each test suite gets a clean database
+- Proper cleanup between tests
+- Foreign key constraints disabled during cleanup
 
-- Node.js (v18 or higher)
-- PostgreSQL (or Docker for containerized setup)
-- pnpm, yarn, or npm
+### 2. Authentication
+- Automatic JWT token generation
+- Admin user creation for each test
+- Proper token validation
 
-### Running Tests
+### 3. Deadlock Prevention
+- Sequential data creation
+- Proper transaction handling
+- Connection cleanup
 
-#### Option 1: Using the Test Runner Script (Recommended)
+### 4. Error Handling
+- Graceful failure handling
+- Detailed error messages
+- Automatic cleanup on failure
 
+## Common Issues and Solutions
+
+### 1. Database Deadlocks
+
+**Symptoms**: Tests fail with "deadlock detected" errors
+
+**Solution**:
 ```bash
-# Run all tests (setup + unit + integration)
-./test/run-tests.sh
+# Clean up existing connections
+psql postgresql://test:test@localhost:5433/icms_test -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'icms_test' AND pid <> pg_backend_pid();"
 
-# Setup test environment only
-./test/run-tests.sh setup
-
-# Run only integration tests
-./test/run-tests.sh e2e
-
-# Run only unit tests
-./test/run-tests.sh unit
-
-# Clean up test resources
-./test/run-tests.sh cleanup
+# Restart test database
+./test/setup-test-db.sh
 ```
 
-#### Option 2: Manual Setup
+### 2. Authentication Failures
 
-1. **Setup Test Environment**
-   ```bash
-   # Create test environment file
-   cp .env.example .env.test
-   
-   # Update .env.test with test configuration
-   DATABASE_URL="postgresql://test:test@localhost:5433/icms_test"
-   JWT_SECRET="test-jwt-secret-key-for-testing-only"
-   ```
+**Symptoms**: Tests get 401 Unauthorized errors
 
-2. **Setup Test Database**
-   ```bash
-   # Using Docker (recommended)
-   docker run -d \
-     --name icms-test-db \
-     -e POSTGRES_DB=icms_test \
-     -e POSTGRES_USER=test \
-     -e POSTGRES_PASSWORD=test \
-     -p 5433:5432 \
-     postgres:15
-   ```
+**Solution**:
+- Ensure JWT secrets are properly set in environment
+- Check that test users are being created correctly
+- Verify token generation is working
 
-3. **Run Database Migrations**
-   ```bash
-   pnpm db:generate
-   pnpm db:push
-   ```
+### 3. Database Connection Issues
 
-4. **Run Tests**
-   ```bash
-   # Unit tests
-   pnpm test
-   
-   # Integration tests
-   pnpm test:e2e
-   
-   # All tests with coverage
-   pnpm test:cov
-   ```
+**Symptoms**: "Connection refused" or "ECONNREFUSED"
 
-## 🧪 Test Coverage
+**Solution**:
+```bash
+# Check if test database is running
+docker ps | grep icms-test-db
 
-### Integration Tests (`auth.e2e-spec.ts`)
-
-Tests the complete authentication flow through HTTP endpoints:
-
-#### Registration Tests
-- ✅ Successful user registration
-- ✅ Password confirmation validation
-- ✅ Email uniqueness validation
-- ✅ Email format validation
-- ✅ Password strength validation
-
-#### Login Tests
-- ✅ Successful login with valid credentials
-- ✅ Failed login with invalid email
-- ✅ Failed login with invalid password
-- ✅ Remember me functionality
-- ✅ Rate limiting for failed attempts
-- ✅ Account lockout after multiple failures
-
-#### Authentication Tests
-- ✅ JWT token validation
-- ✅ Token refresh functionality
-- ✅ Logout functionality
-- ✅ Session management
-
-#### Password Management Tests
-- ✅ Password change with current password
-- ✅ Password reset request
-- ✅ Password reset with token
-- ✅ Current password validation
-
-#### Session Management Tests
-- ✅ Get user sessions
-- ✅ Revoke specific session
-- ✅ Revoke all sessions
-- ✅ Session security validation
-
-#### Security Tests
-- ✅ Rate limiting
-- ✅ Input validation
-- ✅ Authentication guards
-- ✅ Authorization checks
-
-### Unit Tests (`auth.service.spec.ts`)
-
-Tests individual service methods in isolation:
-
-#### AuthService Methods
-- ✅ `register()` - User registration
-- ✅ `login()` - User authentication
-- ✅ `logout()` - User logout
-- ✅ `refreshToken()` - Token refresh
-- ✅ `changePassword()` - Password change
-- ✅ `validateLoginAttempt()` - Login attempt validation
-- ✅ `getUserSessions()` - Session retrieval
-- ✅ `revokeSession()` - Session revocation
-- ✅ `revokeAllSessions()` - Bulk session revocation
-
-#### Security Features
-- ✅ Password hashing with bcrypt
-- ✅ Password validation
-- ✅ JWT token generation
-- ✅ Session creation and management
-- ✅ Audit logging
-- ✅ Login attempt tracking
-
-## 🔧 Test Configuration
-
-### Environment Variables
-
-The tests use a separate `.env.test` file with the following configuration:
-
-```env
-NODE_ENV=test
-DATABASE_URL="postgresql://test:test@localhost:5433/icms_test"
-JWT_SECRET=test-jwt-secret-key-for-testing-only
-JWT_REFRESH_SECRET=test-jwt-refresh-secret-key-for-testing-only
-JWT_EXPIRES_IN=1h
-JWT_REFRESH_EXPIRES_IN=7d
-BCRYPT_ROUNDS=10
-MAX_LOGIN_ATTEMPTS=5
-LOGIN_ATTEMPT_WINDOW=15
-SESSION_EXPIRY_DAYS=7
-REMEMBER_ME_EXPIRY_DAYS=30
+# If not running, start it
+./test/setup-test-db.sh
 ```
 
-### Database Setup
+### 4. Test Timeouts
 
-Tests use a separate test database to avoid affecting development data:
+**Symptoms**: Tests hang or timeout
 
-- **Database**: `icms_test`
-- **User**: `test`
-- **Password**: `test`
-- **Port**: `5433` (to avoid conflicts with development database)
+**Solution**:
+- Increase Jest timeout in `jest-e2e.json`
+- Check for hanging database connections
+- Ensure proper cleanup in test teardown
 
-### Test Data Management
-
-- Each test runs in isolation
-- Database is cleaned before and after each test
-- Test users are created with unique emails
-- Sessions and audit logs are properly cleaned up
-
-## 🛠️ Test Utilities
+## Test Utilities
 
 ### TestUtils Class
 
-Provides helper functions for common test operations:
+The `TestUtils` class provides helper methods for:
 
 ```typescript
-// Create a test user
-const user = await TestUtils.createTestUser(app, {
-  email: 'test@example.com',
-  password: 'Password123!',
-  firstName: 'John',
-  lastName: 'Doe',
-  role: 'VIEWER'
-});
-
-// Login a user
-const tokens = await TestUtils.loginUser(app, 'test@example.com', 'Password123!');
-
 // Clean up database
 await TestUtils.cleanupDatabase(prisma);
+
+// Create test user with JWT token
+const user = await TestUtils.createTestUser(prisma, {
+  email: 'admin',
+  password: 'password123',
+  firstName: 'Admin',
+  lastName: 'User',
+  role: 'ADMIN',
+});
+
+// Create authentication token
+const token = await TestUtils.createAuthToken(prisma);
+
+// Create data sequentially to prevent deadlocks
+const results = await TestUtils.createSequentialData(
+  prisma,
+  dataArray,
+  (data) => prisma.model.create({ data })
+);
 ```
 
-### Test Constants
+## Best Practices
 
-Predefined test data for consistency:
+### 1. Test Structure
+```typescript
+describe('Module Tests', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+
+  beforeAll(async () => {
+    // Setup application
+  });
+
+  afterAll(async () => {
+    await TestUtils.cleanupDatabase(prisma);
+    await app.close();
+  });
+
+  beforeEach(async () => {
+    await TestUtils.cleanupDatabase(prisma);
+    await createTestData();
+  });
+
+  // Tests...
+});
+```
+
+### 2. Data Creation
+```typescript
+// ✅ Good: Sequential creation
+const departments = await TestUtils.createSequentialData(
+  prisma,
+  departmentData,
+  (data) => prisma.department.create({ data })
+);
+
+// ❌ Bad: Parallel creation (can cause deadlocks)
+const departments = await Promise.all(
+  departmentData.map(data => prisma.department.create({ data }))
+);
+```
+
+### 3. Authentication
+```typescript
+// ✅ Good: Use TestUtils for authentication
+const token = await TestUtils.createAuthToken(prisma);
+
+// ❌ Bad: Manual token creation
+const token = jwt.sign(payload, secret);
+```
+
+## Environment Variables
+
+Test environment variables are set in `jest-e2e.setup.ts`:
 
 ```typescript
-import { testConstants } from './test-utils';
-
-const validPassword = testConstants.validPassword;
-const validEmail = testConstants.validEmail;
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5433/icms_test';
+process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only';
+// ... more variables
 ```
 
-## 📊 Test Results
-
-### Expected Test Output
-
-When running tests successfully, you should see output similar to:
-
-```
-🚀 Starting ICMS Backend Integration Tests...
-[INFO] Checking dependencies...
-[SUCCESS] Dependencies check completed
-[INFO] Setting up test database...
-[SUCCESS] Test database setup completed
-[INFO] Installing dependencies...
-[SUCCESS] Dependencies installed
-[INFO] Setting up test environment...
-[SUCCESS] Environment setup completed
-[INFO] Running database migrations...
-[SUCCESS] Database migrations completed
-[INFO] Running unit tests...
- PASS  test/integration/auth/auth.service.spec.ts
-[SUCCESS] Unit tests completed
-[INFO] Running integration tests...
- PASS  test/integration/auth/auth.e2e-spec.ts
-[SUCCESS] Integration tests completed
-```
-
-### Test Coverage
-
-The test suite aims for comprehensive coverage:
-
-- **Line Coverage**: >90%
-- **Branch Coverage**: >85%
-- **Function Coverage**: >95%
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Database Connection Failed**
-   ```bash
-   # Check if PostgreSQL is running
-   docker ps | grep postgres
-   
-   # Restart test database
-   ./test/run-tests.sh cleanup
-   ./test/run-tests.sh setup
-   ```
-
-2. **Port Already in Use**
-   ```bash
-   # Check what's using port 5433
-   lsof -i :5433
-   
-   # Kill the process or change port in .env.test
-   ```
-
-3. **JWT Secret Issues**
-   ```bash
-   # Ensure JWT secrets are set in .env.test
-   cat .env.test | grep JWT_SECRET
-   ```
-
-4. **Test Timeouts**
-   ```bash
-   # Increase timeout in jest configuration
-   # Add to jest-e2e.json:
-   "testTimeout": 30000
-   ```
-
-### Debug Mode
-
-Run tests in debug mode for more detailed output:
+## Running Specific Tests
 
 ```bash
-# Debug unit tests
-pnpm test:debug
+# Run specific test file
+npm run test:e2e -- test/integration/hr/hr.e2e-spec.ts
 
-# Debug integration tests
-NODE_ENV=test DEBUG=* pnpm test:e2e
+# Run tests matching pattern
+npm run test:e2e -- --testNamePattern="HR Management"
+
+# Run tests with verbose output
+npm run test:e2e -- --verbose
+
+# Run tests in watch mode
+npm run test:e2e -- --watch
 ```
 
-## 🔄 Continuous Integration
+## Debugging
 
-The test suite is designed to work with CI/CD pipelines:
+### 1. Enable Debug Logging
+```bash
+# Set debug environment variable
+DEBUG=* npm run test:e2e
+```
 
+### 2. Database Inspection
+```bash
+# Connect to test database
+psql postgresql://test:test@localhost:5433/icms_test
+
+# Check tables
+\dt
+
+# Check data
+SELECT * FROM users LIMIT 5;
+```
+
+### 3. Test Isolation
+```bash
+# Run single test in isolation
+npm run test:e2e -- --testNamePattern="should create department" --runInBand
+```
+
+## Continuous Integration
+
+For CI/CD, ensure:
+1. Test database is properly set up
+2. Environment variables are configured
+3. Tests run with proper isolation
+4. Cleanup happens after tests
+
+Example CI configuration:
 ```yaml
-# Example GitHub Actions workflow
-name: Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: icms_test
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5433:5432
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - run: npm ci
-      - run: npm run db:generate
-      - run: npm run db:push
-      - run: npm test
-      - run: npm run test:e2e
+- name: Setup test database
+  run: ./test/setup-test-db.sh
+
+- name: Run tests
+  run: npm run test:e2e
+  env:
+    NODE_ENV: test
+    DATABASE_URL: postgresql://test:test@localhost:5433/icms_test
 ```
 
-## 📝 Adding New Tests
+## Support
 
-### Adding Integration Tests
-
-1. Create a new test file in `test/integration/`
-2. Follow the existing pattern in `auth.e2e-spec.ts`
-3. Use `TestUtils` for common operations
-4. Ensure proper cleanup in `beforeEach` and `afterEach`
-
-### Adding Unit Tests
-
-1. Create a new test file in `test/unit/`
-2. Test individual service methods
-3. Mock external dependencies
-4. Focus on business logic testing
-
-### Test Naming Convention
-
-- **Integration tests**: `*.e2e-spec.ts`
-- **Unit tests**: `*.spec.ts`
-- **Test files**: Use descriptive names (e.g., `auth.e2e-spec.ts`)
-
-## 🤝 Contributing
-
-When adding new features to the auth system:
-
-1. **Write tests first** (TDD approach)
-2. **Ensure all tests pass** before submitting PR
-3. **Add test coverage** for new functionality
-4. **Update this README** if adding new test categories
-
-## 📚 Additional Resources
-
-- [NestJS Testing Documentation](https://docs.nestjs.com/fundamentals/testing)
-- [Jest Testing Framework](https://jestjs.io/docs/getting-started)
-- [Supertest HTTP Testing](https://github.com/visionmedia/supertest)
-- [Prisma Testing Guide](https://www.prisma.io/docs/guides/testing) 
+If you encounter issues:
+1. Check this troubleshooting guide
+2. Review test logs for specific error messages
+3. Ensure test database is running and accessible
+4. Verify environment variables are set correctly
+5. Try running tests in isolation to identify specific failures 

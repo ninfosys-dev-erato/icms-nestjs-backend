@@ -1,12 +1,10 @@
 #!/bin/bash
 
-# ICMS Backend Setup Script
-# This script automates the initial setup of the ICMS backend project
+# Setup script for ICMS Backend with proper test isolation
 
 set -e
 
-echo "🚀 ICMS Backend Setup Script"
-echo "=============================="
+echo "🚀 Setting up ICMS Backend with test environment..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -32,174 +30,184 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if Node.js is installed
-check_node() {
-    print_status "Checking Node.js installation..."
+# Check if required tools are installed
+check_dependencies() {
+    print_status "Checking dependencies..."
+    
     if ! command -v node &> /dev/null; then
-        print_error "Node.js is not installed. Please install Node.js 18+ first."
+        print_error "Node.js is not installed"
         exit 1
     fi
     
-    NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -lt 18 ]; then
-        print_error "Node.js version 18+ is required. Current version: $(node --version)"
+    if ! command -v pnpm &> /dev/null; then
+        print_error "pnpm is not installed. Please install it first: npm install -g pnpm"
         exit 1
     fi
     
-    print_success "Node.js $(node --version) is installed"
+    if ! command -v docker &> /dev/null; then
+        print_error "Docker is not installed. Please install Docker first."
+        exit 1
+    fi
+    
+    print_success "Dependencies check completed"
 }
 
-# Check if npm/yarn/pnpm is available
-check_package_manager() {
-    print_status "Checking package manager..."
+# Setup test database
+setup_test_db() {
+    print_status "Setting up test database..."
     
-    if command -v yarn &> /dev/null; then
-        PACKAGE_MANAGER="yarn"
-        print_success "Using Yarn as package manager"
-    elif command -v pnpm &> /dev/null; then
-        PACKAGE_MANAGER="pnpm"
-        print_success "Using pnpm as package manager"
-    elif command -v npm &> /dev/null; then
-        PACKAGE_MANAGER="npm"
-        print_success "Using npm as package manager"
-    else
-        print_error "No package manager found. Please install npm, yarn, or pnpm."
-        exit 1
+    # Stop and remove existing test database container
+    if docker ps -a | grep -q icms-test-db; then
+        print_status "Removing existing test database container..."
+        docker stop icms-test-db 2>/dev/null || true
+        docker rm icms-test-db 2>/dev/null || true
     fi
+    
+    # Create and start PostgreSQL container for testing
+    print_status "Creating and starting PostgreSQL container for testing..."
+    docker run -d \
+        --name icms-test-db \
+        -e POSTGRES_DB=icms_test \
+        -e POSTGRES_USER=test \
+        -e POSTGRES_PASSWORD=test \
+        -p 5433:5432 \
+        postgres:15
+    
+    # Wait for database to be ready
+    print_status "Waiting for database to be ready..."
+    for i in {1..30}; do
+        if docker exec icms-test-db pg_isready -U test -d icms_test >/dev/null 2>&1; then
+            print_success "Database is ready!"
+            break
+        fi
+        if [ $i -eq 30 ]; then
+            print_error "Database failed to start within 30 seconds"
+            exit 1
+        fi
+        sleep 1
+    done
+    
+    print_success "Test database setup completed"
 }
 
 # Install dependencies
 install_dependencies() {
     print_status "Installing dependencies..."
-    $PACKAGE_MANAGER install
-    print_success "Dependencies installed successfully"
+    pnpm install
+    print_success "Dependencies installed"
 }
 
-# Setup environment file
+# Setup environment
 setup_environment() {
-    print_status "Setting up environment configuration..."
+    print_status "Setting up environment..."
     
+    # Create .env file if it doesn't exist
     if [ ! -f .env ]; then
-        if [ -f env.example ]; then
-            cp env.example .env
-            print_success "Environment file created from template"
-            print_warning "Please edit .env file with your configuration"
-        else
-            print_error "env.example file not found"
-            exit 1
-        fi
-    else
-        print_warning "Environment file already exists"
-    fi
-}
-
-# Generate Prisma client
-generate_prisma() {
-    print_status "Generating Prisma client..."
-    $PACKAGE_MANAGER run db:generate
-    print_success "Prisma client generated"
-}
-
-# Run database migrations
-run_migrations() {
-    print_status "Running database migrations..."
-    
-    # Check if database is accessible
-    if ! $PACKAGE_MANAGER run db:migrate:status &> /dev/null; then
-        print_warning "Database not accessible. Please ensure PostgreSQL is running and configured."
-        print_warning "You can run migrations later with: $PACKAGE_MANAGER run db:migrate"
-        return 1
+        cp env.example .env
+        print_success "Created .env file from env.example"
     fi
     
-    $PACKAGE_MANAGER run db:migrate
-    print_success "Database migrations completed"
-}
+    # Create test environment file
+    cat > .env.test << EOF
+# Test Environment Configuration
+NODE_ENV=test
 
-# Seed database
-seed_database() {
-    print_status "Seeding database with initial data..."
+# Database
+DATABASE_URL="postgresql://test:test@localhost:5433/icms_test"
+
+# JWT Configuration
+JWT_SECRET=test-jwt-secret-key-for-testing-only
+JWT_REFRESH_SECRET=test-jwt-refresh-secret-key-for-testing-only
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+
+# Security
+BCRYPT_ROUNDS=10
+MAX_LOGIN_ATTEMPTS=5
+LOGIN_ATTEMPT_WINDOW=15
+SESSION_EXPIRY_DAYS=7
+REMEMBER_ME_EXPIRY_DAYS=30
+
+# Email (for testing, use a mock service)
+SMTP_HOST=smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_USER=test
+SMTP_PASS=test
+SMTP_FROM=noreply@test.com
+
+# Redis (for testing)
+REDIS_URL=redis://localhost:6379/1
+
+# AWS S3 (for testing)
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=test-bucket
+
+# Rate Limiting
+THROTTLE_TTL=60000
+THROTTLE_LIMIT=10
+
+# Logging
+LOG_LEVEL=error
+EOF
+    print_success "Created .env.test file"
     
-    if $PACKAGE_MANAGER run db:seed &> /dev/null; then
-        print_success "Database seeded successfully"
-        print_success "Default admin user: admin@icms.gov.np / admin@123"
-    else
-        print_warning "Database seeding failed. You can run it later with: $PACKAGE_MANAGER run db:seed"
-    fi
+    print_success "Environment setup completed"
 }
 
-# Setup Git hooks
-setup_git_hooks() {
-    print_status "Setting up Git hooks..."
+# Setup database
+setup_database() {
+    print_status "Setting up database..."
     
-    if [ -d .git ]; then
-        $PACKAGE_MANAGER run prepare
-        print_success "Git hooks configured"
-    else
-        print_warning "Not a Git repository. Git hooks not configured."
-    fi
-}
-
-# Run linting
-run_linting() {
-    print_status "Running code linting..."
+    # Generate Prisma client
+    pnpm db:generate
     
-    if $PACKAGE_MANAGER run lint &> /dev/null; then
-        print_success "Code linting passed"
-    else
-        print_warning "Code linting found issues. Run '$PACKAGE_MANAGER run lint' to see details."
-    fi
-}
-
-# Type checking
-run_typecheck() {
-    print_status "Running TypeScript type checking..."
+    # Push schema to test database
+    export NODE_ENV=test
+    export DATABASE_URL="postgresql://test:test@localhost:5433/icms_test"
+    pnpm db:push
     
-    if $PACKAGE_MANAGER run typecheck &> /dev/null; then
-        print_success "TypeScript type checking passed"
-    else
-        print_warning "TypeScript type checking found issues. Run '$PACKAGE_MANAGER run typecheck' to see details."
-    fi
+    print_success "Database setup completed"
 }
 
-# Display next steps
-show_next_steps() {
-    echo ""
-    echo "🎉 Setup completed successfully!"
-    echo "=============================="
-    echo ""
-    echo "Next steps:"
-    echo "1. Edit .env file with your configuration"
-    echo "2. Ensure PostgreSQL, Redis, and MinIO are running"
-    echo "3. Run database migrations: $PACKAGE_MANAGER run db:migrate"
-    echo "4. Seed database: $PACKAGE_MANAGER run db:seed"
-    echo "5. Start development server: $PACKAGE_MANAGER run start:dev"
-    echo ""
-    echo "Useful commands:"
-    echo "- Start development: $PACKAGE_MANAGER run start:dev"
-    echo "- Run tests: $PACKAGE_MANAGER run test"
-    echo "- Open Prisma Studio: $PACKAGE_MANAGER run db:studio"
-    echo "- API Documentation: http://localhost:3000/api/docs"
-    echo ""
-    echo "For more information, see the README.md file"
+# Run tests to verify setup
+run_verification_tests() {
+    print_status "Running verification tests..."
+    
+    export NODE_ENV=test
+    export DATABASE_URL="postgresql://test:test@localhost:5433/icms_test"
+    
+    # Run a simple test to verify everything works
+    pnpm test:e2e -- --testNamePattern="HR Management" --runInBand --detectOpenHandles --forceExit || {
+        print_warning "Some tests failed, but setup is complete. You can run tests manually with: pnpm test:e2e"
+    }
+    
+    print_success "Verification completed"
 }
 
-# Main setup function
+# Main execution
 main() {
-    check_node
-    check_package_manager
+    check_dependencies
+    setup_test_db
     install_dependencies
     setup_environment
-    generate_prisma
-    setup_git_hooks
-    run_linting
-    run_typecheck
+    setup_database
+    run_verification_tests
     
-    # Database operations (may fail if DB not configured)
-    run_migrations || true
-    seed_database || true
-    
-    show_next_steps
+    print_success "🎉 Setup completed successfully!"
+    echo ""
+    echo "Next steps:"
+    echo "1. Run tests: pnpm test:e2e"
+    echo "2. Start development server: pnpm start:dev"
+    echo "3. View API documentation: http://localhost:3000/api/v1/docs"
+    echo ""
+    echo "Test database is running on port 5433"
+    echo "Main application should use the database configured in .env"
 }
+
+# Handle script interruption
+trap 'print_error "Setup interrupted"; exit 1' SIGINT SIGTERM
 
 # Run main function
 main "$@" 

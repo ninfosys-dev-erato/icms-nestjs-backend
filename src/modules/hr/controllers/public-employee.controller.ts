@@ -1,5 +1,4 @@
-import { Controller, Get, Param, Query, Res } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -12,7 +11,6 @@ import {
   EmployeeQueryDto, 
   EmployeeResponseDto 
 } from '../dto/hr.dto';
-import { ApiResponseBuilder } from '../../../common/types/api-response';
 
 @ApiTags('Public Employees')
 @Controller('employees')
@@ -27,51 +25,28 @@ export class PublicEmployeeController {
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'departmentId', required: false, type: String })
   async getAllEmployees(
-    @Res() response: Response,
     @Query() query?: EmployeeQueryDto
-  ): Promise<void> {
-    try {
-      const result = await this.employeeService.getActiveEmployees(query);
-      
-      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'EMPLOYEES_RETRIEVAL_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
-    }
+  ) {
+    const result = await this.employeeService.getActiveEmployees(query);
+    return result;
   }
 
   @Get('search')
   @ApiOperation({ summary: 'Search employees' })
   @ApiResponse({ status: 200, description: 'Search completed successfully' })
-  @ApiQuery({ name: 'q', required: true, type: String })
+  @ApiQuery({ name: 'search', required: true, type: String })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'departmentId', required: false, type: String })
   async searchEmployees(
-    @Res() response: Response,
-    @Query('q') searchTerm: string,
-    @Query() query?: EmployeeQueryDto
-  ): Promise<void> {
-    try {
-      const result = await this.employeeService.searchEmployees(searchTerm, query);
-      
-      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'EMPLOYEE_SEARCH_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
+    @Query() query: EmployeeQueryDto
+  ) {
+    if (!query.search) {
+      throw new Error('Search term is required');
     }
+
+    const result = await this.employeeService.searchEmployees(query.search, query);
+    return result;
   }
 
   @Get('department/:departmentId')
@@ -79,23 +54,10 @@ export class PublicEmployeeController {
   @ApiResponse({ status: 200, description: 'Employees retrieved successfully' })
   @ApiParam({ name: 'departmentId', description: 'Department ID' })
   async getEmployeesByDepartment(
-    @Res() response: Response,
     @Param('departmentId') departmentId: string
-  ): Promise<void> {
-    try {
-      const employees = await this.employeeService.getEmployeesByDepartment(departmentId);
-      
-      const apiResponse = ApiResponseBuilder.success(employees);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'EMPLOYEES_DEPARTMENT_RETRIEVAL_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
-    }
+  ) {
+    const employees = await this.employeeService.getEmployeesByDepartment(departmentId);
+    return employees;
   }
 
   @Get('position/:position')
@@ -103,23 +65,10 @@ export class PublicEmployeeController {
   @ApiResponse({ status: 200, description: 'Employees retrieved successfully' })
   @ApiParam({ name: 'position', description: 'Position name' })
   async getEmployeesByPosition(
-    @Res() response: Response,
     @Param('position') position: string
-  ): Promise<void> {
-    try {
-      const employees = await this.employeeService.getEmployeesByPosition(position);
-      
-      const apiResponse = ApiResponseBuilder.success(employees);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'EMPLOYEES_POSITION_RETRIEVAL_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
-    }
+  ) {
+    const employees = await this.employeeService.getEmployeesByPosition(position);
+    return employees;
   }
 
   @Get(':id')
@@ -128,23 +77,9 @@ export class PublicEmployeeController {
   @ApiResponse({ status: 404, description: 'Employee not found' })
   @ApiParam({ name: 'id', description: 'Employee ID' })
   async getEmployeeById(
-    @Res() response: Response,
     @Param('id') id: string
-  ): Promise<void> {
-    try {
-      const employee = await this.employeeService.getEmployeeById(id);
-      
-      const apiResponse = ApiResponseBuilder.success(employee);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'EMPLOYEE_NOT_FOUND',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  ) {
+    const employee = await this.employeeService.getEmployeeById(id);
+    return employee;
   }
 } 

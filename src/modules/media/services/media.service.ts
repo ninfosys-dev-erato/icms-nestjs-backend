@@ -138,7 +138,7 @@ export class MediaService {
       width: metadata?.width,
       height: metadata?.height,
       duration: metadata?.duration,
-      isActive: metadata?.isActive ?? true,
+      isActive: metadata?.isActive === true || String(metadata?.isActive) === 'true' || metadata?.isActive === undefined ? true : false,
     };
 
     const media = await this.mediaRepository.create(mediaData);

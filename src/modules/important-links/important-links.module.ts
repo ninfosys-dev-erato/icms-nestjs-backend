@@ -7,7 +7,10 @@ import { ImportantLinksService } from './services/important-links.service';
 
 import { ImportantLinksRepository } from './repositories/important-links.repository';
 
+import { DatabaseModule } from '../../database/database.module';
+
 @Module({
+  imports: [DatabaseModule],
   controllers: [
     ImportantLinksController,
     AdminImportantLinksController,

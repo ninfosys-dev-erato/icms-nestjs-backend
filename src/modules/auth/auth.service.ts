@@ -105,6 +105,18 @@ export class AuthService {
       throw new BadRequestException('Passwords do not match');
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      throw new BadRequestException('Invalid email format');
+    }
+
+    // Validate password strength
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(data.password)) {
+      throw new BadRequestException('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character');
+    }
+
     // Check if user already exists
     const existingUser = await this.authRepository.findByEmail(data.email);
     if (existingUser) {
@@ -339,7 +351,11 @@ export class AuthService {
 
   // Token generation
   private async generateTokens(userId: string): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
-    const payload = { sub: userId };
+    const payload = { 
+      sub: userId,
+      iat: Math.floor(Date.now() / 1000), // Add current timestamp to ensure uniqueness
+      jti: crypto.randomBytes(16).toString('hex'), // Add unique identifier
+    };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = crypto.randomBytes(64).toString('hex');
     const expiresIn = this.configService.get<number>('JWT_EXPIRES_IN', 3600);

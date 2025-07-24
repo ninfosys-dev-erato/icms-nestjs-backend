@@ -169,11 +169,13 @@ export class MediaResponseDto {
 export class MediaQueryDto {
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 
@@ -194,6 +196,7 @@ export class MediaQueryDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Type(() => Boolean)
   @IsBoolean()
   isActive?: boolean;
 

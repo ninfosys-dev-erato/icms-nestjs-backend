@@ -90,6 +90,12 @@ export class MediaAlbumRepository {
     });
   }
 
+  async findMediaById(id: string): Promise<any> {
+    return this.prisma.media.findUnique({
+      where: { id }
+    });
+  }
+
   async addMediaToAlbum(albumId: string, mediaId: string): Promise<void> {
     await this.prisma.mediaAlbumMedia.create({
       data: {

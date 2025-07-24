@@ -263,11 +263,13 @@ export class EmployeeResponseDto {
 export class DepartmentQueryDto {
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 
@@ -278,6 +280,7 @@ export class DepartmentQueryDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Type(() => Boolean)
   @IsBoolean()
   isActive?: boolean;
 
@@ -310,11 +313,13 @@ export class DepartmentQueryDto {
 export class EmployeeQueryDto {
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 
@@ -325,6 +330,7 @@ export class EmployeeQueryDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Type(() => Boolean)
   @IsBoolean()
   isActive?: boolean;
 

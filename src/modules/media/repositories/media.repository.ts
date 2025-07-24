@@ -61,7 +61,7 @@ export class MediaRepository {
     if (albumId) {
       where.albums = {
         some: {
-          albumId
+          mediaAlbumId: albumId
         }
       };
     }
@@ -255,25 +255,35 @@ export class MediaRepository {
   }
 
   async bulkCreate(data: BulkCreateMediaDto): Promise<Media[]> {
-    const media = await this.prisma.media.createMany({
-      data: data.media.map(item => ({
-        fileName: item.fileName,
-        originalName: item.originalName,
-        filePath: item.filePath,
-        fileSize: item.fileSize,
-        mimeType: item.mimeType,
-        mediaType: item.mediaType,
-        altText: item.altText as any,
-        caption: item.caption as any,
-        width: item.width,
-        height: item.height,
-        duration: item.duration,
-        isActive: item.isActive ?? true,
-      }))
-    });
+    const createdMedia = await Promise.all(
+      data.media.map(item => 
+        this.prisma.media.create({
+          data: {
+            fileName: item.fileName,
+            originalName: item.originalName,
+            filePath: item.filePath,
+            fileSize: item.fileSize,
+            mimeType: item.mimeType,
+            mediaType: item.mediaType,
+            altText: item.altText as any,
+            caption: item.caption as any,
+            width: item.width,
+            height: item.height,
+            duration: item.duration,
+            isActive: item.isActive ?? true,
+          },
+          include: {
+            albums: {
+              include: {
+                mediaAlbum: true
+              }
+            }
+          }
+        })
+      )
+    );
 
-    // Return the created media with full details
-    return this.findAll({ limit: data.media.length }).then(result => result.data);
+    return createdMedia as any;
   }
 
   async bulkUpdate(data: BulkUpdateMediaDto): Promise<Media[]> {

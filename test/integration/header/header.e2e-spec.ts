@@ -128,8 +128,8 @@ describe('Header Configuration Management (e2e)', () => {
             padding: { top: 10, right: 20, bottom: 10, left: 20 },
             margin: { top: 0, right: 0, bottom: 0, left: 0 },
           },
-          createdBy: 'test-user',
-          updatedBy: 'test-user',
+          createdById: 'test-user',
+          updatedById: 'test-user',
         },
         {
           name: {
@@ -162,8 +162,8 @@ describe('Header Configuration Management (e2e)', () => {
             padding: { top: 5, right: 15, bottom: 5, left: 15 },
             margin: { top: 0, right: 0, bottom: 0, left: 0 },
           },
-          createdBy: 'test-user',
-          updatedBy: 'test-user',
+          createdById: 'test-user',
+          updatedById: 'test-user',
         },
         {
           name: {
@@ -196,8 +196,8 @@ describe('Header Configuration Management (e2e)', () => {
             padding: { top: 15, right: 25, bottom: 15, left: 25 },
             margin: { top: 0, right: 0, bottom: 0, left: 0 },
           },
-          createdBy: 'test-user',
-          updatedBy: 'test-user',
+          createdById: 'test-user',
+          updatedById: 'test-user',
         },
       ],
     });

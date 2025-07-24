@@ -128,33 +128,6 @@ export class AdminMediaController {
     }
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get media by ID (Admin)' })
-  @ApiResponse({ status: 200, description: 'Media retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Media not found' })
-  @ApiParam({ name: 'id', description: 'Media ID' })
-  @Roles('ADMIN', 'EDITOR')
-  async getMediaById(
-    @Res() response: Response,
-    @Param('id') id: string
-  ): Promise<void> {
-    try {
-      const media = await this.mediaService.getMediaById(id);
-      
-      const apiResponse = ApiResponseBuilder.success(media);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'MEDIA_NOT_FOUND',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
-  }
-
   @Post('upload')
   @ApiOperation({ summary: 'Upload media (Admin)' })
   @ApiResponse({ status: 201, description: 'Media uploaded successfully' })
@@ -184,6 +157,107 @@ export class AdminMediaController {
       );
 
       response.status(400).json(apiResponse);
+    }
+  }
+
+  @Post('bulk-delete')
+  @ApiOperation({ summary: 'Bulk delete media (Admin)' })
+  @ApiResponse({ status: 200, description: 'Bulk deletion completed' })
+  @Roles('ADMIN')
+  async bulkDelete(
+    @Res() response: Response,
+    @Body() data: { ids: string[] }
+  ): Promise<void> {
+    try {
+      const result = await this.mediaService.bulkDelete(data.ids);
+      
+      const apiResponse = ApiResponseBuilder.success(result);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'MEDIA_BULK_DELETION_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Put('bulk-update')
+  @ApiOperation({ summary: 'Bulk update media (Admin)' })
+  @ApiResponse({ status: 200, description: 'Bulk update completed' })
+  @ApiResponse({ status: 400, description: 'Update failed' })
+  @Roles('ADMIN', 'EDITOR')
+  async bulkUpdate(
+    @Res() response: Response,
+    @Body() data: BulkUpdateMediaDto
+  ): Promise<void> {
+    try {
+      const result = await this.mediaService.bulkUpdate(data.ids, data.updates);
+      
+      const apiResponse = ApiResponseBuilder.success(result);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'MEDIA_BULK_UPDATE_ERROR',
+        error.message
+      );
+
+      response.status(400).json(apiResponse);
+    }
+  }
+
+  @Post('bulk-create')
+  @ApiOperation({ summary: 'Bulk create media (Admin)' })
+  @ApiResponse({ status: 201, description: 'Bulk creation completed' })
+  @ApiResponse({ status: 400, description: 'Creation failed' })
+  @Roles('ADMIN', 'EDITOR')
+  async bulkCreate(
+    @Res() response: Response,
+    @Body() data: BulkCreateMediaDto
+  ): Promise<void> {
+    try {
+      const media = await this.mediaService.bulkCreate(data);
+      
+      const apiResponse = ApiResponseBuilder.success(media);
+
+      response.status(201).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'MEDIA_BULK_CREATION_ERROR',
+        error.message
+      );
+
+      response.status(400).json(apiResponse);
+    }
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get media by ID (Admin)' })
+  @ApiResponse({ status: 200, description: 'Media retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Media not found' })
+  @ApiParam({ name: 'id', description: 'Media ID' })
+  @Roles('ADMIN', 'EDITOR')
+  async getMediaById(
+    @Res() response: Response,
+    @Param('id') id: string
+  ): Promise<void> {
+    try {
+      const media = await this.mediaService.getMediaById(id);
+      
+      const apiResponse = ApiResponseBuilder.success(media);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'MEDIA_NOT_FOUND',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
     }
   }
 
@@ -272,77 +346,4 @@ export class AdminMediaController {
     }
   }
 
-  @Post('bulk-delete')
-  @ApiOperation({ summary: 'Bulk delete media (Admin)' })
-  @ApiResponse({ status: 200, description: 'Bulk deletion completed' })
-  @Roles('ADMIN')
-  async bulkDelete(
-    @Res() response: Response,
-    @Body() data: { ids: string[] }
-  ): Promise<void> {
-    try {
-      const result = await this.mediaService.bulkDelete(data.ids);
-      
-      const apiResponse = ApiResponseBuilder.success(result);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'MEDIA_BULK_DELETION_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
-    }
-  }
-
-  @Put('bulk-update')
-  @ApiOperation({ summary: 'Bulk update media (Admin)' })
-  @ApiResponse({ status: 200, description: 'Bulk update completed' })
-  @ApiResponse({ status: 400, description: 'Update failed' })
-  @Roles('ADMIN', 'EDITOR')
-  async bulkUpdate(
-    @Res() response: Response,
-    @Body() data: BulkUpdateMediaDto
-  ): Promise<void> {
-    try {
-      const result = await this.mediaService.bulkUpdate(data.ids, data.updates);
-      
-      const apiResponse = ApiResponseBuilder.success(result);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'MEDIA_BULK_UPDATE_ERROR',
-        error.message
-      );
-
-      response.status(400).json(apiResponse);
-    }
-  }
-
-  @Post('bulk-create')
-  @ApiOperation({ summary: 'Bulk create media (Admin)' })
-  @ApiResponse({ status: 201, description: 'Bulk creation completed' })
-  @ApiResponse({ status: 400, description: 'Creation failed' })
-  @Roles('ADMIN', 'EDITOR')
-  async bulkCreate(
-    @Res() response: Response,
-    @Body() data: BulkCreateMediaDto
-  ): Promise<void> {
-    try {
-      const media = await this.mediaService.bulkCreate(data);
-      
-      const apiResponse = ApiResponseBuilder.success(media);
-
-      response.status(201).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'MEDIA_BULK_CREATION_ERROR',
-        error.message
-      );
-
-      response.status(400).json(apiResponse);
-    }
-  }
 } 

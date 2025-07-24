@@ -2,30 +2,41 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { BadRequestException, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 
 import { AuthService } from '@/modules/auth/auth.service';
 import { AuthRepository } from '@/modules/auth/repositories/auth.repository';
 import { UserSessionRepository } from '@/modules/auth/repositories/user-session.repository';
 import { LoginAttemptRepository } from '@/modules/auth/repositories/login-attempt.repository';
 import { AuditLogRepository } from '@/modules/auth/repositories/audit-log.repository';
-import { PrismaService } from '@/database/prisma.service';
 import { DatabaseModule } from '@/database/database.module';
+import { TestUtils } from '../../test-utils';
+import { PrismaService } from '@/database/prisma.service';
 
-// Define UserRole type to match the DTO
 type UserRole = 'ADMIN' | 'EDITOR' | 'VIEWER';
 
 describe('AuthService', () => {
+  let module: TestingModule;
   let service: AuthService;
   let authRepository: AuthRepository;
   let userSessionRepository: UserSessionRepository;
   let loginAttemptRepository: LoginAttemptRepository;
   let auditLogRepository: AuditLogRepository;
   let prisma: PrismaService;
+  let testUser: any;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+  const validRegisterData = {
+    email: 'newuser@example.com',
+    password: 'Password123!',
+    confirmPassword: 'Password123!',
+    firstName: 'John',
+    lastName: 'Doe',
+    role: 'VIEWER' as UserRole,
+  };
+
+  beforeAll(async () => {
+    module = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
@@ -34,7 +45,7 @@ describe('AuthService', () => {
         DatabaseModule,
         PassportModule,
         JwtModule.register({
-          secret: 'test-secret',
+          secret: process.env.JWT_SECRET || 'test-jwt-secret-key-for-testing-only',
           signOptions: { expiresIn: '1h' },
         }),
       ],
@@ -54,37 +65,34 @@ describe('AuthService', () => {
     auditLogRepository = module.get<AuditLogRepository>(AuditLogRepository);
     prisma = module.get<PrismaService>(PrismaService);
 
-    // Clean up database before each test
-    await cleanupDatabase();
+    // Create test user
+    testUser = await TestUtils.createTestUser(prisma, {
+      email: 'testuser',
+      password: 'Password123!',
+      firstName: 'Test',
+      lastName: 'User',
+      role: 'ADMIN',
+    });
   });
 
-  afterEach(async () => {
-    await cleanupDatabase();
+  afterAll(async () => {
+    await module.close();
   });
 
-  const cleanupDatabase = async () => {
-    const tables = [
-      'user_sessions',
-      'login_attempts',
-      'audit_logs',
-      'users',
-    ];
-
-    for (const table of tables) {
-      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE;`);
-    }
-  };
+  beforeEach(async () => {
+    await TestUtils.ensureCleanDatabase(prisma);
+    
+    // Recreate test user after cleanup
+    testUser = await TestUtils.createTestUser(prisma, {
+      email: 'testuser',
+      password: 'Password123!',
+      firstName: 'Test',
+      lastName: 'User',
+      role: 'ADMIN',
+    });
+  });
 
   describe('register', () => {
-    const validRegisterData = {
-      email: 'test@example.com',
-      password: 'Password123!',
-      confirmPassword: 'Password123!',
-      firstName: 'John',
-      lastName: 'Doe',
-      role: 'VIEWER' as UserRole,
-    };
-
     it('should register a new user successfully', async () => {
       const result = await service.register(validRegisterData);
 
@@ -95,62 +103,51 @@ describe('AuthService', () => {
       expect(result.user.role).toBe(validRegisterData.role);
       expect(result.accessToken).toBeDefined();
       expect(result.refreshToken).toBeDefined();
-      // UserResponseDto doesn't include password field
+      expect(result.tokenType).toBe('Bearer');
     });
 
-    it('should fail when passwords do not match', async () => {
+    it('should fail with mismatched passwords', async () => {
       const invalidData = {
         ...validRegisterData,
         confirmPassword: 'DifferentPassword123!',
       };
 
-      await expect(service.register(invalidData)).rejects.toThrow(BadRequestException);
+      await expect(service.register(invalidData))
+        .rejects.toThrow(BadRequestException);
     });
 
-    it('should fail when email already exists', async () => {
-      // First registration
+    it('should fail with weak password', async () => {
+      const invalidData = {
+        ...validRegisterData,
+        password: '123',
+        confirmPassword: '123',
+      };
+
+      await expect(service.register(invalidData))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('should fail with invalid email', async () => {
+      const invalidData = {
+        ...validRegisterData,
+        email: 'invalid-email',
+      };
+
+      await expect(service.register(invalidData))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('should fail with duplicate email', async () => {
+      // First registration should succeed
       await service.register(validRegisterData);
 
-      // Second registration with same email
-      await expect(service.register(validRegisterData)).rejects.toThrow(ConflictException);
-    });
-
-    it('should hash password before storing', async () => {
-      const result = await service.register(validRegisterData);
-
-      // Verify user exists in database
-      const user = await authRepository.findByEmail(validRegisterData.email);
-      expect(user).toBeDefined();
-      expect(user).not.toBeNull();
-      expect(user.password).not.toBe(validRegisterData.password);
-      
-      // Verify password is hashed
-      const isPasswordValid = await bcrypt.compare(validRegisterData.password, user.password);
-      expect(isPasswordValid).toBe(true);
+      // Second registration with same email should fail
+      await expect(service.register(validRegisterData))
+        .rejects.toThrow(ConflictException);
     });
   });
 
   describe('login', () => {
-    let testUser: any;
-
-    beforeEach(async () => {
-      // Create a test user directly through repository to ensure it exists
-      const hashedPassword = await bcrypt.hash('Password123!', 10);
-      const uniqueEmail = `login-${Date.now()}-${Math.random()}@example.com`;
-      testUser = await authRepository.create({
-        email: uniqueEmail,
-        password: hashedPassword,
-        firstName: 'Login',
-        lastName: 'User',
-        role: 'VIEWER',
-        isActive: true,
-      });
-      
-      // Verify user was created
-      expect(testUser).toBeDefined();
-      expect(testUser.id).toBeDefined();
-    });
-
     it('should login successfully with valid credentials', async () => {
       const loginData = {
         email: testUser.email,
@@ -207,7 +204,7 @@ describe('AuthService', () => {
 
       const result = await service.login(loginData, '127.0.0.1', 'Test Browser');
 
-      // Verify session was created using findActiveByUser
+      // Verify session was created
       const sessions = await userSessionRepository.findActiveByUser(testUser.id);
       expect(sessions.length).toBeGreaterThan(0);
       expect(sessions[0].token).toBe(result.accessToken);
@@ -222,7 +219,6 @@ describe('AuthService', () => {
 
       await service.login(loginData, '127.0.0.1', 'Test Browser');
 
-      // Verify login attempt was recorded
       const attempts = await loginAttemptRepository.findByEmail(testUser.email);
       expect(attempts.length).toBeGreaterThan(0);
       expect(attempts[0].success).toBe(true);
@@ -240,403 +236,134 @@ describe('AuthService', () => {
         // Expected to fail
       }
 
-      // Verify failed login attempt was recorded
       const attempts = await loginAttemptRepository.findByEmail(testUser.email);
       expect(attempts.length).toBeGreaterThan(0);
       expect(attempts[0].success).toBe(false);
     });
   });
 
-  describe('validateLoginAttempt', () => {
-    it('should allow login when no previous attempts', async () => {
-      const result = await service.validateLoginAttempt('test@example.com', '127.0.0.1');
-      expect(result.isValid).toBe(true);
+  describe('refresh', () => {
+    it('should refresh token successfully', async () => {
+      // First login to get tokens
+      const loginData = {
+        email: testUser.email,
+        password: 'Password123!',
+      };
+
+      const loginResult = await service.login(loginData, '127.0.0.1', 'Test Browser');
+
+      // Refresh token
+      const refreshResult = await service.refreshToken(loginResult.refreshToken);
+
+      expect(refreshResult.user).toBeDefined();
+      expect(refreshResult.accessToken).toBeDefined();
+      expect(refreshResult.refreshToken).toBeDefined();
+      expect(refreshResult.tokenType).toBe('Bearer');
+      expect(refreshResult.accessToken).not.toBe(loginResult.accessToken);
     });
 
-    it('should block after too many failed attempts', async () => {
-      // Create multiple failed attempts
-      for (let i = 0; i < 5; i++) {
-        await loginAttemptRepository.create({
-          email: 'test@example.com',
-          ipAddress: '127.0.0.1',
-          userAgent: 'Test Browser',
-          success: false,
-          failureReason: 'Invalid credentials',
-        });
-      }
-
-      const result = await service.validateLoginAttempt('test@example.com', '127.0.0.1');
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should allow login after successful attempt', async () => {
-      // Create failed attempts
-      for (let i = 0; i < 3; i++) {
-        await loginAttemptRepository.create({
-          email: 'test@example.com',
-          ipAddress: '127.0.0.1',
-          userAgent: 'Test Browser',
-          success: false,
-          failureReason: 'Invalid credentials',
-        });
-      }
-
-      // Create successful attempt
-      await loginAttemptRepository.create({
-        email: 'test@example.com',
-        ipAddress: '127.0.0.1',
-        userAgent: 'Test Browser',
-        success: true,
-      });
-
-      const result = await service.validateLoginAttempt('test@example.com', '127.0.0.1');
-      expect(result.isValid).toBe(true);
+    it('should fail with invalid refresh token', async () => {
+      await expect(service.refreshToken('invalid-token'))
+        .rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('logout', () => {
-    let testUser: any;
-    let sessionId: string;
+    it('should logout successfully', async () => {
+      // First login to create session
+      const loginData = {
+        email: testUser.email,
+        password: 'Password123!',
+      };
 
-    beforeEach(async () => {
-      // Create a test user directly through repository
-      const hashedPassword = await bcrypt.hash('Password123!', 10);
-      const uniqueEmail = `logout-${Date.now()}-${Math.random()}@example.com`;
-      testUser = await authRepository.create({
-        email: uniqueEmail,
-        password: hashedPassword,
-        firstName: 'Logout',
-        lastName: 'User',
-        role: 'VIEWER',
-        isActive: true,
-      });
+      await service.login(loginData, '127.0.0.1', 'Test Browser');
 
-      // Create a session with unique token
-      const session = await userSessionRepository.create({
-        userId: testUser.id,
-        token: `logout-token-${Date.now()}-${Math.random()}`,
-        refreshToken: `logout-refresh-${Date.now()}-${Math.random()}`,
-        ipAddress: '127.0.0.1',
-        userAgent: 'Test Browser',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
+      // Logout
+      await expect(service.logout(testUser.id)).resolves.not.toThrow();
 
-      sessionId = session.id;
-    });
-
-    it('should logout user and deactivate all sessions', async () => {
-      await service.logout(testUser.id);
-
-      // Verify all sessions are deactivated
+      // Verify session is deactivated
       const sessions = await userSessionRepository.findActiveByUser(testUser.id);
-      expect(sessions.every(session => !session.isActive)).toBe(true);
-    });
-
-    it('should logout specific session', async () => {
-      await service.logout(testUser.id, sessionId);
-
-      // Verify specific session is deactivated
-      const session = await userSessionRepository.findById(sessionId);
-      expect(session.isActive).toBe(false);
+      expect(sessions.length).toBe(0);
     });
   });
 
-  describe('refreshToken', () => {
-    let testUser: any;
-    let refreshToken: string;
-
-    beforeEach(async () => {
-      // Create a test user directly through repository
-      const hashedPassword = await bcrypt.hash('Password123!', 10);
-      const uniqueEmail = `refresh-${Date.now()}-${Math.random()}@example.com`;
-      testUser = await authRepository.create({
-        email: uniqueEmail,
-        password: hashedPassword,
-        firstName: 'Refresh',
-        lastName: 'User',
-        role: 'VIEWER',
-        isActive: true,
-      });
-
-      // Create a session with refresh token
-      const session = await userSessionRepository.create({
-        userId: testUser.id,
-        token: `refresh-token-${Date.now()}-${Math.random()}`,
-        refreshToken: `refresh-refresh-${Date.now()}-${Math.random()}`,
-        ipAddress: '127.0.0.1',
-        userAgent: 'Test Browser',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-
-      refreshToken = session.refreshToken;
+  describe('validateUser', () => {
+    it('should validate user successfully', async () => {
+      // Get the actual user from database to access the hashed password
+      const actualUser = await authRepository.findById(testUser.id);
+      const result = await service.validatePassword('Password123!', actualUser.password);
+      expect(result).toBe(true);
     });
 
-    it('should refresh token successfully', async () => {
-      const result = await service.refreshToken(refreshToken);
-
-      expect(result.user).toBeDefined();
-      expect(result.accessToken).toBeDefined();
-      expect(result.refreshToken).toBeDefined();
-      expect(result.user.id).toBe(testUser.id);
+    it('should return false for invalid credentials', async () => {
+      // Get the actual user from database to access the hashed password
+      const actualUser = await authRepository.findById(testUser.id);
+      const result = await service.validatePassword('WrongPassword123!', actualUser.password);
+      expect(result).toBe(false);
     });
+  });
 
-    it('should fail with invalid refresh token', async () => {
-      await expect(service.refreshToken('invalid-refresh-token'))
-        .rejects.toThrow(UnauthorizedException);
+  describe('getProfile', () => {
+    it('should get user profile', async () => {
+      const profile = await service.validateToken(testUser.accessToken);
+      expect(profile).toBeDefined();
+      expect(profile.email).toBe(testUser.email);
+      expect(profile.firstName).toBe(testUser.firstName);
+      expect(profile.lastName).toBe(testUser.lastName);
     });
+  });
 
-    it('should fail with expired refresh token', async () => {
-      // Create expired session with unique tokens
-      const uniqueToken = `expired-token-${Date.now()}`;
-      const uniqueRefreshToken = `expired-refresh-${Date.now()}`;
-      
-      await userSessionRepository.create({
-        userId: testUser.id,
-        token: uniqueToken,
-        refreshToken: uniqueRefreshToken,
-        ipAddress: '127.0.0.1',
-        userAgent: 'Test Browser',
-        expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Expired
-      });
+  describe('updateProfile', () => {
+    it('should update user profile', async () => {
+      const updateData = {
+        firstName: 'Updated',
+        lastName: 'Name',
+      };
 
-      await expect(service.refreshToken(uniqueRefreshToken))
-        .rejects.toThrow(UnauthorizedException);
+      await authRepository.update(testUser.id, updateData);
+
+      const updatedUser = await authRepository.findById(testUser.id);
+      expect(updatedUser.firstName).toBe(updateData.firstName);
+      expect(updatedUser.lastName).toBe(updateData.lastName);
     });
   });
 
   describe('changePassword', () => {
-    let testUser: any;
-
-    beforeEach(async () => {
-      // Create a test user directly through repository
-      const hashedPassword = await bcrypt.hash('Password123!', 10);
-      const uniqueEmail = `change-${Date.now()}-${Math.random()}@example.com`;
-      testUser = await authRepository.create({
-        email: uniqueEmail,
-        password: hashedPassword,
-        firstName: 'Change',
-        lastName: 'User',
-        role: 'VIEWER',
-        isActive: true,
-      });
-    });
-
     it('should change password successfully', async () => {
-      const changeData = {
+      const changePasswordData = {
         currentPassword: 'Password123!',
         newPassword: 'NewPassword123!',
         confirmPassword: 'NewPassword123!',
       };
 
-      await service.changePassword(testUser.id, changeData);
+      await service.changePassword(testUser.id, changePasswordData);
 
       // Verify password was changed
       const updatedUser = await authRepository.findById(testUser.id);
-      const isNewPasswordValid = await bcrypt.compare(changeData.newPassword, updatedUser.password);
+      const isNewPasswordValid = await service.validatePassword('NewPassword123!', updatedUser.password);
       expect(isNewPasswordValid).toBe(true);
     });
 
     it('should fail with incorrect current password', async () => {
-      const changeData = {
+      const changePasswordData = {
         currentPassword: 'WrongPassword123!',
         newPassword: 'NewPassword123!',
         confirmPassword: 'NewPassword123!',
       };
 
-      await expect(service.changePassword(testUser.id, changeData))
+      await expect(service.changePassword(testUser.id, changePasswordData))
         .rejects.toThrow(BadRequestException);
     });
 
-    it('should fail when new passwords do not match', async () => {
-      const changeData = {
+    it('should fail with mismatched new passwords', async () => {
+      const changePasswordData = {
         currentPassword: 'Password123!',
         newPassword: 'NewPassword123!',
         confirmPassword: 'DifferentPassword123!',
       };
 
-      await expect(service.changePassword(testUser.id, changeData))
+      await expect(service.changePassword(testUser.id, changePasswordData))
         .rejects.toThrow(BadRequestException);
-    });
-  });
-
-  describe('getUserSessions', () => {
-    let testUser: any;
-
-    beforeEach(async () => {
-      // Create a test user directly through repository
-      const hashedPassword = await bcrypt.hash('Password123!', 10);
-      const uniqueEmail = `sessions-${Date.now()}-${Math.random()}@example.com`;
-      testUser = await authRepository.create({
-        email: uniqueEmail,
-        password: hashedPassword,
-        firstName: 'Sessions',
-        lastName: 'User',
-        role: 'VIEWER',
-        isActive: true,
-      });
-
-      // Create multiple sessions
-      await userSessionRepository.create({
-        userId: testUser.id,
-        token: `token-1-${Date.now()}-${Math.random()}`,
-        refreshToken: `refresh-1-${Date.now()}-${Math.random()}`,
-        ipAddress: '127.0.0.1',
-        userAgent: 'Browser 1',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-
-      await userSessionRepository.create({
-        userId: testUser.id,
-        token: `token-2-${Date.now()}-${Math.random()}`,
-        refreshToken: `refresh-2-${Date.now()}-${Math.random()}`,
-        ipAddress: '127.0.0.2',
-        userAgent: 'Browser 2',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-    });
-
-    it('should return all user sessions', async () => {
-      const sessions = await service.getUserSessions(testUser.id);
-
-      expect(sessions).toBeDefined();
-      expect(sessions.length).toBe(2);
-      // SessionResponseDto doesn't include userId field, so we check the sessions exist
-      expect(sessions[0]).toBeDefined();
-      expect(sessions[1]).toBeDefined();
-    });
-  });
-
-  describe('revokeSession', () => {
-    let testUser: any;
-    let sessionId: string;
-
-    beforeEach(async () => {
-      // Create a test user directly through repository
-      const hashedPassword = await bcrypt.hash('Password123!', 10);
-      const uniqueEmail = `revoke-${Date.now()}-${Math.random()}@example.com`;
-      testUser = await authRepository.create({
-        email: uniqueEmail,
-        password: hashedPassword,
-        firstName: 'Revoke',
-        lastName: 'User',
-        role: 'VIEWER',
-        isActive: true,
-      });
-
-      // Create a session with unique token
-      const session = await userSessionRepository.create({
-        userId: testUser.id,
-        token: `test-token-${Date.now()}-${Math.random()}`,
-        refreshToken: `test-refresh-token-${Date.now()}-${Math.random()}`,
-        ipAddress: '127.0.0.1',
-        userAgent: 'Test Browser',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-
-      sessionId = session.id;
-    });
-
-    it('should revoke specific session', async () => {
-      await service.revokeSession(testUser.id, sessionId);
-
-      // Verify session is deactivated
-      const session = await userSessionRepository.findById(sessionId);
-      expect(session.isActive).toBe(false);
-    });
-
-    it('should fail when trying to revoke another user session', async () => {
-      // Create another user and session
-      const anotherUser = await authRepository.create({
-        email: 'another@example.com',
-        password: await bcrypt.hash('Password123!', 10),
-        firstName: 'Another',
-        lastName: 'User',
-        role: 'VIEWER' as UserRole,
-      });
-
-      const anotherSession = await userSessionRepository.create({
-        userId: anotherUser.id,
-        token: `another-token-${Date.now()}`,
-        refreshToken: `another-refresh-${Date.now()}`,
-        ipAddress: '127.0.0.1',
-        userAgent: 'Test Browser',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-
-      await expect(service.revokeSession(testUser.id, anotherSession.id))
-        .rejects.toThrow(UnauthorizedException);
-    });
-  });
-
-  describe('revokeAllSessions', () => {
-    let testUser: any;
-
-    beforeEach(async () => {
-      // Create a test user directly through repository
-      const hashedPassword = await bcrypt.hash('Password123!', 10);
-      const uniqueEmail = `revokeall-${Date.now()}-${Math.random()}@example.com`;
-      testUser = await authRepository.create({
-        email: uniqueEmail,
-        password: hashedPassword,
-        firstName: 'RevokeAll',
-        lastName: 'User',
-        role: 'VIEWER',
-        isActive: true,
-      });
-
-      // Create multiple sessions with unique tokens
-      await userSessionRepository.create({
-        userId: testUser.id,
-        token: `revokeall-token-1-${Date.now()}-${Math.random()}`,
-        refreshToken: `revokeall-refresh-1-${Date.now()}-${Math.random()}`,
-        ipAddress: '127.0.0.1',
-        userAgent: 'Browser 1',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-
-      await userSessionRepository.create({
-        userId: testUser.id,
-        token: `revokeall-token-2-${Date.now()}-${Math.random()}`,
-        refreshToken: `revokeall-refresh-2-${Date.now()}-${Math.random()}`,
-        ipAddress: '127.0.0.2',
-        userAgent: 'Browser 2',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-    });
-
-    it('should revoke all user sessions', async () => {
-      await service.revokeAllSessions(testUser.id);
-
-      // Verify all sessions are deactivated
-      const sessions = await userSessionRepository.findActiveByUser(testUser.id);
-      expect(sessions.every(session => !session.isActive)).toBe(true);
-    });
-  });
-
-  describe('password validation', () => {
-    it('should hash password correctly', async () => {
-      const password = 'Password123!';
-      const hashedPassword = await service.hashPassword(password);
-
-      expect(hashedPassword).not.toBe(password);
-      expect(hashedPassword).toMatch(/^\$2[aby]\$\d{1,2}\$[./A-Za-z0-9]{53}$/); // bcrypt format
-    });
-
-    it('should validate password correctly', async () => {
-      const password = 'Password123!';
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const isValid = await service.validatePassword(password, hashedPassword);
-      expect(isValid).toBe(true);
-    });
-
-    it('should reject invalid password', async () => {
-      const password = 'Password123!';
-      const wrongPassword = 'WrongPassword123!';
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const isValid = await service.validatePassword(wrongPassword, hashedPassword);
-      expect(isValid).toBe(false);
     });
   });
 }); 

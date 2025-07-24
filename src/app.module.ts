@@ -11,7 +11,7 @@ import { OfficeSettingsModule } from '@/modules/office-settings/office-settings.
 import { OfficeDescriptionModule } from '@/modules/office-description/office-description.module';
 import { ImportantLinksModule } from '@/modules/important-links/important-links.module';
 import { FAQModule } from '@/modules/faq/faq.module';
-// import { MediaModule } from '@/modules/media/media.module';
+import { MediaModule } from '@/modules/media/media.module';
 import { TranslationModule } from '@/modules/translation';
 import { SearchModule } from '@/modules/search';
 import { DocumentsModule } from '@/modules/documents';
@@ -66,7 +66,7 @@ import configuration from '@/config/configuration';
     FAQModule,
     
     // Media Module
-    // MediaModule,
+    MediaModule,
     
     // Translation Module
     TranslationModule,

@@ -123,18 +123,26 @@ export class AdminDepartmentController {
   @Get('search')
   @ApiOperation({ summary: 'Search departments (Admin)' })
   @ApiResponse({ status: 200, description: 'Search completed successfully' })
-  @ApiQuery({ name: 'q', required: true, type: String })
+  @ApiQuery({ name: 'search', required: true, type: String })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @Roles('ADMIN', 'EDITOR')
   async searchDepartments(
     @Res() response: Response,
-    @Query('q') searchTerm: string,
-    @Query() query?: DepartmentQueryDto
+    @Query() query: DepartmentQueryDto
   ): Promise<void> {
     try {
-      const result = await this.departmentService.searchDepartments(searchTerm, query);
+      if (!query.search) {
+        const apiResponse = ApiResponseBuilder.error(
+          'DEPARTMENT_SEARCH_ERROR',
+          'Search term is required'
+        );
+        response.status(400).json(apiResponse);
+        return;
+      }
+
+      const result = await this.departmentService.searchDepartments(query.search, query);
       
       const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
 

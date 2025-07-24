@@ -39,9 +39,25 @@ beforeAll(async () => {
   // Rate limiting
   process.env.THROTTLE_TTL = '60000';
   process.env.THROTTLE_LIMIT = '10';
+  
+  // Disable logging during tests
+  process.env.LOG_LEVEL = 'error';
 });
 
 // Global test teardown
 afterAll(async () => {
-  // Cleanup
+  // Cleanup any remaining connections
+  await new Promise(resolve => setTimeout(resolve, 1000));
+});
+
+// Global beforeEach to ensure clean state
+beforeEach(async () => {
+  // Add small delay to prevent race conditions
+  await new Promise(resolve => setTimeout(resolve, 100));
+});
+
+// Global afterEach to ensure cleanup
+afterEach(async () => {
+  // Add small delay to ensure proper cleanup
+  await new Promise(resolve => setTimeout(resolve, 100));
 }); 
