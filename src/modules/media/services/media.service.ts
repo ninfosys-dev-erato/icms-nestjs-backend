@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { MediaRepository } from '../repositories/media.repository';
-import { S3Service } from './s3.service';
+import { FileStorageService } from '../../../common/services/file-storage/interfaces/file-storage.interface';
 import { 
   CreateMediaDto, 
   UpdateMediaDto, 
@@ -21,7 +21,7 @@ import { TranslatableEntityHelper } from '../../../common/types/translatable.ent
 export class MediaService {
   constructor(
     private readonly mediaRepository: MediaRepository,
-    private readonly s3Service: S3Service,
+    private readonly fileStorageService: FileStorageService,
   ) {}
 
   async getMediaById(id: string): Promise<MediaResponseDto> {
@@ -119,11 +119,20 @@ export class MediaService {
       });
     }
 
-    // Upload to S3
-    const uploadResult = await this.s3Service.uploadFile(file, 'uploads');
-    
     // Determine media type
     const mediaType = this.determineMediaType(file.mimetype);
+    
+    // Generate storage key and upload
+    const storageKey = this.fileStorageService.generateKey('media', file.originalname);
+    const uploadResult = await this.fileStorageService.upload(
+      storageKey,
+      file.buffer,
+      file.mimetype,
+      {
+        originalName: file.originalname,
+        mediaType: mediaType.toString(),
+      }
+    );
     
     // Create media record
     const mediaData: CreateMediaDto = {
@@ -164,8 +173,8 @@ export class MediaService {
       throw new NotFoundException('Media not found');
     }
 
-    // Delete from S3
-    await this.s3Service.deleteFile(media.filePath);
+    // Delete from storage
+    await this.fileStorageService.delete(media.filePath);
     
     // Delete from database
     await this.mediaRepository.delete(id);
@@ -286,7 +295,7 @@ export class MediaService {
       return this.generateThumbnail(id, 300, 300);
     }
 
-    return this.s3Service.getFileUrl(media.filePath);
+    return this.fileStorageService.getUrl(media.filePath);
   }
 
   async bulkDelete(ids: string[]): Promise<BulkOperationResult> {

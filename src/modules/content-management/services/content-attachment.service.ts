@@ -1,9 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
 
 import { ContentAttachmentRepository } from '../repositories/content-attachment.repository';
 import { ContentRepository } from '../repositories/content.repository';
+import { FileStorageService } from '../../../common/services/file-storage/interfaces/file-storage.interface';
 import {
   CreateAttachmentDto,
   UpdateAttachmentDto,
@@ -19,6 +18,7 @@ export class ContentAttachmentService {
   constructor(
     private readonly attachmentRepository: ContentAttachmentRepository,
     private readonly contentRepository: ContentRepository,
+    private readonly fileStorageService: FileStorageService,
   ) {}
 
   async getAttachmentById(id: string): Promise<ContentAttachmentResponseDto> {
@@ -53,18 +53,29 @@ export class ContentAttachmentService {
       throw new NotFoundException('Content not found');
     }
 
-    // Generate file path
-    const fileName = this.generateFileName(file.originalname);
-    const filePath = this.generateFilePath(contentId, fileName);
+    // Generate storage key
+    const storageKey = this.fileStorageService.generateKey(
+      'content-attachments',
+      file.originalname,
+      contentId
+    );
 
-    // Save file to disk (in production, this would be S3 or similar)
-    await this.saveFile(file.buffer, filePath);
+    // Upload file using storage service
+    const uploadResult = await this.fileStorageService.upload(
+      storageKey,
+      file.buffer,
+      file.mimetype,
+      {
+        contentId,
+        originalName: file.originalname,
+      }
+    );
 
     const attachment = await this.attachmentRepository.create({
       contentId,
       fileName: file.originalname,
-      filePath,
-      fileSize: file.size,
+      filePath: uploadResult.key,
+      fileSize: uploadResult.size,
       mimeType: file.mimetype,
     });
 
@@ -87,8 +98,8 @@ export class ContentAttachmentService {
       throw new NotFoundException('Attachment not found');
     }
 
-    // Delete file from disk
-    await this.deleteFile(attachment.filePath);
+    // Delete file from storage
+    await this.fileStorageService.delete(attachment.filePath);
 
     await this.attachmentRepository.delete(id);
   }
@@ -170,72 +181,16 @@ export class ContentAttachmentService {
     }
 
     try {
-      const buffer = await this.readFile(attachment.filePath);
+      const downloadResult = await this.fileStorageService.download(attachment.filePath);
       return {
-        buffer,
+        buffer: downloadResult.buffer,
         fileName: attachment.fileName,
         mimeType: attachment.mimeType,
       };
     } catch (error) {
-      throw new NotFoundException('File not found on disk');
+      throw new NotFoundException('File not found in storage');
     }
   }
 
-  // Utility methods
-  private generateFileName(originalName: string): string {
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
-    const extension = path.extname(originalName);
-    const baseName = path.basename(originalName, extension);
-    
-    return `${baseName}-${timestamp}-${randomString}${extension}`;
-  }
 
-  private generateFilePath(contentId: string, fileName: string): string {
-    const uploadDir = 'uploads/content';
-    const contentDir = path.join(uploadDir, contentId);
-    
-    // Ensure directory exists
-    if (!fs.existsSync(contentDir)) {
-      fs.mkdirSync(contentDir, { recursive: true });
-    }
-    
-    return path.join(contentDir, fileName);
-  }
-
-  private async saveFile(buffer: Buffer, filePath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      fs.writeFile(filePath, buffer, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
-
-  private async readFile(filePath: string): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      fs.readFile(filePath, (err, data) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(data);
-        }
-      });
-    });
-  }
-
-  private async deleteFile(filePath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      fs.unlink(filePath, (err) => {
-        if (err && err.code !== 'ENOENT') {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
 } 

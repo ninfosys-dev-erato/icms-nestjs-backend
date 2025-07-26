@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { TerminusModule } from '@nestjs/terminus';
 
 import { DatabaseModule } from '@/database/database.module';
+import { FileStorageModule } from '@/common/services/file-storage/file-storage.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { UsersModule } from '@/modules/users/users.module';
 import { ContentManagementModule } from '@/modules/content-management/content-management.module';
@@ -44,6 +45,9 @@ import configuration from '@/config/configuration';
 
     // Database
     DatabaseModule,
+
+    // File Storage
+    FileStorageModule,
 
     // Auth Module
     AuthModule,

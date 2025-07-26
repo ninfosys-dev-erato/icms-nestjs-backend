@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MediaService } from '../../../src/modules/media/services/media.service';
 import { MediaRepository } from '../../../src/modules/media/repositories/media.repository';
-import { S3Service } from '../../../src/modules/media/services/s3.service';
+import { FileStorageService } from '../../../src/common/services/file-storage/interfaces/file-storage.interface';
 import { Media, MediaType } from '../../../src/modules/media/entities/media.entity';
 import { 
   CreateMediaDto, 
@@ -18,7 +18,7 @@ import {
 describe('MediaService', () => {
   let service: MediaService;
   let mediaRepository: MediaRepository;
-  let s3Service: S3Service;
+  let fileStorageService: FileStorageService;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -44,11 +44,20 @@ describe('MediaService', () => {
           },
         },
         {
-          provide: S3Service,
+          provide: FileStorageService,
           useValue: {
-            uploadFile: jest.fn(),
-            deleteFile: jest.fn(),
-            getFileUrl: jest.fn(),
+            upload: jest.fn(),
+            download: jest.fn(),
+            delete: jest.fn(),
+            exists: jest.fn(),
+            getUrl: jest.fn(),
+            getMetadata: jest.fn(),
+            copy: jest.fn(),
+            generatePresignedUrl: jest.fn(),
+            generateKey: jest.fn(),
+            getFileExtension: jest.fn(),
+            validateFileType: jest.fn(),
+            validateFileSize: jest.fn(),
           },
         },
       ],
@@ -56,7 +65,7 @@ describe('MediaService', () => {
 
     service = module.get<MediaService>(MediaService);
     mediaRepository = module.get<MediaRepository>(MediaRepository);
-    s3Service = module.get<S3Service>(S3Service);
+    fileStorageService = module.get<FileStorageService>(FileStorageService);
   });
 
   beforeEach(() => {
@@ -333,8 +342,8 @@ describe('MediaService', () => {
       };
 
       const mockUploadResult = {
-        key: 'uploads/test.jpg',
-        url: 'https://s3.example.com/uploads/test.jpg',
+        key: 'media/test.jpg',
+        url: 'https://storage.example.com/media/test.jpg',
         size: 1024,
         mimeType: 'image/jpeg',
         etag: 'placeholder-etag',
@@ -344,7 +353,7 @@ describe('MediaService', () => {
         id: 'test-id',
         fileName: 'test.jpg',
         originalName: 'test.jpg',
-        filePath: 'uploads/test.jpg',
+        filePath: 'media/test.jpg',
         fileSize: 1024,
         mimeType: 'image/jpeg',
         mediaType: MediaType.IMAGE,
@@ -361,21 +370,31 @@ describe('MediaService', () => {
 
       const expectedResult = {
         ...mockCreatedMedia,
-        url: 'https://cdn.example.com/uploads/test.jpg',
+        url: 'https://cdn.example.com/media/test.jpg',
         thumbnailUrl: 'https://cdn.example.com/thumbnails/test.jpg'
       };
 
-      (s3Service.uploadFile as jest.Mock).mockResolvedValue(mockUploadResult);
+      (fileStorageService.generateKey as jest.Mock).mockReturnValue('media/test.jpg');
+      (fileStorageService.upload as jest.Mock).mockResolvedValue(mockUploadResult);
       (mediaRepository.create as jest.Mock).mockResolvedValue(mockCreatedMedia);
 
       const result = await service.uploadMedia(mockFile, metadata);
 
       expect(result).toEqual(expectedResult);
-      expect(s3Service.uploadFile).toHaveBeenCalledWith(mockFile, 'uploads');
+      expect(fileStorageService.generateKey).toHaveBeenCalledWith('media', 'test.jpg');
+      expect(fileStorageService.upload).toHaveBeenCalledWith(
+        'media/test.jpg',
+        mockFile.buffer,
+        'image/jpeg',
+        {
+          originalName: 'test.jpg',
+          mediaType: 'IMAGE',
+        }
+      );
       expect(mediaRepository.create).toHaveBeenCalledWith({
-        fileName: 'uploads/test.jpg',
+        fileName: 'media/test.jpg',
         originalName: 'test.jpg',
-        filePath: 'uploads/test.jpg',
+        filePath: 'media/test.jpg',
         fileSize: 1024,
         mimeType: 'image/jpeg',
         mediaType: MediaType.IMAGE,
@@ -529,15 +548,15 @@ describe('MediaService', () => {
         albums: []
       };
 
-      const mockUrl = 'https://s3.example.com/uploads/test.jpg';
+      const mockUrl = 'https://storage.example.com/media/test.jpg';
       (mediaRepository.findById as jest.Mock).mockResolvedValue(mockMedia);
-      (s3Service.getFileUrl as jest.Mock).mockResolvedValue(mockUrl);
+      (fileStorageService.getUrl as jest.Mock).mockResolvedValue(mockUrl);
 
       const result = await service.getMediaUrl('test-id');
 
       expect(result).toBe(mockUrl);
       expect(mediaRepository.findById).toHaveBeenCalledWith('test-id');
-      expect(s3Service.getFileUrl).toHaveBeenCalledWith('uploads/test.jpg');
+      expect(fileStorageService.getUrl).toHaveBeenCalledWith('uploads/test.jpg');
     });
   });
 
@@ -565,7 +584,7 @@ describe('MediaService', () => {
         .mockResolvedValueOnce(mockMedia1)
         .mockResolvedValueOnce(mockMedia2);
       (mediaRepository.delete as jest.Mock).mockResolvedValue(undefined);
-      (s3Service.deleteFile as jest.Mock).mockResolvedValue(undefined);
+      (fileStorageService.delete as jest.Mock).mockResolvedValue(undefined);
 
       const result = await service.bulkDelete(ids);
 

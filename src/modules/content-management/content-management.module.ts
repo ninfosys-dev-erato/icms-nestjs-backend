@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { FileStorageModule } from '../../common/services/file-storage/file-storage.module';
 
 import { CategoryController } from './controllers/category.controller';
 import { AdminCategoryController } from './controllers/admin-category.controller';
@@ -15,6 +16,7 @@ import { ContentRepository } from './repositories/content.repository';
 import { ContentAttachmentRepository } from './repositories/content-attachment.repository';
 
 @Module({
+  imports: [FileStorageModule],
   controllers: [
     CategoryController,
     AdminCategoryController,

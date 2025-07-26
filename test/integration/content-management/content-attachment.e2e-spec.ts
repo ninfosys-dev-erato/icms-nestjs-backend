@@ -11,10 +11,12 @@ import { PrismaService } from '@/database/prisma.service';
 import { AppModule } from '@/app.module';
 import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import { ApiResponseInterceptor } from '@/common/interceptors/api-response.interceptor';
+import { FileStorageService } from '@/common/services/file-storage/interfaces/file-storage.interface';
 
 describe('Content Attachment Management (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let fileStorageService: FileStorageService;
   let adminUser: any;
   let editorUser: any;
   let viewerUser: any;
@@ -48,6 +50,33 @@ describe('Content Attachment Management (e2e)', () => {
     app.setGlobalPrefix('api/v1');
 
     prisma = app.get<PrismaService>(PrismaService);
+    fileStorageService = app.get<FileStorageService>(FileStorageService);
+    
+    // Mock file storage service for tests
+    jest.spyOn(fileStorageService, 'upload').mockImplementation(async (key, buffer, contentType) => ({
+      key,
+      url: `https://test-storage.example.com/${key}`,
+      size: buffer.length,
+      mimeType: contentType,
+    }));
+    
+    jest.spyOn(fileStorageService, 'download').mockImplementation(async (key) => ({
+      buffer: Buffer.from('mocked file content'),
+      contentType: 'text/plain',
+      contentLength: 19,
+    }));
+    
+    jest.spyOn(fileStorageService, 'delete').mockImplementation(async (key) => {
+      // Mock successful deletion
+    });
+    
+    jest.spyOn(fileStorageService, 'generateKey').mockImplementation((folder, fileName, prefix) => {
+      const parts = [folder];
+      if (prefix) parts.push(prefix);
+      parts.push(`mocked-${fileName}`);
+      return parts.join('/');
+    });
+    
     await app.init();
   });
 

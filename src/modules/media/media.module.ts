@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
+import { FileStorageModule } from '../../common/services/file-storage/file-storage.module';
 import { MediaController } from './controllers/media.controller';
 import { AdminMediaController } from './controllers/admin-media.controller';
 import { MediaAlbumController } from './controllers/media-album.controller';
 import { MediaService } from './services/media.service';
 import { MediaAlbumService } from './services/media-album.service';
-import { S3Service } from './services/s3.service';
 import { MediaRepository } from './repositories/media.repository';
 import { MediaAlbumRepository } from './repositories/media-album.repository';
 
 @Module({
+  imports: [FileStorageModule],
   controllers: [
     MediaController,
     AdminMediaController,
@@ -17,10 +18,9 @@ import { MediaAlbumRepository } from './repositories/media-album.repository';
   providers: [
     MediaService,
     MediaAlbumService,
-    S3Service,
     MediaRepository,
     MediaAlbumRepository,
   ],
-  exports: [MediaService, MediaAlbumService, S3Service],
+  exports: [MediaService, MediaAlbumService],
 })
 export class MediaModule {} 
