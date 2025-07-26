@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { DocumentRepository } from '../repositories/document.repository';
 import { DocumentDownloadRepository } from '../repositories/document-download.repository';
 import { DocumentVersionRepository } from '../repositories/document-version.repository';
-import { S3Service } from '../../media/services/s3.service';
+import { FileStorageService } from '../../../common/services/file-storage/interfaces/file-storage.interface';
 import { 
   CreateDocumentDto, 
   UpdateDocumentDto, 
@@ -25,7 +25,7 @@ export class DocumentService {
     private readonly documentRepository: DocumentRepository,
     private readonly documentDownloadRepository: DocumentDownloadRepository,
     private readonly documentVersionRepository: DocumentVersionRepository,
-    private readonly s3Service: S3Service,
+    private readonly fileStorageService: FileStorageService,
   ) {}
 
   async getDocumentById(id: string): Promise<DocumentResponseDto> {
@@ -35,7 +35,7 @@ export class DocumentService {
       throw new NotFoundException('Document not found');
     }
 
-    return this.transformToResponseDto(document);
+    return await this.transformToResponseDto(document);
   }
 
   async getAllDocuments(query?: DocumentQueryDto): Promise<{
@@ -51,8 +51,12 @@ export class DocumentService {
   }> {
     const result = await this.documentRepository.findAll(query);
     
+    const transformedData = await Promise.all(
+      result.data.map(document => this.transformToResponseDto(document))
+    );
+    
     return {
-      data: result.data.map(document => this.transformToResponseDto(document)),
+      data: transformedData,
       pagination: result.pagination,
     };
   }
@@ -84,8 +88,12 @@ export class DocumentService {
   }> {
     const result = await this.documentRepository.findByType(documentType, query);
     
+    const transformedData = await Promise.all(
+      result.data.map(document => this.transformToResponseDto(document))
+    );
+    
     return {
-      data: result.data.map(document => this.transformToResponseDto(document)),
+      data: transformedData,
       pagination: result.pagination,
     };
   }
@@ -103,8 +111,12 @@ export class DocumentService {
   }> {
     const result = await this.documentRepository.findByCategory(category, query);
     
+    const transformedData = await Promise.all(
+      result.data.map(document => this.transformToResponseDto(document))
+    );
+    
     return {
-      data: result.data.map(document => this.transformToResponseDto(document)),
+      data: transformedData,
       pagination: result.pagination,
     };
   }
@@ -122,8 +134,12 @@ export class DocumentService {
   }> {
     const result = await this.documentRepository.search(searchTerm, query);
     
+    const transformedData = await Promise.all(
+      result.data.map(document => this.transformToResponseDto(document))
+    );
+    
     return {
-      data: result.data.map(document => this.transformToResponseDto(document)),
+      data: transformedData,
       pagination: result.pagination,
     };
   }
@@ -137,8 +153,15 @@ export class DocumentService {
       });
     }
 
-    // Upload to S3
-    const uploadResult = await this.s3Service.uploadFile(file, 'documents');
+    // Generate key for document storage
+    const key = this.fileStorageService.generateKey('documents', file.originalname);
+
+    // Upload to storage
+    const uploadResult = await this.fileStorageService.upload(
+      key,
+      file.buffer,
+      file.mimetype
+    );
 
     const documentData: CreateDocumentDto = {
       title: metadata?.title || { en: file.originalname, ne: file.originalname },
@@ -172,7 +195,7 @@ export class DocumentService {
     }
 
     const document = await this.documentRepository.create(documentData);
-    return this.transformToResponseDto(document);
+    return await this.transformToResponseDto(document);
   }
 
   async updateDocument(id: string, data: UpdateDocumentDto): Promise<DocumentResponseDto> {
@@ -185,7 +208,7 @@ export class DocumentService {
     }
 
     const document = await this.documentRepository.update(id, data);
-    return this.transformToResponseDto(document);
+    return await this.transformToResponseDto(document);
   }
 
   async deleteDocument(id: string): Promise<void> {
@@ -194,12 +217,12 @@ export class DocumentService {
       throw new NotFoundException('Document not found');
     }
 
-    // Delete from S3
+    // Delete from storage
     try {
-      await this.s3Service.deleteFile(document.filePath);
+      await this.fileStorageService.delete(document.filePath);
     } catch (error) {
       // Log error but continue with deletion
-      console.error('Failed to delete file from S3:', error);
+      console.error('Failed to delete file from storage:', error);
     }
 
     // Delete related data
@@ -233,7 +256,7 @@ export class DocumentService {
     await this.documentRepository.incrementDownloadCount(id);
 
     // Generate download URL
-    return this.s3Service.getFileUrl(document.filePath, 3600); // 1 hour expiry
+    return this.fileStorageService.generatePresignedUrl(document.filePath, 'get', 3600); // 1 hour expiry
   }
 
   async createDocumentVersion(documentId: string, file: Express.Multer.File, version: string, changeLog?: any): Promise<DocumentResponseDto> {
@@ -242,8 +265,15 @@ export class DocumentService {
       throw new NotFoundException('Document not found');
     }
 
-    // Upload new version to S3
-    const uploadResult = await this.s3Service.uploadFile(file, 'documents');
+    // Generate key for document version storage
+    const key = this.fileStorageService.generateKey('documents', file.originalname);
+
+    // Upload new version to storage
+    const uploadResult = await this.fileStorageService.upload(
+      key,
+      file.buffer,
+      file.mimetype
+    );
 
     // Create version record
     await this.documentVersionRepository.create({
@@ -261,7 +291,7 @@ export class DocumentService {
       version,
     });
 
-    return this.transformToResponseDto(updatedDocument);
+    return await this.transformToResponseDto(updatedDocument);
   }
 
   async getDocumentVersions(documentId: string): Promise<any[]> {
@@ -490,7 +520,7 @@ export class DocumentService {
     }
   }
 
-  private transformToResponseDto(document: any): DocumentResponseDto {
+  private async transformToResponseDto(document: any): Promise<DocumentResponseDto> {
     return {
       id: document.id,
       title: document.title,
@@ -513,7 +543,7 @@ export class DocumentService {
       order: document.order,
       isActive: document.isActive,
       downloadCount: document.downloadCount,
-      downloadUrl: `https://cdn.example.com/${document.filePath}`,
+      downloadUrl: await this.fileStorageService.getUrl(document.filePath),
       createdAt: document.createdAt,
       updatedAt: document.updatedAt,
     };

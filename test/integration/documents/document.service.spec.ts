@@ -3,7 +3,7 @@ import { DocumentService } from '../../../src/modules/documents/services/documen
 import { DocumentRepository } from '../../../src/modules/documents/repositories/document.repository';
 import { DocumentDownloadRepository } from '../../../src/modules/documents/repositories/document-download.repository';
 import { DocumentVersionRepository } from '../../../src/modules/documents/repositories/document-version.repository';
-import { S3Service } from '../../../src/modules/media/services/s3.service';
+import { FileStorageService } from '../../../src/common/services/file-storage/interfaces/file-storage.interface';
 import { Document, DocumentType, DocumentCategory, DocumentStatus } from '../../../src/modules/documents/entities/document.entity';
 import { CreateDocumentDto, UpdateDocumentDto, DocumentQueryDto, DocumentStatistics } from '../../../src/modules/documents/dto/documents.dto';
 
@@ -12,7 +12,7 @@ describe('DocumentService', () => {
   let documentRepository: jest.Mocked<DocumentRepository>;
   let documentDownloadRepository: jest.Mocked<DocumentDownloadRepository>;
   let documentVersionRepository: jest.Mocked<DocumentVersionRepository>;
-  let s3Service: jest.Mocked<S3Service>;
+  let fileStorageService: jest.Mocked<FileStorageService>;
 
   const mockDocument: Document = {
     id: '1',
@@ -110,12 +110,20 @@ describe('DocumentService', () => {
           }
         },
         {
-          provide: S3Service,
+          provide: FileStorageService,
           useValue: {
-            uploadFile: jest.fn(),
-            deleteFile: jest.fn(),
-            getFileUrl: jest.fn(),
-            copyFile: jest.fn()
+            upload: jest.fn(),
+            delete: jest.fn(),
+            getUrl: jest.fn().mockResolvedValue('https://cdn.example.com/uploads/documents/test_document.pdf'),
+            generatePresignedUrl: jest.fn(),
+            generateKey: jest.fn(),
+            download: jest.fn(),
+            exists: jest.fn(),
+            getMetadata: jest.fn(),
+            copy: jest.fn(),
+            validateFileType: jest.fn(),
+            validateFileSize: jest.fn(),
+            getFileExtension: jest.fn()
           }
         }
       ],
@@ -125,7 +133,7 @@ describe('DocumentService', () => {
     documentRepository = module.get(DocumentRepository);
     documentDownloadRepository = module.get(DocumentDownloadRepository);
     documentVersionRepository = module.get(DocumentVersionRepository);
-    s3Service = module.get(S3Service);
+    fileStorageService = module.get(FileStorageService);
   });
 
   afterEach(() => {
@@ -193,14 +201,17 @@ describe('DocumentService', () => {
         status: DocumentStatus.DRAFT
       };
 
-      s3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      fileStorageService.generateKey.mockReturnValue('uploads/documents/test_document.pdf');
+      fileStorageService.upload.mockResolvedValue(mockUploadResult);
       documentRepository.create.mockResolvedValue(mockResponseDto);
 
       const result = await service.uploadDocument(file, metadata);
 
-      expect(s3Service.uploadFile).toHaveBeenCalledWith(
-        file,
-        'documents'
+      expect(fileStorageService.generateKey).toHaveBeenCalledWith('documents', 'test_document.pdf');
+      expect(fileStorageService.upload).toHaveBeenCalledWith(
+        'uploads/documents/test_document.pdf',
+        file.buffer,
+        file.mimetype
       );
       expect(documentRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -275,7 +286,7 @@ describe('DocumentService', () => {
       const id = '1';
 
       documentRepository.findById.mockResolvedValue(mockResponseDto);
-      s3Service.deleteFile.mockResolvedValue(undefined);
+      fileStorageService.delete.mockResolvedValue(undefined);
       documentRepository.delete.mockResolvedValue(undefined);
       documentDownloadRepository.deleteByDocumentId.mockResolvedValue(undefined);
       documentVersionRepository.deleteByDocumentId.mockResolvedValue(undefined);
@@ -283,7 +294,7 @@ describe('DocumentService', () => {
       await service.deleteDocument(id);
 
       expect(documentRepository.findById).toHaveBeenCalledWith(id);
-      expect(s3Service.deleteFile).toHaveBeenCalledWith(mockResponseDto.filePath);
+      expect(fileStorageService.delete).toHaveBeenCalledWith(mockResponseDto.filePath);
       expect(documentRepository.delete).toHaveBeenCalledWith(id);
       expect(documentDownloadRepository.deleteByDocumentId).toHaveBeenCalledWith(id);
       expect(documentVersionRepository.deleteByDocumentId).toHaveBeenCalledWith(id);
@@ -306,14 +317,14 @@ describe('DocumentService', () => {
       const ipAddress = '192.168.1.1';
 
       documentRepository.findById.mockResolvedValue(mockResponseDto);
-      s3Service.getFileUrl.mockResolvedValue(mockDownloadUrl);
+      fileStorageService.generatePresignedUrl.mockResolvedValue(mockDownloadUrl);
       documentRepository.incrementDownloadCount.mockResolvedValue(undefined);
       documentDownloadRepository.create.mockResolvedValue({} as any);
 
       const result = await service.downloadDocument(id, userId, ipAddress, userAgent);
 
       expect(documentRepository.findById).toHaveBeenCalledWith(id);
-      expect(s3Service.getFileUrl).toHaveBeenCalledWith(mockResponseDto.filePath, 3600);
+      expect(fileStorageService.generatePresignedUrl).toHaveBeenCalledWith(mockResponseDto.filePath, 'get', 3600);
       expect(documentRepository.incrementDownloadCount).toHaveBeenCalledWith(id);
       expect(documentDownloadRepository.create).toHaveBeenCalledWith({
         documentId: id,
@@ -355,7 +366,8 @@ describe('DocumentService', () => {
       const changeLog = { en: 'Updated content', ne: 'अपडेट गरिएको सामग्री' };
 
       documentRepository.findById.mockResolvedValue(mockResponseDto);
-      s3Service.uploadFile.mockResolvedValue(mockUploadResult);
+      fileStorageService.generateKey.mockReturnValue('uploads/documents/test_document_v2.pdf');
+      fileStorageService.upload.mockResolvedValue(mockUploadResult);
       documentVersionRepository.create.mockResolvedValue({
         id: 'version-1',
         documentId,
@@ -372,9 +384,11 @@ describe('DocumentService', () => {
       const result = await service.createDocumentVersion(documentId, file, version, changeLog);
 
       expect(documentRepository.findById).toHaveBeenCalledWith(documentId);
-      expect(s3Service.uploadFile).toHaveBeenCalledWith(
-        file,
-        'documents'
+      expect(fileStorageService.generateKey).toHaveBeenCalledWith('documents', 'test_document_v2.pdf');
+      expect(fileStorageService.upload).toHaveBeenCalledWith(
+        'uploads/documents/test_document_v2.pdf',
+        file.buffer,
+        file.mimetype
       );
       expect(documentVersionRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -577,7 +591,7 @@ describe('DocumentService', () => {
 
       // Mock the individual delete operations
       documentRepository.findById.mockResolvedValue(mockResponseDto);
-      s3Service.deleteFile.mockResolvedValue(undefined);
+      fileStorageService.delete.mockResolvedValue(undefined);
       documentRepository.delete.mockResolvedValue(undefined);
       documentDownloadRepository.deleteByDocumentId.mockResolvedValue(undefined);
       documentVersionRepository.deleteByDocumentId.mockResolvedValue(undefined);

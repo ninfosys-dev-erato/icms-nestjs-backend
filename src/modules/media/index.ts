@@ -9,7 +9,6 @@ export { MediaAlbumController } from './controllers/media-album.controller';
 // Services
 export { MediaService } from './services/media.service';
 export { MediaAlbumService } from './services/media-album.service';
-export { S3Service } from './services/s3.service';
 
 // Repositories
 export { MediaRepository } from './repositories/media.repository';

@@ -5,9 +5,10 @@ import { DocumentService } from './services/document.service';
 import { DocumentRepository } from './repositories/document.repository';
 import { DocumentDownloadRepository } from './repositories/document-download.repository';
 import { DocumentVersionRepository } from './repositories/document-version.repository';
-import { S3Service } from '../media/services/s3.service';
+import { FileStorageModule } from '../../common/services/file-storage/file-storage.module';
 
 @Module({
+  imports: [FileStorageModule],
   controllers: [
     PublicDocumentController,
     AdminDocumentController
@@ -16,8 +17,7 @@ import { S3Service } from '../media/services/s3.service';
     DocumentService,
     DocumentRepository,
     DocumentDownloadRepository,
-    DocumentVersionRepository,
-    S3Service
+    DocumentVersionRepository
   ],
   exports: [
     DocumentService,
