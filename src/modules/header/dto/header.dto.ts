@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsBoolean, IsNumber, IsArray, ValidateNested, IsNotEmpty, IsEnum, IsObject, IsUrl } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsBoolean, IsNumber, IsArray, ValidateNested, IsNotEmpty, IsEnum, IsObject, IsUrl, Min, Max } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // ========================================
@@ -329,14 +329,17 @@ export class HeaderConfigResponseDto {
 export class HeaderConfigQueryDto {
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
-  @Type(() => Number)
+  @Transform(({ value }) => parseInt(value, 10))
   @IsNumber()
+  @Min(1)
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
-  @Type(() => Number)
+  @Transform(({ value }) => parseInt(value, 10))
   @IsNumber()
+  @Min(1)
+  @Max(100)
   limit?: number;
 
   @ApiPropertyOptional({ example: 'Main Header' })
@@ -346,11 +349,21 @@ export class HeaderConfigQueryDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   isActive?: boolean;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   isPublished?: boolean;
 
@@ -373,23 +386,36 @@ export class HeaderConfigSearchDto {
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
-  @Type(() => Number)
+  @Transform(({ value }) => parseInt(value, 10))
   @IsNumber()
+  @Min(1)
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
-  @Type(() => Number)
+  @Transform(({ value }) => parseInt(value, 10))
   @IsNumber()
+  @Min(1)
+  @Max(100)
   limit?: number;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   isActive?: boolean;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   isPublished?: boolean;
 

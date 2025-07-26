@@ -10,7 +10,8 @@ import {
   Res,
   UseGuards,
   UseInterceptors,
-  UploadedFile
+  UploadedFile,
+  BadRequestException
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -71,6 +72,7 @@ export class AdminHeaderController {
   @Get('search')
   @ApiOperation({ summary: 'Search header configs (Admin)' })
   @ApiResponse({ status: 200, description: 'Search completed successfully' })
+  @ApiResponse({ status: 400, description: 'Search term is required' })
   @ApiQuery({ name: 'q', required: true, type: String })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -80,6 +82,13 @@ export class AdminHeaderController {
   async searchHeaderConfigs(
     @Query() query: HeaderConfigSearchDto
   ) {
+    if (!query.q || query.q.trim() === '') {
+      throw new BadRequestException({
+        message: 'Search term is required',
+        error: 'SEARCH_TERM_REQUIRED'
+      });
+    }
+    
     const result = await this.headerConfigService.searchHeaderConfigs(query.q, query);
     return result;
   }
@@ -301,6 +310,6 @@ export class AdminHeaderController {
     @Param('id') id: string
   ) {
     const css = await this.headerConfigService.generateCSS(id);
-    return css;
+    return { css };
   }
 } 

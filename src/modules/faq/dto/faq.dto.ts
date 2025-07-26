@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsBoolean, IsNumber, ValidateNested, IsNotEmpty } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // ========================================
@@ -106,6 +106,11 @@ export class FAQResponseDto {
 export class FAQQueryDto {
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   isActive?: boolean;
 
@@ -121,11 +126,13 @@ export class FAQQueryDto {
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
   @IsNumber()
   limit?: number;
 }

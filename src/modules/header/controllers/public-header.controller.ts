@@ -137,8 +137,9 @@ export class PublicHeaderController {
     try {
       const css = await this.headerConfigService.generateCSS(id);
       
-      response.setHeader('Content-Type', 'text/css');
-      response.status(200).send(css);
+      const apiResponse = ApiResponseBuilder.success({ css });
+
+      response.status(200).json(apiResponse);
     } catch (error) {
       const status = error.message.includes('not found') ? 404 : 500;
       const apiResponse = ApiResponseBuilder.error(

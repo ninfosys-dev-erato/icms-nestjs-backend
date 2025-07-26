@@ -184,29 +184,72 @@ export class HeaderConfigRepository {
 
     const orderBy = { order: 'asc' as const };
 
-    const [data, total] = await Promise.all([
-      this.prisma.headerConfig.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy
-      }),
-      this.prisma.headerConfig.count({ where })
-    ]);
+    try {
+      const [data, total] = await Promise.all([
+        this.prisma.headerConfig.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy
+        }),
+        this.prisma.headerConfig.count({ where })
+      ]);
 
-    const totalPages = Math.ceil(total / limit);
+      const totalPages = Math.ceil(total / limit);
 
-    return {
-      data,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
+      return {
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      };
+    } catch (error) {
+      // Fallback to simple string search if JSON path search fails
+      console.warn('JSON path search failed, falling back to simple search:', error.message);
+      
+      const baseWhere: any = {};
+      if (query.isActive !== undefined) {
+        baseWhere.isActive = query.isActive;
       }
-    };
+      if (query.isPublished !== undefined) {
+        baseWhere.isPublished = query.isPublished;
+      }
+
+      const allData = await this.prisma.headerConfig.findMany({
+        where: baseWhere,
+        orderBy
+      });
+
+      // Filter in memory
+      const filteredData = allData.filter(config => {
+        const name = config.name as any;
+        return (
+          (name?.en && name.en.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (name?.ne && name.ne.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+      });
+
+      const total = filteredData.length;
+      const totalPages = Math.ceil(total / limit);
+      const data = filteredData.slice(skip, skip + limit);
+
+      return {
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      };
+    }
   }
 
   async create(data: CreateHeaderConfigDto, userId: string): Promise<HeaderConfig> {

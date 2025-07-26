@@ -403,7 +403,7 @@ export class HeaderConfigService {
 
   async previewHeaderConfig(data: CreateHeaderConfigDto | UpdateHeaderConfigDto): Promise<HeaderPreview> {
     const tempId = 'preview-' + Date.now();
-    const css = await this.generateCSS(tempId);
+    const css = this.generateCSSFromData(data, tempId);
     
     const leftLogo = data.logo?.leftLogo as any;
     const rightLogo = data.logo?.rightLogo as any;
@@ -420,6 +420,52 @@ export class HeaderConfigService {
       html,
       config: this.transformToResponseDto(data as any)
     };
+  }
+
+  private generateCSSFromData(data: CreateHeaderConfigDto | UpdateHeaderConfigDto, id: string): string {
+    const { typography, layout, logo } = data;
+    
+    let css = `
+.header-config-${id} {
+  height: ${layout.headerHeight}px;
+  background-color: ${layout.backgroundColor};
+  padding: ${layout.padding.top}px ${layout.padding.right}px ${layout.padding.bottom}px ${layout.padding.left}px;
+  margin: ${layout.margin.top}px ${layout.margin.right}px ${layout.margin.bottom}px ${layout.margin.left}px;
+`;
+
+    if (layout.borderColor && layout.borderWidth) {
+      css += `  border: ${layout.borderWidth}px solid ${layout.borderColor};\n`;
+    }
+
+    css += `  text-align: ${data.alignment.toLowerCase()};\n`;
+    css += `  font-family: ${typography.fontFamily};\n`;
+    css += `  font-size: ${typography.fontSize}px;\n`;
+    css += `  font-weight: ${typography.fontWeight};\n`;
+    css += `  color: ${typography.color};\n`;
+    css += `  line-height: ${typography.lineHeight};\n`;
+    css += `  letter-spacing: ${typography.letterSpacing}px;\n`;
+    css += `}\n`;
+
+    // Logo styles
+    if (logo?.leftLogo) {
+      css += `
+.header-config-${id} .logo-left {
+  width: ${logo.leftLogo.width}px;
+  height: ${logo.leftLogo.height}px;
+  margin-right: ${logo.logoSpacing}px;
+}\n`;
+    }
+
+    if (logo?.rightLogo) {
+      css += `
+.header-config-${id} .logo-right {
+  width: ${logo.rightLogo.width}px;
+  height: ${logo.rightLogo.height}px;
+  margin-left: ${logo.logoSpacing}px;
+}\n`;
+    }
+
+    return css;
   }
 
   private transformToResponseDto(headerConfig: any): HeaderConfigResponseDto {

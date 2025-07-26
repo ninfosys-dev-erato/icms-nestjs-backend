@@ -66,6 +66,7 @@ export class FAQController {
   @Get('search')
   @ApiOperation({ summary: 'Search FAQs' })
   @ApiResponse({ status: 200, description: 'Search completed successfully' })
+  @ApiResponse({ status: 400, description: 'Search term is required' })
   @ApiQuery({ name: 'q', required: true, type: String })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   async searchFAQs(
@@ -74,9 +75,19 @@ export class FAQController {
     @Query('isActive') isActive?: boolean
   ): Promise<void> {
     try {
+      if (!searchTerm || searchTerm.trim() === '') {
+        const apiResponse = ApiResponseBuilder.error(
+          'SEARCH_TERM_REQUIRED',
+          'Search term is required'
+        );
+        response.status(400).json(apiResponse);
+        return;
+      }
+
       const result = await this.faqService.searchFAQs(searchTerm, isActive);
       
-      const apiResponse = ApiResponseBuilder.success(result);
+      // Return just the data array to match the expected response format
+      const apiResponse = ApiResponseBuilder.success(result.data);
 
       response.status(200).json(apiResponse);
     } catch (error) {

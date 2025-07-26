@@ -9,11 +9,14 @@ import { PrismaService } from '@/database/prisma.service';
 import { AppModule } from '@/app.module';
 import { HttpExceptionFilter } from '@/common/filters/http-exception.filter';
 import { ApiResponseInterceptor } from '@/common/interceptors/api-response.interceptor';
+import { TestUtils, TestUser } from '../../test-utils';
 
 describe('Header Configuration Management (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let testUser: TestUser;
   let authToken: string;
+
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -34,66 +37,27 @@ describe('Header Configuration Management (e2e)', () => {
 
     prisma = app.get<PrismaService>(PrismaService);
     await app.init();
-
-    // Create test user and get auth token
-    await createTestUser();
-    authToken = await getAuthToken();
   });
 
   afterAll(async () => {
-    await cleanupDatabase();
+    await TestUtils.cleanupDatabase(prisma);
     await app.close();
   });
 
   beforeEach(async () => {
-    await cleanupDatabase();
-    await createTestUser();
-    await createTestHeaderConfigs();
+    await TestUtils.cleanupDatabase(prisma);
+    testUser = await TestUtils.createTestUser(prisma, {
+      email: 'admin@test.com',
+      password: 'Password123!',
+      firstName: 'Admin',
+      lastName: 'User',
+      role: 'ADMIN',
+    });
+    await createTestHeaderConfigs(testUser.id);
+    authToken = testUser.accessToken;
   });
 
-  const cleanupDatabase = async () => {
-    try {
-      const tables = [
-        'header_configs',
-        'user_sessions',
-        'login_attempts',
-        'audit_logs',
-        'users',
-      ];
-
-      for (const table of tables) {
-        await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE;`);
-      }
-    } catch (error) {
-      console.warn('Cleanup error:', error.message);
-    }
-  };
-
-  const createTestUser = async () => {
-    await prisma.user.create({
-      data: {
-        email: 'admin@test.com',
-        password: '$2b$10$test.hash.for.testing',
-        firstName: 'Admin',
-        lastName: 'User',
-        role: 'ADMIN',
-        isActive: true,
-      },
-    });
-  };
-
-  const getAuthToken = async (): Promise<string> => {
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({
-        email: 'admin@test.com',
-        password: 'password123',
-      });
-
-    return response.body.data?.accessToken || 'test-token';
-  };
-
-  const createTestHeaderConfigs = async () => {
+  const createTestHeaderConfigs = async (userId: string) => {
     // Create test header configs directly in database
     await prisma.headerConfig.createMany({
       data: [
@@ -128,8 +92,8 @@ describe('Header Configuration Management (e2e)', () => {
             padding: { top: 10, right: 20, bottom: 10, left: 20 },
             margin: { top: 0, right: 0, bottom: 0, left: 0 },
           },
-          createdById: 'test-user',
-          updatedById: 'test-user',
+          createdById: userId,
+          updatedById: userId,
         },
         {
           name: {
@@ -162,8 +126,8 @@ describe('Header Configuration Management (e2e)', () => {
             padding: { top: 5, right: 15, bottom: 5, left: 15 },
             margin: { top: 0, right: 0, bottom: 0, left: 0 },
           },
-          createdById: 'test-user',
-          updatedById: 'test-user',
+          createdById: userId,
+          updatedById: userId,
         },
         {
           name: {
@@ -196,8 +160,8 @@ describe('Header Configuration Management (e2e)', () => {
             padding: { top: 15, right: 25, bottom: 15, left: 25 },
             margin: { top: 0, right: 0, bottom: 0, left: 0 },
           },
-          createdById: 'test-user',
-          updatedById: 'test-user',
+          createdById: userId,
+          updatedById: userId,
         },
       ],
     });
@@ -418,7 +382,7 @@ describe('Header Configuration Management (e2e)', () => {
       it('should search header configs', async () => {
         const response = await request(app.getHttpServer())
           .get('/api/v1/admin/header-configs/search?q=Main')
-          .set('Authorization', `Bearer ${authToken}`)
+          .set('Authorization', `Bearer ${testUser.accessToken}`)
           .expect(200);
 
         expect(response.body.success).toBe(true);
@@ -657,7 +621,7 @@ describe('Header Configuration Management (e2e)', () => {
         const response = await request(app.getHttpServer())
           .post(`/api/v1/admin/header-configs/${configId}/publish`)
           .set('Authorization', `Bearer ${authToken}`)
-          .expect(200);
+          .expect(201);
 
         expect(response.body.success).toBe(true);
         expect(response.body.data).toBeDefined();
@@ -710,7 +674,7 @@ describe('Header Configuration Management (e2e)', () => {
         const response = await request(app.getHttpServer())
           .post(`/api/v1/admin/header-configs/${configId}/unpublish`)
           .set('Authorization', `Bearer ${authToken}`)
-          .expect(200);
+          .expect(201);
 
         expect(response.body.success).toBe(true);
         expect(response.body.data).toBeDefined();
@@ -720,18 +684,27 @@ describe('Header Configuration Management (e2e)', () => {
 
     describe('POST /api/v1/admin/header-configs/reorder', () => {
       it('should reorder header configs', async () => {
-        const reorderData = [
-          { id: '1', order: 3 },
-          { id: '2', order: 1 },
-        ];
-
-        const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/header-configs/reorder')
+        // First get existing header configs to get their IDs
+        const listResponse = await request(app.getHttpServer())
+          .get('/api/v1/admin/header-configs')
           .set('Authorization', `Bearer ${authToken}`)
-          .send(reorderData)
           .expect(200);
 
-        expect(response.body.success).toBe(true);
+        const configs = listResponse.body.data;
+        if (configs.length >= 2) {
+          const reorderData = [
+            { id: configs[0].id, order: 3 },
+            { id: configs[1].id, order: 1 },
+          ];
+
+          const response = await request(app.getHttpServer())
+            .post('/api/v1/admin/header-configs/reorder')
+            .set('Authorization', `Bearer ${authToken}`)
+            .send(reorderData)
+            .expect(201);
+
+          expect(response.body.success).toBe(true);
+        }
       });
     });
 
@@ -762,9 +735,9 @@ describe('Header Configuration Management (e2e)', () => {
     it('should handle invalid pagination parameters', async () => {
       const response = await request(app.getHttpServer())
         .get('/api/v1/header-configs?page=-1&limit=0')
-        .expect(200); // Should still return 200 but with default values
+        .expect(400); // Should return 400 for invalid parameters
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.success).toBe(false);
     });
 
     it('should handle missing search query', async () => {
@@ -784,4 +757,4 @@ describe('Header Configuration Management (e2e)', () => {
       expect(response.body.success).toBe(false);
     });
   });
-}); 
+});

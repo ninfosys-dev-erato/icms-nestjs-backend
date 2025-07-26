@@ -87,7 +87,7 @@ export class FAQRepository {
   async search(searchTerm: string, isActive?: boolean): Promise<FAQ[]> {
     const where: any = isActive !== undefined ? { isActive } : {};
     
-    // Search in both question and answer fields
+    // Search in both question and answer fields using JSON string search
     where.OR = [
       {
         question: {
@@ -115,20 +115,53 @@ export class FAQRepository {
       },
     ];
 
-    const faqs = await this.prisma.fAQ.findMany({
-      where,
-      orderBy: { order: 'asc' },
-    });
+    try {
+      const faqs = await this.prisma.fAQ.findMany({
+        where,
+        orderBy: { order: 'asc' },
+      });
 
-    return faqs.map(faq => ({
-      id: faq.id,
-      question: faq.question as any,
-      answer: faq.answer as any,
-      order: faq.order,
-      isActive: faq.isActive,
-      createdAt: faq.createdAt,
-      updatedAt: faq.updatedAt,
-    }));
+      return faqs.map(faq => ({
+        id: faq.id,
+        question: faq.question as any,
+        answer: faq.answer as any,
+        order: faq.order,
+        isActive: faq.isActive,
+        createdAt: faq.createdAt,
+        updatedAt: faq.updatedAt,
+      }));
+    } catch (error) {
+      // Fallback to simple string search if JSON path search fails
+      console.warn('JSON path search failed, falling back to simple search:', error.message);
+      
+      const faqs = await this.prisma.fAQ.findMany({
+        where: isActive !== undefined ? { isActive } : {},
+        orderBy: { order: 'asc' },
+      });
+
+      // Filter in memory
+      return faqs
+        .filter(faq => {
+          const question = faq.question as any;
+          const answer = faq.answer as any;
+          
+          return (
+            (question?.en && question.en.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (question?.ne && question.ne.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (answer?.en && answer.en.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (answer?.ne && answer.ne.toLowerCase().includes(searchTerm.toLowerCase()))
+          );
+        })
+        .map(faq => ({
+          id: faq.id,
+          question: faq.question as any,
+          answer: faq.answer as any,
+          order: faq.order,
+          isActive: faq.isActive,
+          createdAt: faq.createdAt,
+          updatedAt: faq.updatedAt,
+        }));
+    }
   }
 
   async create(data: CreateFAQDto): Promise<FAQ> {
