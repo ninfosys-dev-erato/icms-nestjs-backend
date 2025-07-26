@@ -123,17 +123,18 @@ export class AdminDepartmentController {
   @Get('search')
   @ApiOperation({ summary: 'Search departments (Admin)' })
   @ApiResponse({ status: 200, description: 'Search completed successfully' })
-  @ApiQuery({ name: 'search', required: true, type: String })
+  @ApiQuery({ name: 'q', required: true, type: String })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @Roles('ADMIN', 'EDITOR')
   async searchDepartments(
     @Res() response: Response,
-    @Query() query: DepartmentQueryDto
+    @Query('q') q: string,
+    @Query() query: any
   ): Promise<void> {
     try {
-      if (!query.search) {
+      if (!q) {
         const apiResponse = ApiResponseBuilder.error(
           'DEPARTMENT_SEARCH_ERROR',
           'Search term is required'
@@ -141,18 +142,19 @@ export class AdminDepartmentController {
         response.status(400).json(apiResponse);
         return;
       }
-
-      const result = await this.departmentService.searchDepartments(query.search, query);
-      
+      // Remove 'q' from query before passing to DTO
+      const { q: _q, ...rest } = query;
+      // Sanitize pagination
+      rest.page = rest.page && rest.page > 0 ? Number(rest.page) : 1;
+      rest.limit = rest.limit && rest.limit > 0 ? Number(rest.limit) : 10;
+      const result = await this.departmentService.searchDepartments(q, rest);
       const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
-
       response.status(200).json(apiResponse);
     } catch (error) {
       const apiResponse = ApiResponseBuilder.error(
         'DEPARTMENT_SEARCH_ERROR',
         error.message
       );
-
       response.status(500).json(apiResponse);
     }
   }
@@ -244,6 +246,7 @@ export class AdminDepartmentController {
   @ApiOperation({ summary: 'Delete department (Admin)' })
   @ApiResponse({ status: 200, description: 'Department deleted successfully' })
   @ApiResponse({ status: 404, description: 'Department not found' })
+  @ApiResponse({ status: 400, description: 'Cannot delete department with dependencies' })
   @ApiParam({ name: 'id', description: 'Department ID' })
   @Roles('ADMIN')
   async deleteDepartment(
@@ -257,7 +260,13 @@ export class AdminDepartmentController {
 
       response.status(200).json(apiResponse);
     } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
+      let status = 500;
+      if (error.message.includes('not found')) {
+        status = 404;
+      } else if (error.message.includes('Cannot delete department')) {
+        status = 400;
+      }
+      
       const apiResponse = ApiResponseBuilder.error(
         'DEPARTMENT_DELETION_ERROR',
         error.message

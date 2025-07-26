@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsBoolean, IsNumber, ValidateNested, IsNotEmpty, IsUrl } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsBoolean, IsNumber, ValidateNested, IsNotEmpty, IsUrl, IsArray } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // ========================================
@@ -107,6 +107,11 @@ export class ImportantLinksQueryDto {
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   isActive?: boolean;
 
   @ApiPropertyOptional({ example: 'en' })
@@ -116,11 +121,13 @@ export class ImportantLinksQueryDto {
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }
@@ -131,21 +138,16 @@ export class ImportantLinksQueryDto {
 
 export class BulkCreateImportantLinksDto {
   @ApiProperty({ type: [CreateImportantLinkDto] })
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateImportantLinkDto)
   links: CreateImportantLinkDto[];
 }
 
-export class BulkUpdateImportantLinksDto {
-  @ApiProperty({ example: [{ id: 'link-id', order: 1 }] })
-  @ValidateNested({ each: true })
-  @Type(() => BulkUpdateItemDto)
-  links: BulkUpdateItemDto[];
-}
-
-export class BulkUpdateItemDto {
+export class BulkUpdateImportantLinkItemDto {
   @ApiProperty({ example: 'link-id' })
   @IsString()
+  @IsNotEmpty()
   id: string;
 
   @ApiPropertyOptional({ type: TranslatableEntityDto })
@@ -169,6 +171,14 @@ export class BulkUpdateItemDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+}
+
+export class BulkUpdateImportantLinksDto {
+  @ApiProperty({ example: [{ id: 'link-id', order: 1 }] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BulkUpdateImportantLinkItemDto)
+  links: BulkUpdateImportantLinkItemDto[];
 }
 
 // ========================================
@@ -257,4 +267,6 @@ export class FooterLinksDto {
 
   @ApiProperty({ type: [ImportantLinkResponseDto] })
   contactLinks: ImportantLinkResponseDto[];
-} 
+}
+
+ 

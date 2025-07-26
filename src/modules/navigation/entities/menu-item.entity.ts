@@ -1,5 +1,8 @@
 import { MenuItemType } from '@prisma/client';
 
+// Re-export for use in tests
+export { MenuItemType };
+
 export interface MenuItem {
   id: string;
   menuId: string;

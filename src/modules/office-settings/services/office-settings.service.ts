@@ -5,6 +5,9 @@ import { UpdateOfficeSettingsDto } from '../dto/update-office-settings.dto';
 import { OfficeSettingsResponseDto } from '../dto/office-settings-response.dto';
 import { TranslatableEntityHelper } from '../../../common/types/translatable.entity';
 
+// Re-export DTOs for use in tests
+export { CreateOfficeSettingsDto, UpdateOfficeSettingsDto, OfficeSettingsResponseDto };
+
 export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];

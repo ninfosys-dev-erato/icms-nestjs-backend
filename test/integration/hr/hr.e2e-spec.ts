@@ -517,12 +517,23 @@ describe('HR Management (e2e)', () => {
 
     describe('DELETE /api/v1/admin/departments/:id', () => {
       it('should delete department', async () => {
-        // First create a department
-        const deptResponse = await request(app.getHttpServer())
-          .get('/api/v1/departments')
-          .expect(200);
+        // Create a standalone department specifically for deletion
+        const createResponse = await request(app.getHttpServer())
+          .post('/api/v1/admin/departments')
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({
+            departmentName: {
+              en: 'Test Department for Deletion',
+              ne: 'मेटाउनका लागि परीक्षण विभाग',
+            },
+            parentId: null,
+            departmentHeadId: null,
+            order: 999,
+            isActive: true,
+          })
+          .expect(201);
 
-        const deptId = deptResponse.body.data[0].id;
+        const deptId = createResponse.body.data.id;
 
         const response = await request(app.getHttpServer())
           .delete(`/api/v1/admin/departments/${deptId}`)

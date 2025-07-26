@@ -19,7 +19,7 @@ export {
   ImportantLinksQueryDto,
   BulkCreateImportantLinksDto,
   BulkUpdateImportantLinksDto,
-  BulkUpdateItemDto,
+  BulkUpdateImportantLinkItemDto,
   ReorderImportantLinksDto,
   ReorderItemDto,
   ImportantLinksStatistics,

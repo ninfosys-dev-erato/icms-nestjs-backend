@@ -84,21 +84,31 @@ export class AdminEmployeeController {
   @Roles('ADMIN', 'EDITOR')
   async searchEmployees(
     @Res() response: Response,
-    @Query('q') searchTerm: string,
-    @Query() query?: EmployeeQueryDto
+    @Query('q') q: string,
+    @Query() query: any
   ): Promise<void> {
     try {
-      const result = await this.employeeService.searchEmployees(searchTerm, query);
-      
+      if (!q) {
+        const apiResponse = ApiResponseBuilder.error(
+          'EMPLOYEE_SEARCH_ERROR',
+          'Search term is required'
+        );
+        response.status(400).json(apiResponse);
+        return;
+      }
+      // Remove 'q' from query before passing to DTO
+      const { q: _q, ...rest } = query;
+      // Sanitize pagination
+      rest.page = rest.page && rest.page > 0 ? Number(rest.page) : 1;
+      rest.limit = rest.limit && rest.limit > 0 ? Number(rest.limit) : 10;
+      const result = await this.employeeService.searchEmployees(q, rest);
       const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
-
       response.status(200).json(apiResponse);
     } catch (error) {
       const apiResponse = ApiResponseBuilder.error(
         'EMPLOYEE_SEARCH_ERROR',
         error.message
       );
-
       response.status(500).json(apiResponse);
     }
   }

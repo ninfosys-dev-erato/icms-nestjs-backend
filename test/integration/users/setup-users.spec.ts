@@ -269,7 +269,7 @@ describe('Users Module Setup', () => {
         expect(typeof attempt.success).toBe('boolean');
         expect(attempt.ipAddress).toBeDefined();
         expect(attempt.userAgent).toBeDefined();
-        expect(attempt.createdAt).toBeDefined();
+        expect(attempt.attemptedAt).toBeDefined();
       }
     });
 
@@ -443,7 +443,7 @@ describe('Users Module Setup', () => {
 
       const attempts = await prisma.loginAttempt.findMany({
         where: { email: user!.email },
-        include: { user: true },
+        include: { User: true },
       });
 
       expect(attempts.length).toBeGreaterThan(0);
@@ -463,14 +463,12 @@ describe('Users Module Setup', () => {
         data: {
           firstName: 'Updated',
           lastName: 'Name',
-          phoneNumber: '+9876543210',
           isActive: !user!.isActive,
         },
       });
 
       expect(updatedUser.firstName).toBe('Updated');
       expect(updatedUser.lastName).toBe('Name');
-      expect(updatedUser.phoneNumber).toBe('+9876543210');
       expect(updatedUser.isActive).toBe(!user!.isActive);
       expect(updatedUser.updatedAt.getTime()).toBeGreaterThan(updatedUser.createdAt.getTime());
     });

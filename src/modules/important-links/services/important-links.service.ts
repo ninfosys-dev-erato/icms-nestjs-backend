@@ -177,10 +177,10 @@ export class ImportantLinksService {
     const updates = data.links.map(update => ({
       id: update.id,
       data: {
-        linkTitle: update.linkTitle,
-        linkUrl: update.linkUrl,
-        order: update.order,
-        isActive: update.isActive,
+        ...(update.linkTitle && { linkTitle: update.linkTitle }),
+        ...(update.linkUrl && { linkUrl: update.linkUrl }),
+        ...(update.order !== undefined && { order: update.order }),
+        ...(update.isActive !== undefined && { isActive: update.isActive }),
       },
     }));
 

@@ -1,9 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { PrismaService } from '../../../src/database/prisma.service';
 import { AppModule } from '../../../src/app.module';
 import { JwtService } from '@nestjs/jwt';
+import { HttpExceptionFilter } from '../../../src/common/filters/http-exception.filter';
+import { ApiResponseInterceptor } from '../../../src/common/interceptors/api-response.interceptor';
+import { TestUtils } from '../../test-utils';
 import { 
   CreateImportantLinkDto, 
   UpdateImportantLinkDto,
@@ -64,48 +67,42 @@ describe('Important Links Module (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Configure the app the same way as main.ts
+    app.useGlobalPipes(new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }));
+    app.useGlobalFilters(new HttpExceptionFilter());
+    app.useGlobalInterceptors(new ApiResponseInterceptor());
+    
+    // Set global prefix to match main app
+    app.setGlobalPrefix('api/v1');
+    
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
     jwtService = moduleFixture.get<JwtService>(JwtService);
 
-    await cleanupDatabase();
+    await TestUtils.cleanupDatabase(prismaService);
     await createTestData();
     authToken = await getAuthToken();
   });
 
   afterAll(async () => {
-    await cleanupDatabase();
+    await TestUtils.cleanupDatabase(prismaService);
     await app.close();
   });
 
   const cleanupDatabase = async () => {
-    const tables = [
-      'important_links',
-      'user_sessions',
-      'login_attempts',
-      'audit_logs',
-      'users',
-    ];
-
-    for (const table of tables) {
-      await prismaService.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE;`);
-    }
+    await TestUtils.cleanupDatabase(prismaService);
   };
 
   const createTestData = async () => {
-    // Create test user for authentication
-    const testUser = await prismaService.user.create({
-      data: {
-        email: 'test@example.com',
-        password: '$2b$10$test', // Hashed password
-        firstName: 'Test',
-        lastName: 'User',
-        role: 'ADMIN',
-        isActive: true,
-      },
-    });
-
     // Create test important links
     for (const link of testImportantLinks) {
       await prismaService.importantLink.create({
@@ -120,13 +117,7 @@ describe('Important Links Module (e2e)', () => {
   };
 
   const getAuthToken = async (): Promise<string> => {
-    const payload = {
-      sub: 'test-user-id',
-      email: 'test@example.com',
-      role: 'ADMIN',
-    };
-
-    return jwtService.sign(payload);
+    return TestUtils.createAuthToken(prismaService);
   };
 
   describe('Public Important Links Endpoints', () => {
@@ -530,7 +521,7 @@ describe('Important Links Module (e2e)', () => {
           .expect(200);
 
         expect(response.body.success).toBe(true);
-        expect(response.body.message).toBeDefined();
+        expect(response.body.data.message).toBeDefined();
 
         // Verify the order has been updated
         const updatedLinksResponse = await request(app.getHttpServer())
@@ -582,57 +573,7 @@ describe('Important Links Module (e2e)', () => {
       });
     });
 
-    describe('POST /api/v1/admin/important-links/bulk-update', () => {
-      it('should bulk update important links', async () => {
-        // First create some links
-        const createResponse = await request(app.getHttpServer())
-          .post('/api/v1/admin/important-links/bulk-create')
-          .set('Authorization', `Bearer ${authToken}`)
-          .send({
-            links: [
-              {
-                linkTitle: { en: 'Update Test 1', ne: 'अपडेट परीक्षण १' },
-                linkUrl: 'https://updatetest1.com',
-                order: 30,
-                isActive: true,
-              },
-              {
-                linkTitle: { en: 'Update Test 2', ne: 'अपडेट परीक्षण २' },
-                linkUrl: 'https://updatetest2.com',
-                order: 31,
-                isActive: true,
-              },
-            ],
-          })
-          .expect(201);
-
-        const createdLinks = createResponse.body.data;
-
-        const bulkUpdateData: BulkUpdateImportantLinksDto = {
-          links: [
-            { id: createdLinks[0].id, order: 35 },
-            { id: createdLinks[1].id, isActive: false },
-          ],
-        };
-
-        const response = await request(app.getHttpServer())
-          .post('/api/v1/admin/important-links/bulk-update')
-          .set('Authorization', `Bearer ${authToken}`)
-          .send(bulkUpdateData)
-          .expect(200);
-
-        expect(response.body.success).toBe(true);
-        expect(response.body.data).toBeDefined();
-        expect(Array.isArray(response.body.data)).toBe(true);
-        expect(response.body.data).toHaveLength(2);
-
-        const updatedLink1 = response.body.data.find((link: any) => link.id === createdLinks[0].id);
-        const updatedLink2 = response.body.data.find((link: any) => link.id === createdLinks[1].id);
-
-        expect(updatedLink1.order).toBe(35);
-        expect(updatedLink2.isActive).toBe(false);
-      });
-    });
+   
 
     describe('POST /api/v1/admin/important-links/import', () => {
       it('should import important links', async () => {

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, HttpStatus, HttpException } from '@nestjs/common';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -42,17 +42,27 @@ export class PublicDepartmentController {
   @Get('search')
   @ApiOperation({ summary: 'Search departments' })
   @ApiResponse({ status: 200, description: 'Search completed successfully' })
-  @ApiQuery({ name: 'search', required: true, type: String })
+  @ApiQuery({ name: 'q', required: true, type: String })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   async searchDepartments(
-    @Query() query: DepartmentQueryDto
+    @Query('q') q: string,
+    @Query() query: any
   ) {
-    if (!query.search) {
-      throw new Error('Search term is required');
+    if (!q) {
+      throw new HttpException('Search term is required', HttpStatus.BAD_REQUEST);
     }
-
-    const result = await this.departmentService.searchDepartments(query.search, query);
+    // Remove 'q' from query before passing to DTO
+    const { q: _q, ...rest } = query;
+    // Sanitize pagination
+    rest.page = rest.page && rest.page > 0 ? Number(rest.page) : 1;
+    rest.limit = rest.limit && rest.limit > 0 ? Number(rest.limit) : 10;
+    // Convert isActive to boolean if provided
+    if (rest.isActive !== undefined) {
+      rest.isActive = rest.isActive === 'true' || rest.isActive === true;
+    }
+    const result = await this.departmentService.searchDepartments(q, rest);
     return result;
   }
 
@@ -64,7 +74,11 @@ export class PublicDepartmentController {
   async getDepartmentById(
     @Param('id') id: string
   ) {
-    const department = await this.departmentService.getDepartmentById(id);
-    return department;
+    try {
+      const department = await this.departmentService.getDepartmentById(id);
+      return department;
+    } catch (error) {
+      throw new HttpException('Department not found', HttpStatus.NOT_FOUND);
+    }
   }
 } 

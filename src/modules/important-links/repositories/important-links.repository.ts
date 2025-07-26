@@ -168,17 +168,31 @@ export class ImportantLinksRepository {
   }
 
   async bulkCreate(links: CreateImportantLinkDto[]): Promise<ImportantLink[]> {
-    const createdLinks = await this.prisma.importantLink.createMany({
-      data: links.map(link => ({
-        linkTitle: link.linkTitle as any,
-        linkUrl: link.linkUrl,
-        order: link.order || 0,
-        isActive: link.isActive !== undefined ? link.isActive : true,
-      })),
-    });
+    // Use individual creates to get the created records back with IDs
+    const createdLinks: ImportantLink[] = [];
+    
+    for (const link of links) {
+      const created = await this.prisma.importantLink.create({
+        data: {
+          linkTitle: link.linkTitle as any,
+          linkUrl: link.linkUrl,
+          order: link.order || 0,
+          isActive: link.isActive !== undefined ? link.isActive : true,
+        },
+      });
+      
+      createdLinks.push({
+        id: created.id,
+        linkTitle: created.linkTitle as any,
+        linkUrl: created.linkUrl,
+        order: created.order,
+        isActive: created.isActive,
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      });
+    }
 
-    // Return the created links
-    return this.findAll();
+    return createdLinks;
   }
 
   async bulkUpdate(updates: { id: string; data: Partial<UpdateImportantLinkDto> }[]): Promise<ImportantLink[]> {
@@ -194,8 +208,17 @@ export class ImportantLinksRepository {
       })
     );
 
-    await Promise.all(updatePromises);
-    return this.findAll();
+    const updatedLinks = await Promise.all(updatePromises);
+    
+    return updatedLinks.map(link => ({
+      id: link.id,
+      linkTitle: link.linkTitle as any,
+      linkUrl: link.linkUrl,
+      order: link.order,
+      isActive: link.isActive,
+      createdAt: link.createdAt,
+      updatedAt: link.updatedAt,
+    }));
   }
 
   async getFooterLinks(): Promise<{

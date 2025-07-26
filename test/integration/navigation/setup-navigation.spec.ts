@@ -52,7 +52,7 @@ describe('Navigation Module Setup', () => {
           password: '$2b$10$test',
           firstName: 'Test',
           lastName: 'User',
-          role: 'USER',
+          role: 'VIEWER',
           isActive: true,
         },
       });
@@ -92,7 +92,7 @@ describe('Navigation Module Setup', () => {
       });
 
       expect(testMenu).toBeDefined();
-      expect(testMenu.name.en).toBe('Test Menu');
+      expect((testMenu.name as any).en).toBe('Test Menu');
       expect(testMenu.location).toBe(MenuLocation.HEADER);
       expect(testMenu.isActive).toBe(true);
       expect(testMenu.isPublished).toBe(false);
@@ -107,7 +107,7 @@ describe('Navigation Module Setup', () => {
 
       const testMenuItem = await prisma.menuItem.create({
         data: {
-          menuId: testMenu!.id,
+          menu: { connect: { id: testMenu!.id } },
           title: { en: 'Test Item', ne: 'परीक्षण आइटम' },
           description: { en: 'Test Description', ne: 'परीक्षण विवरण' },
           url: '/test',
@@ -123,7 +123,7 @@ describe('Navigation Module Setup', () => {
       });
 
       expect(testMenuItem).toBeDefined();
-      expect(testMenuItem.title.en).toBe('Test Item');
+      expect((testMenuItem.title as any).en).toBe('Test Item');
       expect(testMenuItem.menuId).toBe(testMenu!.id);
       expect(testMenuItem.itemType).toBe(MenuItemType.LINK);
       expect(testMenuItem.isActive).toBe(true);
@@ -144,8 +144,8 @@ describe('Navigation Module Setup', () => {
 
       const childItem = await prisma.menuItem.create({
         data: {
-          menuId: testMenu!.id,
-          parentId: parentItem!.id,
+          menu: { connect: { id: testMenu!.id } },
+          parent: { connect: { id: parentItem!.id } },
           title: { en: 'Child Item', ne: 'बाल आइटम' },
           description: { en: 'Child Description', ne: 'बाल विवरण' },
           url: '/test/child',
@@ -161,7 +161,7 @@ describe('Navigation Module Setup', () => {
       });
 
       expect(childItem).toBeDefined();
-      expect(childItem.title.en).toBe('Child Item');
+      expect((childItem.title as any).en).toBe('Child Item');
       expect(childItem.parentId).toBe(parentItem!.id);
       expect(childItem.menuId).toBe(testMenu!.id);
     });
@@ -209,7 +209,7 @@ describe('Navigation Module Setup', () => {
 
       const contentItem = await prisma.menuItem.create({
         data: {
-          menuId: testMenu!.id,
+          menu: { connect: { id: testMenu!.id } },
           title: { en: 'Content Item', ne: 'सामग्री आइटम' },
           description: { en: 'Content Description', ne: 'सामग्री विवरण' },
           itemType: MenuItemType.CONTENT,
@@ -224,7 +224,7 @@ describe('Navigation Module Setup', () => {
 
       const pageItem = await prisma.menuItem.create({
         data: {
-          menuId: testMenu!.id,
+          menu: { connect: { id: testMenu!.id } },
           title: { en: 'Page Item', ne: 'पृष्ठ आइटम' },
           description: { en: 'Page Description', ne: 'पृष्ठ विवरण' },
           itemType: MenuItemType.PAGE,
@@ -262,8 +262,8 @@ describe('Navigation Module Setup', () => {
       for (const menu of menus) {
         expect(menu.id).toBeDefined();
         expect(menu.name).toBeDefined();
-        expect(menu.name.en).toBeDefined();
-        expect(menu.name.ne).toBeDefined();
+        expect((menu.name as any).en).toBeDefined();
+        expect((menu.name as any).ne).toBeDefined();
         expect(menu.location).toBeDefined();
         expect(menu.isActive).toBeDefined();
         expect(menu.isPublished).toBeDefined();
@@ -291,8 +291,8 @@ describe('Navigation Module Setup', () => {
         expect(item.id).toBeDefined();
         expect(item.menuId).toBeDefined();
         expect(item.title).toBeDefined();
-        expect(item.title.en).toBeDefined();
-        expect(item.title.ne).toBeDefined();
+        expect((item.title as any).en).toBeDefined();
+        expect((item.title as any).ne).toBeDefined();
         expect(item.target).toBeDefined();
         expect(item.order).toBeDefined();
         expect(item.isActive).toBeDefined();
@@ -319,11 +319,11 @@ describe('Navigation Module Setup', () => {
 
       expect(parentItem).toBeDefined();
       expect(parentItem!.children.length).toBeGreaterThan(0);
-      expect(parentItem!.children[0].title.en).toBe('Child Item');
+      expect((parentItem!.children[0].title as any).en).toBe('Child Item');
 
       expect(childItem).toBeDefined();
       expect(childItem!.parent).toBeDefined();
-      expect(childItem!.parent!.title.en).toBe('Test Item');
+      expect((childItem!.parent!.title as any).en).toBe('Test Item');
     });
   });
 

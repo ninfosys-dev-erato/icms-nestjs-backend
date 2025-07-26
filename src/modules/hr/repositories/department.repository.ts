@@ -29,8 +29,10 @@ export class DepartmentRepository {
     data: Department[];
     pagination: PaginationInfo;
   }> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
+    let page = Number(query.page) || 1;
+    let limit = Number(query.limit) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -95,11 +97,13 @@ export class DepartmentRepository {
     data: Department[];
     pagination: PaginationInfo;
   }> {
-    const where: any = { isActive: true };
-
-    const page = query.page || 1;
-    const limit = query.limit || 10;
+    let page = Number(query.page) || 1;
+    let limit = Number(query.limit) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
     const skip = (page - 1) * limit;
+
+    const where: any = { isActive: true };
 
     const orderBy = { order: 'asc' as const };
 
@@ -138,8 +142,10 @@ export class DepartmentRepository {
     data: Department[];
     pagination: PaginationInfo;
   }> {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
+    let page = Number(query.page) || 1;
+    let limit = Number(query.limit) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
     const skip = (page - 1) * limit;
 
     const where: any = {
