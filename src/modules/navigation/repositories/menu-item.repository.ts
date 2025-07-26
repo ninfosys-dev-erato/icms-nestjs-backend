@@ -28,10 +28,10 @@ export class MenuItemRepository {
     const where: any = {};
     if (search) {
       where.OR = [
-        { title: { path: '$.en', string_contains: search } },
-        { title: { path: '$.ne', string_contains: search } },
-        { description: { path: '$.en', string_contains: search } },
-        { description: { path: '$.ne', string_contains: search } },
+        { title: { path: ['en'], string_contains: search } },
+        { title: { path: ['ne'], string_contains: search } },
+        { description: { path: ['en'], string_contains: search } },
+        { description: { path: ['ne'], string_contains: search } },
       ];
     }
     if (menuId) where.menuId = menuId;
@@ -179,9 +179,10 @@ export class MenuItemRepository {
   }
 
   async getStatistics(): Promise<any> {
-    const [total, active, byType, byMenu] = await Promise.all([
+    const [total, active, published, byType, byMenu] = await Promise.all([
       this.prisma.menuItem.count(),
       this.prisma.menuItem.count({ where: { isActive: true } }),
+      this.prisma.menuItem.count({ where: { isPublished: true } }),
       this.prisma.menuItem.groupBy({
         by: ['itemType'],
         _count: { itemType: true },
@@ -199,6 +200,7 @@ export class MenuItemRepository {
     return {
       total,
       active,
+      published,
       byType: byType.reduce((acc, item) => {
         acc[item.itemType] = item._count.itemType;
         return acc;

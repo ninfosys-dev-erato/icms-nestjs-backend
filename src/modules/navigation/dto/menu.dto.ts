@@ -1,29 +1,100 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, IsEnum, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsEnum, IsNumber, ValidateNested, IsObject } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import { MenuLocation } from '@prisma/client';
+import { TranslatableEntity } from '@/common/types/translatable.entity';
 
 export { MenuLocation };
 
+// Custom validation decorator for translatable entities
+export class TranslatableEntityDto {
+  @IsString()
+  en: string;
+
+  @IsString()
+  ne: string;
+}
+
 export class CreateMenuDto {
-  @ApiProperty() name: any;
-  @ApiPropertyOptional() description?: any;
-  @ApiProperty({ enum: MenuLocation }) @IsEnum(MenuLocation) location: MenuLocation;
-  @ApiPropertyOptional() @IsBoolean() @IsOptional() isActive?: boolean;
-  @ApiPropertyOptional() @IsBoolean() @IsOptional() isPublished?: boolean;
+  @ApiProperty({ 
+    description: 'Menu name in multiple languages',
+    example: { en: 'Main Menu', ne: 'मुख्य मेनु' },
+    type: TranslatableEntityDto
+  }) 
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  name: TranslatableEntity;
+  
+  @ApiPropertyOptional({ 
+    description: 'Menu description in multiple languages',
+    example: { en: 'Main navigation menu', ne: 'मुख्य नेविगेशन मेनु' },
+    type: TranslatableEntityDto
+  }) 
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  description?: TranslatableEntity;
+  
+  @ApiProperty({ enum: MenuLocation }) 
+  @IsEnum(MenuLocation) 
+  location: MenuLocation;
+  
+  @ApiPropertyOptional() 
+  @IsBoolean() 
+  @IsOptional() 
+  isActive?: boolean;
+  
+  @ApiPropertyOptional() 
+  @IsBoolean() 
+  @IsOptional() 
+  isPublished?: boolean;
 }
 
 export class UpdateMenuDto {
-  @ApiPropertyOptional() name?: any;
-  @ApiPropertyOptional() description?: any;
-  @ApiPropertyOptional({ enum: MenuLocation }) @IsEnum(MenuLocation) @IsOptional() location?: MenuLocation;
-  @ApiPropertyOptional() @IsBoolean() @IsOptional() isActive?: boolean;
-  @ApiPropertyOptional() @IsBoolean() @IsOptional() isPublished?: boolean;
+  @ApiPropertyOptional({ 
+    description: 'Menu name in multiple languages',
+    example: { en: 'Main Menu', ne: 'मुख्य मेनु' },
+    type: TranslatableEntityDto
+  }) 
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  name?: TranslatableEntity;
+  
+  @ApiPropertyOptional({ 
+    description: 'Menu description in multiple languages',
+    example: { en: 'Main navigation menu', ne: 'मुख्य नेविगेशन मेनु' },
+    type: TranslatableEntityDto
+  }) 
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  description?: TranslatableEntity;
+  
+  @ApiPropertyOptional({ enum: MenuLocation }) 
+  @IsEnum(MenuLocation) 
+  @IsOptional() 
+  location?: MenuLocation;
+  
+  @ApiPropertyOptional() 
+  @IsBoolean() 
+  @IsOptional() 
+  isActive?: boolean;
+  
+  @ApiPropertyOptional() 
+  @IsBoolean() 
+  @IsOptional() 
+  isPublished?: boolean;
 }
 
 export class MenuResponseDto {
   @ApiProperty() id: string;
-  @ApiProperty() name: any;
-  @ApiPropertyOptional() description?: any;
+  @ApiProperty({ type: TranslatableEntityDto }) name: TranslatableEntity;
+  @ApiPropertyOptional({ type: TranslatableEntityDto }) description?: TranslatableEntity;
   @ApiProperty({ enum: MenuLocation }) location: MenuLocation;
   @ApiProperty() isActive: boolean;
   @ApiProperty() isPublished: boolean;
@@ -36,14 +107,49 @@ export class MenuResponseDto {
 }
 
 export class MenuQueryDto {
-  @ApiPropertyOptional({ example: 1 }) @IsOptional() @IsNumber() page?: number;
-  @ApiPropertyOptional({ example: 10 }) @IsOptional() @IsNumber() limit?: number;
-  @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
-  @ApiPropertyOptional({ enum: MenuLocation }) @IsOptional() @IsEnum(MenuLocation) location?: MenuLocation;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() isPublished?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsString() sort?: string;
-  @ApiPropertyOptional({ enum: ['asc', 'desc'] }) @IsOptional() @IsEnum(['asc', 'desc']) order?: 'asc' | 'desc';
+  @ApiPropertyOptional({ example: 1 }) 
+  @IsOptional() 
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber() 
+  page?: number;
+  
+  @ApiPropertyOptional({ example: 10 }) 
+  @IsOptional() 
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber() 
+  limit?: number;
+  
+  @ApiPropertyOptional() 
+  @IsOptional() 
+  @IsString() 
+  search?: string;
+  
+  @ApiPropertyOptional({ enum: MenuLocation }) 
+  @IsOptional() 
+  @IsEnum(MenuLocation) 
+  location?: MenuLocation;
+  
+  @ApiPropertyOptional() 
+  @IsOptional() 
+  @Transform(({ value }) => value === 'true')
+  @IsBoolean() 
+  isActive?: boolean;
+  
+  @ApiPropertyOptional() 
+  @IsOptional() 
+  @Transform(({ value }) => value === 'true')
+  @IsBoolean() 
+  isPublished?: boolean;
+  
+  @ApiPropertyOptional() 
+  @IsOptional() 
+  @IsString() 
+  sort?: string;
+  
+  @ApiPropertyOptional({ enum: ['asc', 'desc'] }) 
+  @IsOptional() 
+  @IsEnum(['asc', 'desc']) 
+  order?: 'asc' | 'desc';
 }
 
 export class PaginatedMenuResponse {
@@ -83,8 +189,8 @@ export class MenuItemTreeResponse {
   @ApiProperty() id: string;
   @ApiProperty() menuId: string;
   @ApiPropertyOptional() parentId?: string;
-  @ApiProperty() title: any;
-  @ApiPropertyOptional() description?: any;
+  @ApiProperty({ type: TranslatableEntityDto }) title: TranslatableEntity;
+  @ApiPropertyOptional({ type: TranslatableEntityDto }) description?: TranslatableEntity;
   @ApiPropertyOptional() url?: string;
   @ApiProperty() target: string;
   @ApiPropertyOptional() icon?: string;

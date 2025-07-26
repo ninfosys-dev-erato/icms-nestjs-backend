@@ -112,6 +112,16 @@ export class UsersController {
     @Param('role') role: string,
     @Query() query: UserQueryDto = {},
   ): Promise<void> {
+    const validRoles = ['ADMIN', 'EDITOR', 'VIEWER'];
+    if (!validRoles.includes(role)) {
+      response.status(HttpStatus.BAD_REQUEST).json(
+        ApiResponseBuilder.validationError('Invalid role', [
+          { field: 'role', message: 'Role must be one of: ADMIN, EDITOR, VIEWER', code: 'INVALID_ROLE', value: role }
+        ]),
+      );
+      return;
+    }
+
     const result = await this.usersService.getUsersByRole(role, query);
 
     response.status(HttpStatus.OK).json(

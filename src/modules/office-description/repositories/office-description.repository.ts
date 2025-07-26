@@ -72,6 +72,12 @@ export class OfficeDescriptionRepository {
   }
 
   async update(id: string, data: UpdateOfficeDescriptionDto): Promise<OfficeDescription> {
+    // First check if the record exists
+    const existing = await this.findById(id);
+    if (!existing) {
+      throw new Error('Office description not found');
+    }
+
     const description = await this.prisma.officeDescription.update({
       where: { id },
       data: {
@@ -173,14 +179,31 @@ export class OfficeDescriptionRepository {
   }
 
   async bulkUpdate(updates: { id: string; content: any }[]): Promise<OfficeDescription[]> {
-    const updatePromises = updates.map(update =>
-      this.prisma.officeDescription.update({
-        where: { id: update.id },
-        data: { content: update.content as any },
-      })
-    );
+    const results: OfficeDescription[] = [];
 
-    await Promise.all(updatePromises);
-    return this.findAll();
+    for (const update of updates) {
+      // Check if record exists
+      const existing = await this.findById(update.id);
+      if (!existing) {
+        throw new Error(`Office description with ID ${update.id} not found`);
+      }
+
+      const description = await this.prisma.officeDescription.update({
+        where: { id: update.id },
+        data: {
+          content: update.content as any,
+        },
+      });
+
+      results.push({
+        id: description.id,
+        officeDescriptionType: description.officeDescriptionType as OfficeDescriptionType,
+        content: description.content as any,
+        createdAt: description.createdAt,
+        updatedAt: description.updatedAt,
+      });
+    }
+
+    return results;
   }
 } 

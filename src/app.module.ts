@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TerminusModule } from '@nestjs/terminus';
@@ -19,6 +19,7 @@ import { HeaderModule } from '@/modules/header';
 import { HRModule } from '@/modules/hr';
 import { NavigationModule } from '@/modules/navigation';
 import { SliderModule } from '@/modules/slider';
+import { RequestIdMiddleware } from '@/common/middleware/request-id.middleware';
 import configuration from '@/config/configuration';
 
 @Module({
@@ -92,4 +93,10 @@ import configuration from '@/config/configuration';
   controllers: [],
   providers: [],
 })
-export class AppModule {} 
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(RequestIdMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+} 

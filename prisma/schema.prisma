@@ -78,6 +78,8 @@ model User {
   searchQueries   SearchQuery[]  @relation("SearchQueries")
   createdHeaderConfigs HeaderConfig[] @relation("CreatedHeaderConfigs")
   updatedHeaderConfigs HeaderConfig[] @relation("UpdatedHeaderConfigs")
+  sliderClicks SliderClick[]
+  sliderViews SliderView[]
 
   @@map("users")
 }
@@ -346,8 +348,41 @@ model Slider {
 
   // Relations
   media Media @relation(fields: [mediaId], references: [id])
+  clicks SliderClick[]
+  views SliderView[]
 
   @@map("sliders")
+}
+
+model SliderClick {
+  id        String   @id @default(cuid())
+  sliderId  String
+  userId    String?
+  ipAddress String
+  userAgent String
+  createdAt DateTime @default(now())
+
+  // Relations
+  slider Slider @relation(fields: [sliderId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("slider_clicks")
+}
+
+model SliderView {
+  id            String   @id @default(cuid())
+  sliderId      String
+  userId        String?
+  ipAddress     String
+  userAgent     String
+  viewDuration  Int?     // milliseconds
+  createdAt     DateTime @default(now())
+
+  // Relations
+  slider Slider @relation(fields: [sliderId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("slider_views")
 }
 
 // ========================================

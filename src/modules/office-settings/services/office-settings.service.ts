@@ -54,12 +54,13 @@ export class OfficeSettingsService {
   }
 
   async createOfficeSettings(data: CreateOfficeSettingsDto): Promise<OfficeSettingsResponseDto> {
+    // Defensive check for required fields
+    if (!data.directorate || !data.officeName || !data.officeAddress || !data.phoneNumber || !data.email) {
+      throw new BadRequestException('Missing required fields');
+    }
     const validation = await this.validateOfficeSettings(data);
     if (!validation.isValid) {
-      throw new BadRequestException({
-        message: 'Validation failed',
-        errors: validation.errors,
-      });
+      throw new BadRequestException('Validation failed');
     }
 
     const settings = await this.officeSettingsRepository.create(data);
@@ -67,12 +68,15 @@ export class OfficeSettingsService {
   }
 
   async updateOfficeSettings(id: string, data: UpdateOfficeSettingsDto): Promise<OfficeSettingsResponseDto> {
+    // Check if settings exist first
+    const existingSettings = await this.officeSettingsRepository.findById(id);
+    if (!existingSettings) {
+      throw new NotFoundException('Office settings not found');
+    }
+
     const validation = await this.validateOfficeSettings(data);
     if (!validation.isValid) {
-      throw new BadRequestException({
-        message: 'Validation failed',
-        errors: validation.errors,
-      });
+      throw new BadRequestException('Validation failed');
     }
 
     const settings = await this.officeSettingsRepository.update(id, data);
@@ -82,10 +86,7 @@ export class OfficeSettingsService {
   async upsertOfficeSettings(data: CreateOfficeSettingsDto): Promise<OfficeSettingsResponseDto> {
     const validation = await this.validateOfficeSettings(data);
     if (!validation.isValid) {
-      throw new BadRequestException({
-        message: 'Validation failed',
-        errors: validation.errors,
-      });
+      throw new BadRequestException('Validation failed');
     }
 
     const settings = await this.officeSettingsRepository.upsert(data);
@@ -223,6 +224,12 @@ export class OfficeSettingsService {
   }
 
   async updateBackgroundPhoto(id: string, file: Express.Multer.File): Promise<OfficeSettingsResponseDto> {
+    // Check if settings exist first
+    const existingSettings = await this.officeSettingsRepository.findById(id);
+    if (!existingSettings) {
+      throw new NotFoundException('Office settings not found');
+    }
+
     // Validate file
     if (!file) {
       throw new BadRequestException('No file uploaded');
@@ -251,6 +258,11 @@ export class OfficeSettingsService {
   }
 
   async removeBackgroundPhoto(id: string): Promise<OfficeSettingsResponseDto> {
+    const existingSettings = await this.officeSettingsRepository.findById(id);
+    if (!existingSettings) {
+      throw new NotFoundException('Office settings not found');
+    }
+
     const settings = await this.officeSettingsRepository.update(id, {
       backgroundPhoto: null,
     });

@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Body, Param, Query, Res, Req } from '@nestjs/common';
-import { Response, Request } from 'express';
+import { Controller, Get, Post, Body, Param, Query, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -12,7 +12,6 @@ import {
   SliderQueryDto, 
   SliderResponseDto 
 } from '../dto/slider.dto';
-import { ApiResponseBuilder } from '../../../common/types/api-response';
 
 @ApiTags('Public Sliders')
 @Controller('sliders')
@@ -28,24 +27,8 @@ export class PublicSliderController {
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiQuery({ name: 'isPublished', required: false, type: Boolean })
   @ApiQuery({ name: 'position', required: false, type: Number })
-  async getAllSliders(
-    @Res() response: Response,
-    @Query() query?: SliderQueryDto
-  ): Promise<void> {
-    try {
-      const result = await this.sliderService.getPublishedSliders(query);
-      
-      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'SLIDERS_RETRIEVAL_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
-    }
+  async getAllSliders(@Query() query?: SliderQueryDto) {
+    return await this.sliderService.getPublishedSliders(query);
   }
 
   @Get(':id')
@@ -53,71 +36,23 @@ export class PublicSliderController {
   @ApiResponse({ status: 200, description: 'Slider retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Slider not found' })
   @ApiParam({ name: 'id', description: 'Slider ID' })
-  async getSliderById(
-    @Res() response: Response,
-    @Param('id') id: string
-  ): Promise<void> {
-    try {
-      const slider = await this.sliderService.getSliderById(id);
-      
-      const apiResponse = ApiResponseBuilder.success(slider);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'SLIDER_NOT_FOUND',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  async getSliderById(@Param('id') id: string) {
+    return await this.sliderService.getSliderById(id);
   }
 
   @Get('display/active')
   @ApiOperation({ summary: 'Get active sliders for display' })
   @ApiResponse({ status: 200, description: 'Active sliders retrieved successfully' })
-  async getActiveSlidersForDisplay(
-    @Res() response: Response
-  ): Promise<void> {
-    try {
-      const sliders = await this.sliderService.getActiveSlidersForDisplay();
-      
-      const apiResponse = ApiResponseBuilder.success(sliders);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'ACTIVE_SLIDERS_RETRIEVAL_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
-    }
+  async getActiveSlidersForDisplay() {
+    return await this.sliderService.getActiveSlidersForDisplay();
   }
 
   @Get('position/:position')
   @ApiOperation({ summary: 'Get sliders by position' })
   @ApiResponse({ status: 200, description: 'Sliders retrieved successfully' })
   @ApiParam({ name: 'position', description: 'Slider position' })
-  async getSlidersByPosition(
-    @Res() response: Response,
-    @Param('position') position: number
-  ): Promise<void> {
-    try {
-      const sliders = await this.sliderService.getSlidersByPosition(position);
-      
-      const apiResponse = ApiResponseBuilder.success(sliders);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'SLIDERS_POSITION_RETRIEVAL_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
-    }
+  async getSlidersByPosition(@Param('position') position: number) {
+    return await this.sliderService.getSlidersByPosition(position);
   }
 
   @Post(':id/click')
@@ -126,28 +61,14 @@ export class PublicSliderController {
   @ApiResponse({ status: 404, description: 'Slider not found' })
   @ApiParam({ name: 'id', description: 'Slider ID' })
   async recordSliderClick(
-    @Res() response: Response,
     @Param('id') id: string,
     @Req() request: Request
-  ): Promise<void> {
-    try {
-      const ipAddress = request.ip || request.connection.remoteAddress || 'unknown';
-      const userAgent = request.headers['user-agent'] || 'unknown';
-      
-      await this.sliderService.recordSliderClick(id, ipAddress, userAgent);
-      
-      const apiResponse = ApiResponseBuilder.success({ message: 'Click recorded successfully' });
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'SLIDER_CLICK_RECORDING_ERROR',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  ) {
+    const ipAddress = request.ip || request.connection.remoteAddress || 'unknown';
+    const userAgent = request.headers['user-agent'] || 'unknown';
+    
+    await this.sliderService.recordSliderClick(id, ipAddress, userAgent);
+    return { message: 'Click recorded successfully' };
   }
 
   @Post(':id/view')
@@ -156,28 +77,14 @@ export class PublicSliderController {
   @ApiResponse({ status: 404, description: 'Slider not found' })
   @ApiParam({ name: 'id', description: 'Slider ID' })
   async recordSliderView(
-    @Res() response: Response,
     @Param('id') id: string,
-    @Body() data: { duration?: number },
-    @Req() request: Request
-  ): Promise<void> {
-    try {
-      const ipAddress = request.ip || request.connection.remoteAddress || 'unknown';
-      const userAgent = request.headers['user-agent'] || 'unknown';
-      
-      await this.sliderService.recordSliderView(id, ipAddress, userAgent, undefined, data.duration);
-      
-      const apiResponse = ApiResponseBuilder.success({ message: 'View recorded successfully' });
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'SLIDER_VIEW_RECORDING_ERROR',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
+    @Body() data?: { duration?: number },
+    @Req() request?: Request
+  ) {
+    const ipAddress = request?.ip || request?.connection?.remoteAddress || 'unknown';
+    const userAgent = request?.headers['user-agent'] || 'unknown';
+    
+    await this.sliderService.recordSliderView(id, ipAddress, userAgent, undefined, data?.duration);
+    return { message: 'View recorded successfully' };
   }
 } 

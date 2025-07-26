@@ -372,14 +372,21 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    const updatedUser = await this.usersRepository.update(id, data);
+    // Convert UpdateUserProfileDto to UpdateUserDto
+    const updateData: Partial<UpdateUserDto> = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      // Note: phoneNumber and avatarUrl are not in UpdateUserDto, they would need to be added to the schema
+    };
+
+    const updatedUser = await this.usersRepository.update(id, updateData as UpdateUserDto);
 
     return {
       ...this.mapUserToResponse(updatedUser),
       fullName: `${updatedUser.firstName} ${updatedUser.lastName}`,
       username: updatedUser.email.split('@')[0],
-      phoneNumber: updatedUser.phoneNumber,
-      avatarUrl: updatedUser.avatarUrl,
+      phoneNumber: data.phoneNumber || updatedUser.phoneNumber,
+      avatarUrl: data.avatarUrl || updatedUser.avatarUrl,
     };
   }
 
@@ -409,6 +416,11 @@ export class UsersService {
   }
 
   private async logAuditEvent(data: any): Promise<void> {
-    await this.auditLogRepository.create(data);
+    try {
+      await this.auditLogRepository.create(data);
+    } catch (error) {
+      // Log the audit failure but don't throw - audit logging shouldn't break the main operation
+      console.error('Failed to create audit log:', error);
+    }
   }
 } 

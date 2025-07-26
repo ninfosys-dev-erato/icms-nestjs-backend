@@ -79,8 +79,15 @@ export class OfficeDescriptionService {
       });
     }
 
-    const description = await this.officeDescriptionRepository.update(id, data);
-    return this.transformToResponseDto(description);
+    try {
+      const description = await this.officeDescriptionRepository.update(id, data);
+      return this.transformToResponseDto(description);
+    } catch (error) {
+      if (error.message === 'Office description not found') {
+        throw new NotFoundException('Office description not found');
+      }
+      throw error;
+    }
   }
 
   async upsertOfficeDescriptionByType(type: OfficeDescriptionType, data: CreateOfficeDescriptionDto): Promise<OfficeDescriptionResponseDto> {
@@ -146,29 +153,36 @@ export class OfficeDescriptionService {
   }
 
   async bulkUpdateOfficeDescriptions(data: BulkUpdateOfficeDescriptionDto): Promise<OfficeDescriptionResponseDto[]> {
-    // Validate all updates
+    const results: OfficeDescriptionResponseDto[] = [];
+    const errors: string[] = [];
+
     for (const update of data.descriptions) {
-      if (update.content) {
-        const validation = await this.validateOfficeDescription({ 
-          officeDescriptionType: OfficeDescriptionType.INTRODUCTION, // Dummy type for validation
-          content: update.content 
-        });
+      try {
+        const validation = await this.validateOfficeDescription(update);
         if (!validation.isValid) {
-          throw new BadRequestException({
-            message: `Validation failed for description ${update.id}`,
-            errors: validation.errors,
-          });
+          errors.push(`Validation failed for ID ${update.id}: ${validation.errors.map(e => e.message).join(', ')}`);
+          continue;
+        }
+
+        const description = await this.officeDescriptionRepository.update(update.id, update);
+        results.push(this.transformToResponseDto(description));
+      } catch (error) {
+        if (error.message === 'Office description not found') {
+          errors.push(`Office description with ID ${update.id} not found`);
+        } else {
+          errors.push(`Failed to update ID ${update.id}: ${error.message}`);
         }
       }
     }
 
-    const updates = data.descriptions.map(update => ({
-      id: update.id,
-      content: update.content,
-    }));
+    if (errors.length > 0) {
+      throw new BadRequestException({
+        message: 'Some updates failed',
+        errors,
+      });
+    }
 
-    const descriptions = await this.officeDescriptionRepository.bulkUpdate(updates);
-    return descriptions.map(desc => this.transformToResponseDto(desc));
+    return results;
   }
 
   async getOfficeDescriptionStatistics(): Promise<OfficeDescriptionStatistics> {

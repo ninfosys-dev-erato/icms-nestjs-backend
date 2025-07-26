@@ -122,50 +122,75 @@ export class OfficeSettingsRepository {
   }
 
   async upsert(data: CreateOfficeSettingsDto): Promise<OfficeSettings> {
-    const settings = await this.prisma.officeSettings.upsert({
-      where: { id: 'default' }, // Assuming single record
-      update: {
-        directorate: data.directorate as any,
-        officeName: data.officeName as any,
-        officeAddress: data.officeAddress as any,
-        backgroundPhoto: data.backgroundPhoto,
-        email: data.email,
-        phoneNumber: data.phoneNumber as any,
-        xLink: data.xLink,
-        mapIframe: data.mapIframe,
-        website: data.website,
-        youtube: data.youtube,
-      },
-      create: {
-        id: 'default',
-        directorate: data.directorate as any,
-        officeName: data.officeName as any,
-        officeAddress: data.officeAddress as any,
-        backgroundPhoto: data.backgroundPhoto,
-        email: data.email,
-        phoneNumber: data.phoneNumber as any,
-        xLink: data.xLink,
-        mapIframe: data.mapIframe,
-        website: data.website,
-        youtube: data.youtube,
-      },
-    });
+    // First try to find existing settings
+    const existingSettings = await this.prisma.officeSettings.findFirst();
+    
+    if (existingSettings) {
+      // Update existing settings
+      const settings = await this.prisma.officeSettings.update({
+        where: { id: existingSettings.id },
+        data: {
+          directorate: data.directorate as any,
+          officeName: data.officeName as any,
+          officeAddress: data.officeAddress as any,
+          backgroundPhoto: data.backgroundPhoto,
+          email: data.email,
+          phoneNumber: data.phoneNumber as any,
+          xLink: data.xLink,
+          mapIframe: data.mapIframe,
+          website: data.website,
+          youtube: data.youtube,
+        },
+      });
 
-    return {
-      id: settings.id,
-      directorate: settings.directorate as any,
-      officeName: settings.officeName as any,
-      officeAddress: settings.officeAddress as any,
-      backgroundPhoto: settings.backgroundPhoto,
-      email: settings.email,
-      phoneNumber: settings.phoneNumber as any,
-      xLink: settings.xLink,
-      mapIframe: settings.mapIframe,
-      website: settings.website,
-      youtube: settings.youtube,
-      createdAt: settings.createdAt,
-      updatedAt: settings.updatedAt,
-    };
+      return {
+        id: settings.id,
+        directorate: settings.directorate as any,
+        officeName: settings.officeName as any,
+        officeAddress: settings.officeAddress as any,
+        backgroundPhoto: settings.backgroundPhoto,
+        email: settings.email,
+        phoneNumber: settings.phoneNumber as any,
+        xLink: settings.xLink,
+        mapIframe: settings.mapIframe,
+        website: settings.website,
+        youtube: settings.youtube,
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+      };
+    } else {
+      // Create new settings
+      const settings = await this.prisma.officeSettings.create({
+        data: {
+          directorate: data.directorate as any,
+          officeName: data.officeName as any,
+          officeAddress: data.officeAddress as any,
+          backgroundPhoto: data.backgroundPhoto,
+          email: data.email,
+          phoneNumber: data.phoneNumber as any,
+          xLink: data.xLink,
+          mapIframe: data.mapIframe,
+          website: data.website,
+          youtube: data.youtube,
+        },
+      });
+
+      return {
+        id: settings.id,
+        directorate: settings.directorate as any,
+        officeName: settings.officeName as any,
+        officeAddress: settings.officeAddress as any,
+        backgroundPhoto: settings.backgroundPhoto,
+        email: settings.email,
+        phoneNumber: settings.phoneNumber as any,
+        xLink: settings.xLink,
+        mapIframe: settings.mapIframe,
+        website: settings.website,
+        youtube: settings.youtube,
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+      };
+    }
   }
 
   async delete(id: string): Promise<void> {

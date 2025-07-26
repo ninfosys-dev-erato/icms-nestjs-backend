@@ -11,6 +11,7 @@ import {
   UploadedFile,
   UseInterceptors,
   UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -35,72 +36,17 @@ export class OfficeSettingsController {
   @ApiResponse({ status: 200, description: 'Office settings retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Office settings not found' })
   async getOfficeSettings(
-    @Res() response: Response,
     @Query('lang') lang?: string,
-  ): Promise<void> {
-    try {
-      const settings = await this.officeSettingsService.getOfficeSettings(lang);
-      
-      const apiResponse = ApiResponseBuilder.success(settings);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'OFFICE_SETTINGS_NOT_FOUND',
-        error.message
-      );
-
-      response.status(404).json(apiResponse);
-    }
+  ) {
+    return this.officeSettingsService.getOfficeSettings(lang);
   }
 
   @Get('seo')
   @ApiOperation({ summary: 'Get office settings for SEO (Public)' })
   @ApiResponse({ status: 200, description: 'SEO settings retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Office settings not found' })
-  async getOfficeSettingsForSEO(@Res() response: Response): Promise<void> {
-    try {
-      const seoSettings = await this.officeSettingsService.getOfficeSettingsForSEO();
-      
-      const apiResponse = ApiResponseBuilder.success(seoSettings);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'OFFICE_SETTINGS_NOT_FOUND',
-        error.message
-      );
-
-      response.status(404).json(apiResponse);
-    }
-  }
-
-  @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiOperation({ summary: 'Get office settings by ID (Admin)' })
-  @ApiResponse({ status: 200, description: 'Office settings retrieved successfully' })
-  @ApiResponse({ status: 404, description: 'Office settings not found' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  async getOfficeSettingsById(
-    @Param('id') id: string,
-    @Res() response: Response,
-  ): Promise<void> {
-    try {
-      const settings = await this.officeSettingsService.getOfficeSettingsById(id);
-      
-      const apiResponse = ApiResponseBuilder.success(settings);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'OFFICE_SETTINGS_ERROR',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  async getOfficeSettingsForSEO() {
+    return this.officeSettingsService.getOfficeSettingsForSEO();
   }
 
   @Post()
@@ -112,24 +58,21 @@ export class OfficeSettingsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async createOfficeSettings(
     @Body() data: CreateOfficeSettingsDto,
-    @Res() response: Response,
-  ): Promise<void> {
-    try {
-      const settings = await this.officeSettingsService.createOfficeSettings(data);
-      
-      const apiResponse = ApiResponseBuilder.success(settings);
+  ) {
+    return this.officeSettingsService.createOfficeSettings(data);
+  }
 
-      response.status(201).json(apiResponse);
-    } catch (error) {
-      const status = error.status || 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'OFFICE_SETTINGS_CREATION_ERROR',
-        error.message,
-        error.response?.errors || []
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  @Put('upsert')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Upsert office settings (Admin)' })
+  @ApiResponse({ status: 200, description: 'Office settings upserted successfully' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  async upsertOfficeSettings(
+    @Body() data: CreateOfficeSettingsDto,
+  ) {
+    return this.officeSettingsService.upsertOfficeSettings(data);
   }
 
   @Put(':id')
@@ -143,53 +86,21 @@ export class OfficeSettingsController {
   async updateOfficeSettings(
     @Param('id') id: string,
     @Body() data: UpdateOfficeSettingsDto,
-    @Res() response: Response,
-  ): Promise<void> {
-    try {
-      const settings = await this.officeSettingsService.updateOfficeSettings(id, data);
-      
-      const apiResponse = ApiResponseBuilder.success(settings);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.status || 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'OFFICE_SETTINGS_UPDATE_ERROR',
-        error.message,
-        error.response?.errors || []
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  ) {
+    return this.officeSettingsService.updateOfficeSettings(id, data);
   }
 
-  @Put('upsert')
+  @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'Upsert office settings (Admin)' })
-  @ApiResponse({ status: 200, description: 'Office settings upserted successfully' })
-  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiOperation({ summary: 'Get office settings by ID (Admin)' })
+  @ApiResponse({ status: 200, description: 'Office settings retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Office settings not found' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  async upsertOfficeSettings(
-    @Body() data: CreateOfficeSettingsDto,
-    @Res() response: Response,
-  ): Promise<void> {
-    try {
-      const settings = await this.officeSettingsService.upsertOfficeSettings(data);
-      
-      const apiResponse = ApiResponseBuilder.success(settings);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.status || 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'OFFICE_SETTINGS_UPSERT_ERROR',
-        error.message,
-        error.response?.errors || []
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  async getOfficeSettingsById(
+    @Param('id') id: string,
+  ) {
+    return this.officeSettingsService.getOfficeSettingsById(id);
   }
 
   @Delete(':id')
@@ -201,23 +112,8 @@ export class OfficeSettingsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async deleteOfficeSettings(
     @Param('id') id: string,
-    @Res() response: Response,
-  ): Promise<void> {
-    try {
-      await this.officeSettingsService.deleteOfficeSettings(id);
-      
-      const apiResponse = ApiResponseBuilder.success(null);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'OFFICE_SETTINGS_DELETE_ERROR',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  ) {
+    return this.officeSettingsService.deleteOfficeSettings(id);
   }
 
   @Post(':id/background-photo')
@@ -226,6 +122,7 @@ export class OfficeSettingsController {
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Update background photo (Admin)' })
   @ApiConsumes('multipart/form-data')
+  @HttpCode(200)
   @ApiResponse({ status: 200, description: 'Background photo updated successfully' })
   @ApiResponse({ status: 400, description: 'File validation error' })
   @ApiResponse({ status: 404, description: 'Office settings not found' })
@@ -233,23 +130,8 @@ export class OfficeSettingsController {
   async updateBackgroundPhoto(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
-    @Res() response: Response,
-  ): Promise<void> {
-    try {
-      const settings = await this.officeSettingsService.updateBackgroundPhoto(id, file);
-      
-      const apiResponse = ApiResponseBuilder.success(settings);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.status || 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'BACKGROUND_PHOTO_UPDATE_ERROR',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  ) {
+    return this.officeSettingsService.updateBackgroundPhoto(id, file);
   }
 
   @Delete(':id/background-photo')
@@ -261,22 +143,7 @@ export class OfficeSettingsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async removeBackgroundPhoto(
     @Param('id') id: string,
-    @Res() response: Response,
-  ): Promise<void> {
-    try {
-      const settings = await this.officeSettingsService.removeBackgroundPhoto(id);
-      
-      const apiResponse = ApiResponseBuilder.success(settings);
-
-      response.status(200).json(apiResponse);
-    } catch (error) {
-      const status = error.message.includes('not found') ? 404 : 500;
-      const apiResponse = ApiResponseBuilder.error(
-        'BACKGROUND_PHOTO_REMOVE_ERROR',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
-    }
+  ) {
+    return this.officeSettingsService.removeBackgroundPhoto(id);
   }
 } 

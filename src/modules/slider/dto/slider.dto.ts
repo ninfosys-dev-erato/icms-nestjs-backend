@@ -114,11 +114,13 @@ export class SliderResponseDto {
 export class SliderQueryDto {
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 
@@ -129,11 +131,13 @@ export class SliderQueryDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
+  @Type(() => Boolean)
   @IsBoolean()
   isActive?: boolean;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   position?: number;
 
@@ -187,11 +191,13 @@ export class CreateSliderClickDto {
 export class ClickQueryDto {
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 
@@ -240,11 +246,13 @@ export class CreateSliderViewDto {
 export class ViewQueryDto {
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ example: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 

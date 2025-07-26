@@ -28,8 +28,8 @@ export class ApiResponseInterceptor<T>
           processingTime,
         };
 
-        // If data is already an ApiResponse, return it
-        if (data && typeof data === 'object' && 'success' in data) {
+        // If data is already an ApiResponse (has boolean success property), return it
+        if (data && typeof data === 'object' && 'success' in data && typeof data.success === 'boolean') {
           return {
             ...data,
             meta: {

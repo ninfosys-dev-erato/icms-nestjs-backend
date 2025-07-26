@@ -1,14 +1,44 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, IsEnum, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsEnum, IsNumber, ValidateNested, IsObject } from 'class-validator';
+import { Type, Transform } from 'class-transformer';
 import { MenuItemType } from '@prisma/client';
+import { TranslatableEntity } from '@/common/types/translatable.entity';
 
 export { MenuItemType };
+
+// Custom validation decorator for translatable entities
+export class TranslatableEntityDto {
+  @IsString()
+  en: string;
+
+  @IsString()
+  ne: string;
+}
 
 export class CreateMenuItemDto {
   @ApiProperty() @IsString() menuId: string;
   @ApiPropertyOptional() @IsString() @IsOptional() parentId?: string;
-  @ApiProperty() title: any;
-  @ApiPropertyOptional() description?: any;
+  @ApiProperty({ 
+    description: 'Menu item title in multiple languages',
+    example: { en: 'Home', ne: 'गृह' },
+    type: TranslatableEntityDto
+  }) 
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  title: TranslatableEntity;
+  
+  @ApiPropertyOptional({ 
+    description: 'Menu item description in multiple languages',
+    example: { en: 'Home page', ne: 'गृह पृष्ठ' },
+    type: TranslatableEntityDto
+  }) 
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  description?: TranslatableEntity;
+  
   @ApiPropertyOptional() @IsString() @IsOptional() url?: string;
   @ApiPropertyOptional({ enum: ['self', '_blank', '_parent', '_top'] }) @IsOptional() @IsEnum(['self', '_blank', '_parent', '_top']) target?: 'self' | '_blank' | '_parent' | '_top';
   @ApiPropertyOptional() @IsString() @IsOptional() icon?: string;
@@ -21,8 +51,28 @@ export class CreateMenuItemDto {
 
 export class UpdateMenuItemDto {
   @ApiPropertyOptional() @IsString() @IsOptional() parentId?: string;
-  @ApiPropertyOptional() title?: any;
-  @ApiPropertyOptional() description?: any;
+  @ApiPropertyOptional({ 
+    description: 'Menu item title in multiple languages',
+    example: { en: 'Home', ne: 'गृह' },
+    type: TranslatableEntityDto
+  }) 
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  title?: TranslatableEntity;
+  
+  @ApiPropertyOptional({ 
+    description: 'Menu item description in multiple languages',
+    example: { en: 'Home page', ne: 'गृह पृष्ठ' },
+    type: TranslatableEntityDto
+  }) 
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  description?: TranslatableEntity;
+  
   @ApiPropertyOptional() @IsString() @IsOptional() url?: string;
   @ApiPropertyOptional({ enum: ['self', '_blank', '_parent', '_top'] }) @IsOptional() @IsEnum(['self', '_blank', '_parent', '_top']) target?: 'self' | '_blank' | '_parent' | '_top';
   @ApiPropertyOptional() @IsString() @IsOptional() icon?: string;
@@ -37,8 +87,8 @@ export class MenuItemResponseDto {
   @ApiProperty() id: string;
   @ApiProperty() menuId: string;
   @ApiPropertyOptional() parentId?: string;
-  @ApiProperty() title: any;
-  @ApiPropertyOptional() description?: any;
+  @ApiProperty({ type: TranslatableEntityDto }) title: TranslatableEntity;
+  @ApiPropertyOptional({ type: TranslatableEntityDto }) description?: TranslatableEntity;
   @ApiPropertyOptional() url?: string;
   @ApiProperty() target: 'self' | '_blank' | '_parent' | '_top';
   @ApiPropertyOptional() icon?: string;
@@ -55,16 +105,59 @@ export class MenuItemResponseDto {
 }
 
 export class MenuItemQueryDto {
-  @ApiPropertyOptional({ example: 1 }) @IsOptional() @IsNumber() page?: number;
-  @ApiPropertyOptional({ example: 10 }) @IsOptional() @IsNumber() limit?: number;
-  @ApiPropertyOptional() @IsOptional() @IsString() search?: string;
-  @ApiPropertyOptional() @IsString() @IsOptional() menuId?: string;
-  @ApiPropertyOptional() @IsString() @IsOptional() parentId?: string;
-  @ApiPropertyOptional({ enum: MenuItemType }) @IsOptional() @IsEnum(MenuItemType) itemType?: MenuItemType;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() isPublished?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsString() sort?: string;
-  @ApiPropertyOptional({ enum: ['asc', 'desc'] }) @IsOptional() @IsEnum(['asc', 'desc']) order?: 'asc' | 'desc';
+  @ApiPropertyOptional({ example: 1 }) 
+  @IsOptional() 
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber() 
+  page?: number;
+  
+  @ApiPropertyOptional({ example: 10 }) 
+  @IsOptional() 
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber() 
+  limit?: number;
+  
+  @ApiPropertyOptional() 
+  @IsOptional() 
+  @IsString() 
+  search?: string;
+  
+  @ApiPropertyOptional() 
+  @IsString() 
+  @IsOptional() 
+  menuId?: string;
+  
+  @ApiPropertyOptional() 
+  @IsString() 
+  @IsOptional() 
+  parentId?: string;
+  
+  @ApiPropertyOptional({ enum: MenuItemType }) 
+  @IsOptional() 
+  @IsEnum(MenuItemType) 
+  itemType?: MenuItemType;
+  
+  @ApiPropertyOptional() 
+  @IsOptional() 
+  @Transform(({ value }) => value === 'true')
+  @IsBoolean() 
+  isActive?: boolean;
+  
+  @ApiPropertyOptional() 
+  @IsOptional() 
+  @Transform(({ value }) => value === 'true')
+  @IsBoolean() 
+  isPublished?: boolean;
+  
+  @ApiPropertyOptional() 
+  @IsOptional() 
+  @IsString() 
+  sort?: string;
+  
+  @ApiPropertyOptional({ enum: ['asc', 'desc'] }) 
+  @IsOptional() 
+  @IsEnum(['asc', 'desc']) 
+  order?: 'asc' | 'desc';
 }
 
 export class PaginatedMenuItemResponse {

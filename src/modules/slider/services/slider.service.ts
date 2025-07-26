@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { SliderRepository } from '../repositories/slider.repository';
+import { SliderClickRepository } from '../repositories/slider-click.repository';
+import { SliderViewRepository } from '../repositories/slider-view.repository';
 import { 
   CreateSliderDto, 
   UpdateSliderDto, 
@@ -15,7 +17,11 @@ import {
 
 @Injectable()
 export class SliderService {
-  constructor(private readonly sliderRepository: SliderRepository) {}
+  constructor(
+    private readonly sliderRepository: SliderRepository,
+    private readonly sliderClickRepository: SliderClickRepository,
+    private readonly sliderViewRepository: SliderViewRepository,
+  ) {}
 
   async getSliderById(id: string): Promise<SliderResponseDto> {
     const slider = await this.sliderRepository.findById(id);
@@ -23,7 +29,7 @@ export class SliderService {
       throw new NotFoundException('Slider not found');
     }
 
-    return this.transformToResponseDto(slider);
+    return await this.transformToResponseDto(slider);
   }
 
   async getAllSliders(query: SliderQueryDto): Promise<{
@@ -32,8 +38,12 @@ export class SliderService {
   }> {
     const result = await this.sliderRepository.findAll(query);
     
+    const transformedData = await Promise.all(
+      result.data.map(slider => this.transformToResponseDto(slider))
+    );
+    
     return {
-      data: result.data.map(slider => this.transformToResponseDto(slider)),
+      data: transformedData,
       pagination: result.pagination
     };
   }
@@ -44,8 +54,12 @@ export class SliderService {
   }> {
     const result = await this.sliderRepository.findActive(query);
     
+    const transformedData = await Promise.all(
+      result.data.map(slider => this.transformToResponseDto(slider))
+    );
+    
     return {
-      data: result.data.map(slider => this.transformToResponseDto(slider)),
+      data: transformedData,
       pagination: result.pagination
     };
   }
@@ -56,15 +70,22 @@ export class SliderService {
   }> {
     const result = await this.sliderRepository.findPublished(query);
     
+    const transformedData = await Promise.all(
+      result.data.map(slider => this.transformToResponseDto(slider))
+    );
+    
     return {
-      data: result.data.map(slider => this.transformToResponseDto(slider)),
+      data: transformedData,
       pagination: result.pagination
     };
   }
 
   async getSlidersByPosition(position: number): Promise<SliderResponseDto[]> {
     const sliders = await this.sliderRepository.findByPosition(position);
-    return sliders.map(slider => this.transformToResponseDto(slider));
+    const transformedSliders = await Promise.all(
+      sliders.map(slider => this.transformToResponseDto(slider))
+    );
+    return transformedSliders;
   }
 
   async searchSliders(searchTerm: string, query: SliderQueryDto): Promise<{
@@ -73,8 +94,12 @@ export class SliderService {
   }> {
     const result = await this.sliderRepository.search(searchTerm, query);
     
+    const transformedData = await Promise.all(
+      result.data.map(slider => this.transformToResponseDto(slider))
+    );
+    
     return {
-      data: result.data.map(slider => this.transformToResponseDto(slider)),
+      data: transformedData,
       pagination: result.pagination
     };
   }
@@ -193,7 +218,10 @@ export class SliderService {
 
   async getActiveSlidersForDisplay(): Promise<SliderResponseDto[]> {
     const sliders = await this.sliderRepository.getActiveSlidersForDisplay();
-    return sliders.map(slider => this.transformToResponseDto(slider));
+    const transformedSliders = await Promise.all(
+      sliders.map(slider => this.transformToResponseDto(slider))
+    );
+    return transformedSliders;
   }
 
   async recordSliderClick(sliderId: string, ipAddress: string, userAgent: string, userId?: string): Promise<void> {
@@ -202,13 +230,12 @@ export class SliderService {
       throw new NotFoundException('Slider not found');
     }
 
-    // TODO: Implement when SliderClick model is added
-    // await this.sliderClickRepository.create({
-    //   sliderId,
-    //   userId,
-    //   ipAddress,
-    //   userAgent
-    // });
+    await this.sliderClickRepository.create({
+      sliderId,
+      userId,
+      ipAddress,
+      userAgent
+    });
   }
 
   async recordSliderView(sliderId: string, ipAddress: string, userAgent: string, userId?: string, duration?: number): Promise<void> {
@@ -217,14 +244,13 @@ export class SliderService {
       throw new NotFoundException('Slider not found');
     }
 
-    // TODO: Implement when SliderView model is added
-    // await this.sliderViewRepository.create({
-    //   sliderId,
-    //   userId,
-    //   ipAddress,
-    //   userAgent,
-    //   viewDuration: duration
-    // });
+    await this.sliderViewRepository.create({
+      sliderId,
+      userId,
+      ipAddress,
+      userAgent,
+      viewDuration: duration
+    });
   }
 
   async getSliderAnalytics(sliderId: string, dateFrom?: Date, dateTo?: Date): Promise<SliderAnalytics> {
@@ -233,17 +259,40 @@ export class SliderService {
       throw new NotFoundException('Slider not found');
     }
 
-    // TODO: Implement analytics when SliderClick and SliderView models are added
+    const [totalClicks, totalViews, clicksByDate, viewsByDate, averageViewDuration] = await Promise.all([
+      this.sliderClickRepository.getClickCount(sliderId),
+      this.sliderViewRepository.getViewCount(sliderId),
+      this.sliderClickRepository.getClicksByDate(sliderId),
+      this.sliderViewRepository.getViewsByDate(sliderId),
+      this.sliderViewRepository.getAverageViewDuration(sliderId)
+    ]);
+
+    const clickThroughRate = totalViews > 0 ? (totalClicks / totalViews) * 100 : 0;
+
+    // Get device breakdown from user agents
+    const views = await this.sliderViewRepository.findBySliderId(sliderId);
+    const deviceBreakdown: Record<string, number> = {};
+    views.forEach(view => {
+      const userAgent = view.userAgent.toLowerCase();
+      if (userAgent.includes('mobile')) {
+        deviceBreakdown.mobile = (deviceBreakdown.mobile || 0) + 1;
+      } else if (userAgent.includes('tablet')) {
+        deviceBreakdown.tablet = (deviceBreakdown.tablet || 0) + 1;
+      } else {
+        deviceBreakdown.desktop = (deviceBreakdown.desktop || 0) + 1;
+      }
+    });
+
     return {
       sliderId,
-      totalClicks: 0,
-      totalViews: 0,
-      clickThroughRate: 0,
-      averageViewDuration: 0,
-      clicksByDate: {},
-      viewsByDate: {},
-      topReferrers: [],
-      deviceBreakdown: {}
+      totalClicks,
+      totalViews,
+      clickThroughRate,
+      averageViewDuration,
+      clicksByDate,
+      viewsByDate,
+      topReferrers: [], // TODO: Implement referrer tracking
+      deviceBreakdown
     };
   }
 
@@ -311,7 +360,14 @@ export class SliderService {
     return result;
   }
 
-  private transformToResponseDto(slider: any): SliderResponseDto {
+  private async transformToResponseDto(slider: any): Promise<SliderResponseDto> {
+    const [clickCount, viewCount] = await Promise.all([
+      this.sliderClickRepository.getClickCount(slider.id),
+      this.sliderViewRepository.getViewCount(slider.id)
+    ]);
+
+    const clickThroughRate = viewCount > 0 ? (clickCount / viewCount) * 100 : 0;
+
     return {
       id: slider.id,
       title: slider.title,
@@ -319,9 +375,9 @@ export class SliderService {
       displayTime: slider.displayTime,
       isActive: slider.isActive,
       media: slider.media,
-      clickCount: 0, // TODO: Implement when analytics are added
-      viewCount: 0, // TODO: Implement when analytics are added
-      clickThroughRate: 0, // TODO: Implement when analytics are added
+      clickCount,
+      viewCount,
+      clickThroughRate,
       createdAt: slider.createdAt,
       updatedAt: slider.updatedAt
     };

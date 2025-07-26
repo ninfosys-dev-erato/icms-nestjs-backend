@@ -311,13 +311,15 @@ export class SliderRepository {
   }
 
   async getStatistics(): Promise<SliderStatistics> {
-    const [total, active, byPosition] = await Promise.all([
+    const [total, active, byPosition, totalClicks, totalViews] = await Promise.all([
       this.prisma.slider.count(),
       this.prisma.slider.count({ where: { isActive: true } }),
       this.prisma.slider.groupBy({
         by: ['position'],
         _count: { position: true }
-      })
+      }),
+      this.prisma.sliderClick.count(),
+      this.prisma.sliderView.count()
     ]);
 
     const byPositionMap: Record<number, number> = {};
@@ -325,13 +327,15 @@ export class SliderRepository {
       byPositionMap[item.position] = item._count.position;
     });
 
+    const averageClickThroughRate = totalViews > 0 ? (totalClicks / totalViews) * 100 : 0;
+
     return {
       total,
       active,
       published: active, // For now, published = active since we don't have isPublished field
-      totalClicks: 0, // TODO: Implement when SliderClick model is added
-      totalViews: 0, // TODO: Implement when SliderView model is added
-      averageClickThroughRate: 0, // TODO: Implement when analytics are added
+      totalClicks,
+      totalViews,
+      averageClickThroughRate,
       byPosition: byPositionMap
     };
   }

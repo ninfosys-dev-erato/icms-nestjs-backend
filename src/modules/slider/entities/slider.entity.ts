@@ -10,6 +10,13 @@ export class Slider {
   createdAt: Date;
   updatedAt: Date;
   
-  // Relations (for future implementation)
+  // Relations
   media?: any;
+  clicks?: any[];
+  views?: any[];
+  
+  // Analytics properties (computed)
+  clickCount?: number;
+  viewCount?: number;
+  clickThroughRate?: number;
 } 

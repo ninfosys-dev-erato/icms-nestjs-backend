@@ -43,6 +43,53 @@ import { ApiResponseBuilder } from '@/common/types/api-response';
 export class AdminUserController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get('statistics')
+  @ApiOperation({ summary: 'Get user statistics' })
+  @ApiResponse({ status: 200, description: 'User statistics', type: UserStatistics })
+  async getUserStatistics(
+    @Res() response: Response,
+  ): Promise<void> {
+    const statistics = await this.usersService.getUserStatistics();
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success(statistics),
+    );
+  }
+
+  @Get('activity')
+  @ApiOperation({ summary: 'Get recent user activity' })
+  @ApiResponse({ status: 200, description: 'Recent activity', type: [UserActivityDto] })
+  async getRecentActivity(
+    @Res() response: Response,
+    @Query('limit') limit?: number,
+  ): Promise<void> {
+    const activity = await this.usersService.getRecentActivity(limit);
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success(activity),
+    );
+  }
+
+  @Get('export')
+  @ApiOperation({ summary: 'Export users' })
+  @ApiResponse({ status: 200, description: 'Users exported' })
+  async exportUsers(
+    @Res() response: Response,
+    @Query() query: UserQueryDto = {},
+    @Query('format') format: 'json' | 'csv' | 'pdf' = 'json',
+  ): Promise<void> {
+    const data = await this.usersService.exportUsers(query, format);
+
+    const contentType = format === 'json' ? 'application/json' : 
+                       format === 'csv' ? 'text/csv' : 'application/pdf';
+    
+    const filename = `users-export-${new Date().toISOString().split('T')[0]}.${format}`;
+
+    response.setHeader('Content-Type', contentType);
+    response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    response.status(HttpStatus.OK).send(data);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID (admin)' })
   @ApiResponse({ status: 200, description: 'User details', type: UserResponseDto })
@@ -136,58 +183,21 @@ export class AdminUserController {
     @Param('id') id: string,
     @Body() data: { role: string },
   ): Promise<void> {
+    const validRoles = ['ADMIN', 'EDITOR', 'VIEWER'];
+    if (!validRoles.includes(data.role)) {
+      response.status(HttpStatus.BAD_REQUEST).json(
+        ApiResponseBuilder.validationError('Invalid role', [
+          { field: 'role', message: 'Role must be one of: ADMIN, EDITOR, VIEWER', code: 'INVALID_ROLE', value: data.role }
+        ]),
+      );
+      return;
+    }
+
     const user = await this.usersService.updateUserRole(id, data.role);
 
     response.status(HttpStatus.OK).json(
       ApiResponseBuilder.success(user),
     );
-  }
-
-  @Get('statistics')
-  @ApiOperation({ summary: 'Get user statistics' })
-  @ApiResponse({ status: 200, description: 'User statistics', type: UserStatistics })
-  async getUserStatistics(
-    @Res() response: Response,
-  ): Promise<void> {
-    const statistics = await this.usersService.getUserStatistics();
-
-    response.status(HttpStatus.OK).json(
-      ApiResponseBuilder.success(statistics),
-    );
-  }
-
-  @Get('activity')
-  @ApiOperation({ summary: 'Get recent user activity' })
-  @ApiResponse({ status: 200, description: 'Recent activity', type: [UserActivityDto] })
-  async getRecentActivity(
-    @Res() response: Response,
-    @Query('limit') limit?: number,
-  ): Promise<void> {
-    const activity = await this.usersService.getRecentActivity(limit);
-
-    response.status(HttpStatus.OK).json(
-      ApiResponseBuilder.success(activity),
-    );
-  }
-
-  @Get('export')
-  @ApiOperation({ summary: 'Export users' })
-  @ApiResponse({ status: 200, description: 'Users exported' })
-  async exportUsers(
-    @Res() response: Response,
-    @Query() query: UserQueryDto = {},
-    @Query('format') format: 'json' | 'csv' | 'pdf' = 'json',
-  ): Promise<void> {
-    const data = await this.usersService.exportUsers(query, format);
-
-    const contentType = format === 'json' ? 'application/json' : 
-                       format === 'csv' ? 'text/csv' : 'application/pdf';
-    
-    const filename = `users-export-${new Date().toISOString().split('T')[0]}.${format}`;
-
-    response.setHeader('Content-Type', contentType);
-    response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    response.status(HttpStatus.OK).send(data);
   }
 
   @Post('import')

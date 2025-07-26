@@ -26,10 +26,10 @@ export class MenuRepository {
     const where: any = {};
     if (search) {
       where.OR = [
-        { name: { path: '$.en', string_contains: search } },
-        { name: { path: '$.ne', string_contains: search } },
-        { description: { path: '$.en', string_contains: search } },
-        { description: { path: '$.ne', string_contains: search } },
+        { name: { path: ['en'], string_contains: search } },
+        { name: { path: ['ne'], string_contains: search } },
+        { description: { path: ['en'], string_contains: search } },
+        { description: { path: ['ne'], string_contains: search } },
       ];
     }
     if (location) where.location = location;
@@ -97,14 +97,18 @@ export class MenuRepository {
   }
 
   async create(data: CreateMenuDto, userId: string): Promise<Menu> {
+    const prismaData = {
+      name: data.name as any,
+      description: data.description as any,
+      location: data.location,
+      isActive: data.isActive ?? true,
+      isPublished: data.isPublished ?? false,
+      createdById: userId,
+      updatedById: userId,
+    };
+    
     return this.prisma.menu.create({
-      data: {
-        ...data,
-        name: data.name as any,
-        description: data.description as any,
-        createdById: userId,
-        updatedById: userId,
-      },
+      data: prismaData,
       include: {
         menuItems: true,
         createdBy: true,

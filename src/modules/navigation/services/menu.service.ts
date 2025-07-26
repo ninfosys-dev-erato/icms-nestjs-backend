@@ -11,7 +11,9 @@ import {
   ImportResult,
   BulkOperationResult,
   MenuTreeResponse,
+  TranslatableEntityDto,
 } from '../dto/menu.dto';
+import { TranslatableEntity } from '@/common/types/translatable.entity';
 import { MenuLocation } from '@prisma/client';
 
 @Injectable()
@@ -108,7 +110,7 @@ export class MenuService {
   async validateMenu(data: CreateMenuDto | UpdateMenuDto): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
 
-    if ('name' in data && (!data.name || !data.name.en || !data.name.ne)) {
+    if ('name' in data && data.name && (!data.name.en || !data.name.ne)) {
       errors.push({
         field: 'name',
         message: 'Menu name is required in both English and Nepali',
@@ -116,7 +118,7 @@ export class MenuService {
       });
     }
 
-    if ('location' in data && !Object.values(MenuLocation).includes(data.location)) {
+    if ('location' in data && data.location && !Object.values(MenuLocation).includes(data.location)) {
       errors.push({
         field: 'location',
         message: 'Invalid menu location',
