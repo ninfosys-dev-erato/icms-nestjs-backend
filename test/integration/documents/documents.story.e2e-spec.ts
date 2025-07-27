@@ -122,7 +122,19 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Priya sets up her document manager account with full admin privileges",
             expectation: "The system should create her admin account with document management access",
             response,
-            explanation: "Document managers need admin privileges to upload and organize documents"
+            explanation: "Document managers need admin privileges to upload and organize documents",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/register',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+                confirmPassword: persona.password,
+                firstName: 'Priya',
+                lastName: 'Basnet',
+                role: 'ADMIN'
+              }
+            }
           };
         })
         .step('login-document-manager', async (persona) => {
@@ -137,7 +149,15 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Priya logs into the document management system",
             expectation: "Successful authentication with document management capabilities",
             response,
-            explanation: "Authentication provides the necessary tokens for document operations"
+            explanation: "Authentication provides the necessary tokens for document operations",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/login',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+              }
+            }
           };
         })
         .step('upload-policy-document', async (persona, context) => {
@@ -167,7 +187,29 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Priya uploads the main policy document with comprehensive metadata",
             expectation: "The system should upload the document and make it publicly accessible",
             response,
-            explanation: "Policy documents need to be publicly accessible with proper categorization for easy discovery"
+            explanation: "Policy documents need to be publicly accessible with proper categorization for easy discovery",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/admin/documents/upload',
+              payload: {
+                'title[en]': 'New Government Policy Framework 2024',
+                'title[ne]': 'नयाँ सरकारी नीति ढाँचा २०२४',
+                'description[en]': 'Comprehensive policy framework for government operations in 2024-2025',
+                'description[ne]': '२०२४-२०२५ को लागि सरकारी सञ्चालनको व्यापक नीति ढाँचा',
+                'category': 'POLICY',
+                'status': 'PUBLISHED',
+                'documentNumber': 'POL-2024-001',
+                'version': '1.0',
+                'isPublic': 'true',
+                'requiresAuth': 'false',
+                'order': '1',
+                'isActive': 'true',
+                file: 'policy-document.pdf'
+              },
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .step('upload-implementation-guide', async (persona, context) => {
@@ -197,7 +239,29 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Priya uploads the implementation guidelines document",
             expectation: "The system should categorize it as a guideline and make it accessible",
             response,
-            explanation: "Implementation guides help users understand how to apply policies in practice"
+            explanation: "Implementation guides help users understand how to apply policies in practice",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/admin/documents/upload',
+              payload: {
+                'title[en]': 'Policy Implementation Guidelines',
+                'title[ne]': 'नीति कार्यान्वयन दिशानिर्देशहरू',
+                'description[en]': 'Detailed guidelines for implementing the new policy framework',
+                'description[ne]': 'नयाँ नीति ढाँचा कार्यान्वयनका लागि विस्तृत दिशानिर्देशहरू',
+                'category': 'GUIDELINE',
+                'status': 'PUBLISHED',
+                'documentNumber': 'GUIDE-2024-001',
+                'version': '1.0',
+                'isPublic': 'true',
+                'requiresAuth': 'false',
+                'order': '2',
+                'isActive': 'true',
+                file: 'implementation-guide.doc'
+              },
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .step('check-document-statistics', async (persona, context) => {
@@ -211,7 +275,14 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Priya reviews the document repository statistics after uploads",
             expectation: "The system should show updated document counts and category distribution",
             response,
-            explanation: "Statistics help document managers understand the current state of the repository"
+            explanation: "Statistics help document managers understand the current state of the repository",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/admin/documents/statistics',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .run();
@@ -553,7 +624,11 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Ravi searches for '2024 budget' documents on the government website",
             expectation: "The search should return relevant budget-related documents",
             response,
-            explanation: "Search functionality helps journalists quickly locate specific government information"
+            explanation: "Search functionality helps journalists quickly locate specific government information",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/documents/search?q=budget+2024'
+            }
           };
         })
         .step('browse-official-documents', async (persona) => {
@@ -564,7 +639,11 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Ravi browses the official documents category to see all available government publications",
             expectation: "The system should list all published official documents",
             response,
-            explanation: "Category browsing provides systematic access to government document collections"
+            explanation: "Category browsing provides systematic access to government document collections",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/documents/category/OFFICIAL'
+            }
           };
         })
         .step('access-budget-document', async (persona) => {
@@ -575,7 +654,11 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Ravi accesses the specific budget document to read the details",
             expectation: "The system should show complete document information and metadata",
             response,
-            explanation: "Detailed document view provides journalists with comprehensive information for research"
+            explanation: "Detailed document view provides journalists with comprehensive information for research",
+            apiCall: {
+              method: 'GET',
+              endpoint: `/api/v1/documents/${budgetDoc.body.data.id}`
+            }
           };
         })
         .step('download-budget-document', async (persona) => {
@@ -586,7 +669,11 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Ravi downloads the budget document for offline analysis and fact-checking",
             expectation: "The system should provide a secure download URL and track the download",
             response,
-            explanation: "Download functionality enables journalists to access documents for detailed offline analysis"
+            explanation: "Download functionality enables journalists to access documents for detailed offline analysis",
+            apiCall: {
+              method: 'GET',
+              endpoint: `/api/v1/documents/${budgetDoc.body.data.id}/download`
+            }
           };
         })
         .step('get-document-url', async (persona) => {
@@ -597,7 +684,11 @@ describe('Document Management API Stories 📚', () => {
             narrative: "Ravi gets the direct document URL for citation in his article",
             expectation: "The system should provide document access information for referencing",
             response,
-            explanation: "Document URLs enable proper citation and referencing in journalistic work"
+            explanation: "Document URLs enable proper citation and referencing in journalistic work",
+            apiCall: {
+              method: 'GET',
+              endpoint: `/api/v1/documents/${budgetDoc.body.data.id}/url`
+            }
           };
         })
         .run();

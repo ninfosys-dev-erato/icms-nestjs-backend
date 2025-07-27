@@ -5,6 +5,7 @@ import { touristViewer } from '../personas/tourist-viewer';
 import { mayaContentManager } from '../personas/maya-content-manager';
 import { raviJournalist } from '../personas/ravi-journalist';
 import { priyaDocumentManager } from '../personas/priya-document-manager';
+import { kiranHelpCoordinator } from '../personas/kiran-help-coordinator';
 
 export class PersonaManager {
   private static personas: Record<string, Persona> = {
@@ -14,6 +15,7 @@ export class PersonaManager {
     'maya-content-manager': mayaContentManager,
     'ravi-journalist': raviJournalist,
     'priya-document-manager': priyaDocumentManager,
+    'kiran-help-coordinator': kiranHelpCoordinator,
   };
 
   static getPersona(id: string): Persona {
@@ -66,18 +68,37 @@ export class PersonaManager {
       case 'admin':
       case 'administration':
       case 'management':
+      case 'header':
+      case 'header management':
         return this.getPersona('ramesh-admin');
       
       case 'editor':
       case 'content':
       case 'publishing':
         return this.getPersona('sita-editor');
+
+      case 'content manager':
+      case 'content management':
+      case 'branding':
+      case 'logo':
+        return this.getPersona('maya-content-manager');
         
       case 'viewer':
       case 'public':
       case 'tourist':
       case 'guest':
+      case 'public access':
         return this.getPersona('tourist-viewer');
+
+      case 'faq':
+      case 'help':
+      case 'support':
+        return this.getPersona('kiran-help-coordinator');
+
+      case 'document':
+      case 'documents':
+      case 'document management':
+        return this.getPersona('priya-document-manager');
         
       default:
         return this.getPersona('tourist-viewer'); // Default to viewer

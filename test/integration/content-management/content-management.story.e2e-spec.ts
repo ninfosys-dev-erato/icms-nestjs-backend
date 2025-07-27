@@ -106,7 +106,19 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Maya sets up her content manager account in the system",
             expectation: "The system should create her admin account with full content management access",
             response,
-            explanation: "Content managers need admin privileges to create and organize categories"
+            explanation: "Content managers need admin privileges to create and organize categories",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/register',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+                confirmPassword: persona.password,
+                firstName: 'Maya',
+                lastName: 'Adhikari',
+                role: 'ADMIN'
+              }
+            }
           };
         })
         .step('login-content-manager', async (persona) => {
@@ -121,7 +133,15 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Maya logs into the content management system",
             expectation: "Successful authentication with content management privileges",
             response,
-            explanation: "Authentication provides the necessary tokens for content management operations"
+            explanation: "Authentication provides the necessary tokens for content management operations",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/login',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+              }
+            }
           };
         })
         .step('create-main-category', async (persona, context) => {
@@ -147,7 +167,26 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Maya creates the main 'Policy Announcements' category for the new content structure",
             expectation: "The system should create the category with bilingual support",
             response,
-            explanation: "Categories form the backbone of content organization and support both English and Nepali"
+            explanation: "Categories form the backbone of content organization and support both English and Nepali",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/admin/categories',
+              payload: {
+                name: {
+                  en: 'Policy Announcements',
+                  ne: 'नीति घोषणाहरू'
+                },
+                description: {
+                  en: 'Government policy announcements and updates',
+                  ne: 'सरकारी नीति घोषणाहरू र अद्यावधिकहरू'
+                },
+                slug: 'policy-announcements',
+                isActive: true
+              },
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .step('create-subcategory', async (persona, context) => {
@@ -175,7 +214,27 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Maya creates a subcategory for 'Economic Policies' under the main category",
             expectation: "The system should create a nested category structure",
             response,
-            explanation: "Hierarchical categories help organize content more granularly for better navigation"
+            explanation: "Hierarchical categories help organize content more granularly for better navigation",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/admin/categories',
+              payload: {
+                name: {
+                  en: 'Economic Policies',
+                  ne: 'आर्थिक नीतिहरू'
+                },
+                description: {
+                  en: 'Economic and financial policy announcements',
+                  ne: 'आर्थिक र वित्तीय नीति घोषणाहरू'
+                },
+                slug: 'economic-policies',
+                parentId: parentCategoryId,
+                isActive: true
+              },
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .step('check-category-statistics', async (persona, context) => {
@@ -189,7 +248,14 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Maya reviews the category statistics to understand the current organization",
             expectation: "The system should show metrics about categories and their usage",
             response,
-            explanation: "Statistics help content managers understand how their categorization strategy is working"
+            explanation: "Statistics help content managers understand how their categorization strategy is working",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/admin/categories/statistics',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .run();
@@ -273,7 +339,15 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Sita quickly logs into the content management system",
             expectation: "Fast authentication to start publishing urgent content",
             response,
-            explanation: "Editors need quick access during time-sensitive publishing situations"
+            explanation: "Editors need quick access during time-sensitive publishing situations",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/login',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+              }
+            }
           };
         })
         .step('create-content-draft', async (persona, context) => {
@@ -304,7 +378,31 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Sita creates a draft of the infrastructure announcement with bilingual content",
             expectation: "The system should create a draft that can be reviewed before publishing",
             response,
-            explanation: "Draft status allows editors to prepare content carefully before making it public"
+            explanation: "Draft status allows editors to prepare content carefully before making it public",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/admin/content',
+              payload: {
+                title: {
+                  en: 'New Infrastructure Development Project Announced',
+                  ne: 'नयाँ पूर्वाधार विकास परियोजना घोषणा'
+                },
+                content: {
+                  en: 'The Chief Minister announced a major infrastructure development project that will improve transportation and connectivity across the region.',
+                  ne: 'मुख्यमन्त्रीले एक प्रमुख पूर्वाधार विकास परियोजनाको घोषणा गर्नुभयो जसले यस क्षेत्रमा यातायात र जडानमा सुधार ल्याउनेछ।'
+                },
+                excerpt: {
+                  en: 'Major infrastructure project announced by Chief Minister',
+                  ne: 'मुख्यमन्त्रीद्वारा प्रमुख पूर्वाधार परियोजना घोषणा'
+                },
+                categoryId: context.testData.categoryId,
+                status: 'DRAFT',
+                slug: 'infrastructure-project-announcement'
+              },
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .step('add-document-attachment', async (persona, context) => {
@@ -322,7 +420,18 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Sita uploads the detailed project document as an attachment",
             expectation: "The document should be securely attached and available for download",
             response,
-            explanation: "Attachments provide citizens with detailed information beyond the main announcement"
+            explanation: "Attachments provide citizens with detailed information beyond the main announcement",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/attachments',
+              payload: {
+                contentId: contentId,
+                file: 'infrastructure-project-details.txt'
+              },
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .step('publish-content', async (persona, context) => {
@@ -337,7 +446,14 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Sita publishes the announcement to make it immediately available to the public",
             expectation: "The content should go live with all attachments accessible",
             response,
-            explanation: "Publishing makes government information immediately accessible to citizens and media"
+            explanation: "Publishing makes government information immediately accessible to citizens and media",
+            apiCall: {
+              method: 'POST',
+              endpoint: `/api/v1/admin/content/${contentId}/publish`,
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .run();
@@ -419,7 +535,11 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Ravi searches for 'budget' to find the latest budget-related documents",
             expectation: "The search should return relevant government budget documents",
             response,
-            explanation: "Search functionality helps journalists quickly find specific government information"
+            explanation: "Search functionality helps journalists quickly find specific government information",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/content/search?search=budget'
+            }
           };
         })
         .step('browse-by-category', async (persona) => {
@@ -430,7 +550,11 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Ravi browses the Public Documents category to see all available official documents",
             expectation: "The category should list all published documents in that section",
             response,
-            explanation: "Category browsing provides systematic access to government information"
+            explanation: "Category browsing provides systematic access to government information",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/content/category/public-documents'
+            }
           };
         })
         .step('access-document-details', async (persona) => {
@@ -441,7 +565,11 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Ravi accesses the specific budget report to read the details and see available attachments",
             expectation: "The system should show the full document with download links",
             response,
-            explanation: "Detailed content view provides complete information including attachments"
+            explanation: "Detailed content view provides complete information including attachments",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/content/budget-report-2024'
+            }
           };
         })
         .step('get-attachments', async (persona) => {
@@ -452,7 +580,11 @@ describe('Content Management API Stories 📚', () => {
             narrative: "Ravi checks what attachments are available for download",
             expectation: "The system should list all downloadable files associated with the document",
             response,
-            explanation: "Attachment listings help users understand what additional documents are available"
+            explanation: "Attachment listings help users understand what additional documents are available",
+            apiCall: {
+              method: 'GET',
+              endpoint: `/api/v1/content/${content.body.data.id}/attachments`
+            }
           };
         })
         .run();

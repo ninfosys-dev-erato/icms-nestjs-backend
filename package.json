@@ -25,6 +25,8 @@
     "test:story-auth": "jest --config ./test/jest-e2e.json --testPathPatterns=auth.*story.e2e-spec.ts",
     "test:story-content": "jest --config ./test/jest-e2e.json --testPathPatterns=content.*story.e2e-spec.ts",
     "test:story-documents": "jest --config ./test/jest-e2e.json --testPathPatterns=documents.*story.e2e-spec.ts",
+    "test:story-header": "jest --config ./test/jest-e2e.json --testPathPatterns=header.*story.e2e-spec.ts",
+    "test:faq": "jest --config ./test/jest-e2e.json --testPathPatterns=faq.*story.e2e-spec.ts",
     "docs:generate": "npm run test:story-docs && echo 'Story documentation generated in test/story-docs/output/'",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

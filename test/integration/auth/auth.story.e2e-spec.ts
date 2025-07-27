@@ -98,7 +98,19 @@ describe('Auth API Stories 📚', () => {
             narrative: "First, Ramesh creates his administrative account in the system",
             expectation: "The system should create his admin account and provide access tokens",
             response,
-            explanation: "This step simulates the account creation process that would typically be done by a system administrator"
+            explanation: "This step simulates the account creation process that would typically be done by a system administrator",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/register',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+                confirmPassword: persona.password,
+                firstName: 'Ramesh',
+                lastName: 'Kumar',
+                role: 'ADMIN'
+              }
+            }
           };
         })
         .step('admin-login', async (persona) => {
@@ -113,7 +125,15 @@ describe('Auth API Stories 📚', () => {
             narrative: "Ramesh enters his government email and password into the login form",
             expectation: "The system should authenticate him and provide secure access tokens",
             response,
-            explanation: "The system validates his credentials and issues JWT tokens for secure communication"
+            explanation: "The system validates his credentials and issues JWT tokens for secure communication",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/login',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+              }
+            }
           };
         })
         .step('verify-profile', async (persona, context) => {
@@ -127,7 +147,14 @@ describe('Auth API Stories 📚', () => {
             narrative: "Ramesh verifies his profile information is correct in the system",
             expectation: "He should see his complete profile with admin privileges",
             response,
-            explanation: "This confirms his authentication was successful and his role permissions are properly set"
+            explanation: "This confirms his authentication was successful and his role permissions are properly set",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/auth/me',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .step('view-sessions', async (persona, context) => {
@@ -141,7 +168,14 @@ describe('Auth API Stories 📚', () => {
             narrative: "Being security-conscious, Ramesh checks his active sessions",
             expectation: "He should see his current session listed with proper details",
             response,
-            explanation: "Session management allows users to monitor and control their account access for security"
+            explanation: "Session management allows users to monitor and control their account access for security",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/auth/sessions',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .run();
@@ -193,7 +227,15 @@ describe('Auth API Stories 📚', () => {
           return {
             narrative: "Ramesh logs in with his current password",
             expectation: "Successful authentication with current credentials",
-            response
+            response,
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/login',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+              }
+            }
           };
         })
         .step('change-password', async (persona, context) => {
@@ -213,7 +255,19 @@ describe('Auth API Stories 📚', () => {
             narrative: "Ramesh enters his current password and his new, more secure password",
             expectation: "The system should update his password successfully",
             response,
-            explanation: "Password changes require the current password for security and confirmation of the new password"
+            explanation: "Password changes require the current password for security and confirmation of the new password",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/change-password',
+              payload: {
+                currentPassword: persona.password,
+                newPassword: newPassword,
+                confirmPassword: newPassword,
+              },
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .step('login-with-new-password', async (persona) => {
@@ -230,7 +284,15 @@ describe('Auth API Stories 📚', () => {
             narrative: "Ramesh tests his new password by logging in again",
             expectation: "He should be able to authenticate with the new password",
             response,
-            explanation: "This confirms the password change was successful and the new credentials work properly"
+            explanation: "This confirms the password change was successful and the new credentials work properly",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/login',
+              payload: {
+                email: persona.email,
+                password: newPassword,
+              }
+            }
           };
         })
         .run();
@@ -271,7 +333,19 @@ describe('Auth API Stories 📚', () => {
           return {
             narrative: "Sita's editor account is set up in the system",
             expectation: "Account creation should succeed with editor permissions",
-            response
+            response,
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/register',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+                confirmPassword: persona.password,
+                firstName: 'Sita',
+                lastName: 'Sharma',
+                role: 'EDITOR'
+              }
+            }
           };
         })
         .step('urgent-login', async (persona) => {
@@ -286,7 +360,15 @@ describe('Auth API Stories 📚', () => {
             narrative: "Sita quickly enters her credentials, knowing every minute counts",
             expectation: "Fast authentication to get her into the content management system",
             response,
-            explanation: "Quick login is crucial for content editors who often work under tight deadlines"
+            explanation: "Quick login is crucial for content editors who often work under tight deadlines",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/login',
+              payload: {
+                email: persona.email,
+                password: persona.password,
+              }
+            }
           };
         })
         .step('verify-editor-permissions', async (persona, context) => {
@@ -300,7 +382,14 @@ describe('Auth API Stories 📚', () => {
             narrative: "Sita confirms she has the right permissions to publish content",
             expectation: "Her profile should show EDITOR role with content management capabilities",
             response,
-            explanation: "Editor role verification ensures she can access content publishing features"
+            explanation: "Editor role verification ensures she can access content publishing features",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/auth/me',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }
           };
         })
         .run();
@@ -334,7 +423,11 @@ describe('Auth API Stories 📚', () => {
             narrative: "John tries to access user profile information without logging in",
             expectation: "The system should deny access and provide a clear error message",
             response,
-            explanation: "Security systems must protect sensitive endpoints from unauthorized access"
+            explanation: "Security systems must protect sensitive endpoints from unauthorized access",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/auth/me'
+            }
           };
         })
         .step('attempt-with-invalid-token', async (persona) => {
@@ -346,7 +439,14 @@ describe('Auth API Stories 📚', () => {
             narrative: "John tries using a fake authorization token",
             expectation: "The system should reject the invalid token and return an error",
             response,
-            explanation: "Token validation prevents unauthorized access with forged credentials"
+            explanation: "Token validation prevents unauthorized access with forged credentials",
+            apiCall: {
+              method: 'GET',
+              endpoint: '/api/v1/auth/me',
+              headers: {
+                'Authorization': 'Bearer invalid-token-12345'
+              }
+            }
           };
         })
         .run();
@@ -384,7 +484,15 @@ describe('Auth API Stories 📚', () => {
             narrative: "Multiple rapid login attempts with wrong credentials are made",
             expectation: "After several attempts, the system should start blocking requests",
             response: attempts[attempts.length - 1], // Return the last attempt
-            explanation: "Rate limiting prevents brute force attacks by temporarily blocking repeated failed attempts"
+            explanation: "Rate limiting prevents brute force attacks by temporarily blocking repeated failed attempts",
+            apiCall: {
+              method: 'POST',
+              endpoint: '/api/v1/auth/login',
+              payload: {
+                email: 'nonexistent@example.com',
+                password: 'wrongpassword5',
+              }
+            }
           };
         })
                  .run();

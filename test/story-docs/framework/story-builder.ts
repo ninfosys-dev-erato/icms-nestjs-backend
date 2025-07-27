@@ -46,6 +46,12 @@ export class StoryBuilder {
       expectation: string;
       response: any;
       explanation?: string;
+      apiCall?: {
+        method: string;
+        endpoint: string;
+        payload?: any;
+        headers?: Record<string, string>;
+      };
     }>
   ): StoryBuilder {
     this.steps.push({
@@ -59,8 +65,8 @@ export class StoryBuilder {
           const result = await handler(persona, context);
           const endTime = Date.now();
           
-          // Extract API call details from the response
-          const apiCall = this.extractApiCallFromResponse(result.response);
+          // Use provided API call details or extract from response
+          const apiCall = result.apiCall || this.extractApiCallFromResponse(result.response);
           
           return {
             stepId: id,
@@ -91,7 +97,7 @@ export class StoryBuilder {
               body: { error: error.message },
               timing: endTime - startTime
             },
-            explanation: `An error occurred: ${error.message}`,
+            explanation: `Step failed to execute: ${error.message}`,
             success: false,
             error: error.message
           };
@@ -203,11 +209,31 @@ export class StoryBuilder {
   private extractApiCallFromResponse(response: any): any {
     // Try to extract API call details from supertest response
     if (response.request) {
+      const request = response.request;
+      
+      // Try different properties where endpoint might be stored
+      const endpoint = request.url || request.path || request._path || 'unknown';
+      const method = request.method || (request.req && request.req.method) || 'GET';
+      
+      // Clean up the endpoint - remove query parameters for cleaner display
+      const cleanEndpoint = endpoint.split('?')[0];
+      
       return {
-        method: response.request.method || 'GET',
-        endpoint: response.request.path || 'unknown',
-        payload: response.request._data,
-        headers: response.request._header || {}
+        method: method.toUpperCase(),
+        endpoint: cleanEndpoint,
+        payload: request._data || request.data || undefined,
+        headers: this.sanitizeHeaders(request._header || request.headers || {})
+      };
+    }
+
+    // Check if response has req property (alternative structure)
+    if (response.req) {
+      const req = response.req;
+      return {
+        method: (req.method || 'GET').toUpperCase(),
+        endpoint: req.path || req.url || 'unknown',
+        payload: req._data || undefined,
+        headers: this.sanitizeHeaders(req._headers || req.headers || {})
       };
     }
 
@@ -216,6 +242,29 @@ export class StoryBuilder {
       method: 'UNKNOWN',
       endpoint: 'UNKNOWN'
     };
+  }
+
+  private sanitizeHeaders(headers: Record<string, any>): Record<string, string> {
+    const sanitized: Record<string, string> = {};
+    
+    Object.entries(headers).forEach(([key, value]) => {
+      // Skip sensitive headers and convert to string
+      if (!key.toLowerCase().includes('password') && 
+          !key.toLowerCase().includes('secret') &&
+          !key.toLowerCase().includes('token')) {
+        sanitized[key] = String(value);
+      } else if (key.toLowerCase().includes('authorization')) {
+        // Show authorization header but truncate the token
+        const authValue = String(value);
+        if (authValue.startsWith('Bearer ')) {
+          sanitized[key] = `Bearer ${authValue.slice(7, 20)}...`;
+        } else {
+          sanitized[key] = '[REDACTED]';
+        }
+      }
+    });
+    
+    return sanitized;
   }
 
   private generateExplanation(response: any): string {
