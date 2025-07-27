@@ -124,4 +124,4 @@ build/Release
 uploads/
 *.pdf
 
-story-docs/output/
+test/story-docs/output/

@@ -21,6 +21,8 @@
     "test:setup": "./test/run-tests.sh setup",
     "test:all": "./test/run-tests.sh all",
     "test:cleanup": "./test/run-tests.sh cleanup",
+    "test:story-docs": "jest --config ./test/jest-e2e.json --testPathPatterns=story.e2e-spec.ts",
+    "docs:generate": "npm run test:story-docs && echo 'Story documentation generated in test/story-docs/output/'",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
