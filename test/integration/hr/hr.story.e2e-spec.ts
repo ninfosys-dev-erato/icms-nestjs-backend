@@ -10,6 +10,7 @@ import { TestUtils } from '../../test-utils';
 
 // Import story framework
 import { Story, StoryStep, StoryResult, Persona, Scenario } from '../../story-docs/framework/types';
+import { MarkdownGenerator } from '../../story-docs/framework/markdown-generator';
 import { mayaHRManager } from '../../story-docs/personas/maya-hr-manager';
 import { deepakDepartmentHead } from '../../story-docs/personas/deepak-department-head';
 import { sarahEmployee } from '../../story-docs/personas/sarah-employee';
@@ -18,6 +19,8 @@ import { hrManagementScenarios } from '../../story-docs/stories/hr/hr-scenarios'
 describe('HR Management Stories (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let markdownGenerator: MarkdownGenerator;
+  let storyResults: any[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -35,11 +38,15 @@ describe('HR Management Stories (e2e)', () => {
     app.setGlobalPrefix('api/v1');
 
     prisma = app.get<PrismaService>(PrismaService);
+    markdownGenerator = new MarkdownGenerator();
     await app.init();
+
+    console.log('🏢 Starting HR Module Story Documentation Generation...');
   });
 
   afterAll(async () => {
     await TestUtils.cleanupDatabase(prisma);
+    await generateStoryDocumentation();
     await app.close();
   });
 
@@ -102,6 +109,75 @@ describe('HR Management Stories (e2e)', () => {
     };
 
     return response;
+  };
+
+  const generateStoryDocumentation = async () => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      const outputDir = path.join(__dirname, '../../story-docs/output/hr');
+      
+      // Ensure output directory exists
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      // HR module uses custom executeStoryStep pattern, so we generate a summary overview
+      const overview = generateHRModuleDocumentation();
+      fs.writeFileSync(path.join(outputDir, 'README.md'), overview);
+      
+      console.log('\n📚 HR Module Story Documentation Generated!');
+      console.log(`📁 Location: ${outputDir}/README.md`);
+      console.log('📄 Generated HR overview documentation (custom pattern)');
+      
+    } catch (error) {
+      console.error('❌ Error generating documentation:', error.message);
+    }
+  };
+
+  const generateHRModuleDocumentation = () => {
+    const totalStories = storyResults.length;
+    const successfulStories = storyResults.filter(result => result.success).length;
+    const failedStories = totalStories - successfulStories;
+
+    return `# HR Module Stories Documentation
+
+## 📋 Overview
+
+This documentation covers comprehensive user stories for the HR Module of the Government Content Management System. These stories demonstrate real-world scenarios involving department management, employee onboarding, organizational structure management, and HR analytics.
+
+## 👥 Personas Involved
+
+### 🏛️ Maya Shrestha - Human Resources Manager
+**Role**: ADMIN | **Technical Level**: ADVANCED | **Age**: 38
+
+Experienced HR manager responsible for comprehensive human resources operations, department management, employee lifecycle management, and organizational analytics.
+
+### 👨‍💼 Deepak Gurung - Department Head  
+**Role**: EDITOR | **Technical Level**: INTERMEDIATE | **Age**: 45
+
+Department head who manages team structure, employee assignments, and coordinates with HR for departmental operations and employee management.
+
+### 👩‍💻 Sarah Thapa - Government Employee
+**Role**: VIEWER | **Technical Level**: BASIC | **Age**: 29
+
+Regular government employee who uses the system to access employee directory, view organizational information, and understand reporting structures.
+
+## 🎬 Story Execution Results
+
+### Summary
+- **Total Stories**: ${totalStories}
+- **Successful**: ${successfulStories}
+- **Failed**: ${failedStories}
+- **Success Rate**: ${totalStories > 0 ? ((successfulStories / totalStories) * 100).toFixed(1) : 0}%
+
+---
+
+*This documentation was automatically generated from real API interactions and user scenarios.*
+
+Generated on: ${new Date().toISOString()}
+`;
   };
 
   describe('Story: Maya HR Manager - Department Creation and Management', () => {

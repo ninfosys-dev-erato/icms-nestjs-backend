@@ -9,13 +9,21 @@ import { ApiResponseInterceptor } from '@/common/interceptors/api-response.inter
 import { TestUtils, TestUser } from '../../test-utils';
 import { StoryBuilder } from '../../story-docs/framework/story-builder';
 import { PersonaManager } from '../../story-docs/framework/persona-manager';
+import { MarkdownGenerator } from '../../story-docs/framework/markdown-generator';
 import { headerConfigurationScenarios } from '../../story-docs/stories/header/header-scenarios';
 import { HeaderAlignment } from '@/modules/header/dto/header.dto';
+
+// Import personas
+import { rameshAdmin } from '../../story-docs/personas/ramesh-admin';
+import { mayaContentManager } from '../../story-docs/personas/maya-content-manager';
+import { touristViewer } from '../../story-docs/personas/tourist-viewer';
 
 describe('Header Configuration Stories (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let storyBuilder: StoryBuilder;
+  let markdownGenerator: MarkdownGenerator;
+  let storyResults: any[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -37,16 +45,95 @@ describe('Header Configuration Stories (e2e)', () => {
     await app.init();
 
     storyBuilder = StoryBuilder.create(app);
+    markdownGenerator = new MarkdownGenerator();
+    
+    // Register personas
+    PersonaManager.addPersona(rameshAdmin);
+    PersonaManager.addPersona(mayaContentManager);
+    PersonaManager.addPersona(touristViewer);
+
+    console.log('🏗️ Starting Header Module Story Documentation Generation...');
   });
 
   afterAll(async () => {
     await TestUtils.cleanupDatabase(prisma);
+    await generateStoryDocumentation();
     await app.close();
   });
 
   beforeEach(async () => {
     await TestUtils.cleanupDatabase(prisma);
   });
+
+  const generateStoryDocumentation = async () => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      const outputDir = path.join(__dirname, '../../story-docs/output/header');
+      
+      // Ensure output directory exists
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      // Generate individual story documents
+      for (const storyResult of storyResults) {
+        if (storyResult.story) {
+          const markdown = await markdownGenerator.generateStoryDocumentation(storyResult.story);
+          const fileName = `${storyResult.story.id}.md`;
+          const filePath = path.join(outputDir, fileName);
+          
+          fs.writeFileSync(filePath, markdown);
+          console.log(`📄 Generated story documentation: ${fileName}`);
+        }
+      }
+
+      // Generate overview document
+      const overview = generateHeaderModuleDocumentation();
+      fs.writeFileSync(path.join(outputDir, 'README.md'), overview);
+      
+      console.log('\n📚 Header Module Story Documentation Generated!');
+      console.log(`📁 Location: ${outputDir}/README.md`);
+      
+    } catch (error) {
+      console.error('❌ Error generating documentation:', error.message);
+    }
+  };
+
+  const generateHeaderModuleDocumentation = () => {
+    const totalStories = storyResults.length;
+    const successfulStories = storyResults.filter(result => result.success).length;
+    const failedStories = totalStories - successfulStories;
+
+    return `# Header Module Stories Documentation
+
+## 📋 Overview
+
+This documentation covers comprehensive user stories for the Header Module of the Government Content Management System. These stories demonstrate real-world scenarios involving header configuration, branding setup, logo management, and public header display.
+
+## 👥 Personas Involved
+
+### 🏛️ Ramesh Shrestha - System Administrator
+**Role**: ADMIN | **Technical Level**: ADVANCED | **Age**: 42
+
+Experienced system administrator responsible for website configuration, header branding, and visual identity management for government websites.
+
+## 🎬 Story Execution Results
+
+### Summary
+- **Total Stories**: ${totalStories}
+- **Successful**: ${successfulStories}
+- **Failed**: ${failedStories}
+- **Success Rate**: ${totalStories > 0 ? ((successfulStories / totalStories) * 100).toFixed(1) : 0}%
+
+---
+
+*This documentation was automatically generated from real API interactions and user scenarios.*
+
+Generated on: ${new Date().toISOString()}
+`;
+  };
 
   describe('Header Management Stories', () => {
     it('should tell the story: Set Up Basic Header Configuration', async () => {
@@ -171,9 +258,10 @@ describe('Header Configuration Stories (e2e)', () => {
 
         .run();
 
+      storyResults.push(result);
+      
       expect(result.success).toBe(true);
-      console.log('\n📝 Story Documentation Generated:');
-      console.log(result.generatedDocs.markdown);
+      console.log(`✅ Basic header configuration story completed successfully`);
     });
 
     it('should tell the story: Manage Header Logos and Branding', async () => {
@@ -311,9 +399,10 @@ describe('Header Configuration Stories (e2e)', () => {
 
         .run();
 
+      storyResults.push(result);
+      
       expect(result.success).toBe(true);
-      console.log('\n📝 Story Documentation Generated:');
-      console.log(result.generatedDocs.markdown);
+      console.log(`✅ Header logos and branding story completed successfully`);
     });
 
     it('should tell the story: Complete Header Publishing Workflow', async () => {
@@ -634,9 +723,10 @@ describe('Header Configuration Stories (e2e)', () => {
 
         .run();
 
+      storyResults.push(result);
+      
       expect(result.success).toBe(true);
-      console.log('\n📝 Story Documentation Generated:');
-      console.log(result.generatedDocs.markdown);
+      console.log(`✅ Public header display story completed successfully`);
     });
   });
 
@@ -786,9 +876,10 @@ describe('Header Configuration Stories (e2e)', () => {
 
         .run();
 
+      storyResults.push(result);
+      
       expect(result.success).toBe(true);
-      console.log('\n📝 Story Documentation Generated:');
-      console.log(result.generatedDocs.markdown);
+      console.log(`✅ Header analytics and statistics story completed successfully`);
     });
   });
 }); 

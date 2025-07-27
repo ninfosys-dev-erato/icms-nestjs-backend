@@ -7,8 +7,16 @@ import { ApiResponseInterceptor } from '../../../src/common/interceptors/api-res
 import { TestUtils } from '../../test-utils';
 import { ImportantLinksStories } from '../../story-docs/stories/important-links/important-links-stories';
 import { MarkdownGenerator } from '../../story-docs/framework/markdown-generator';
+import { PersonaManager } from '../../story-docs/framework/persona-manager';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+// Import personas needed for important-links stories
+import { touristViewer } from '../../story-docs/personas/tourist-viewer';
+import { raviJournalist } from '../../story-docs/personas/ravi-journalist';
+import { rameshAdmin } from '../../story-docs/personas/ramesh-admin';
+import { priyaDocumentManager } from '../../story-docs/personas/priya-document-manager';
+import { sitaEditor } from '../../story-docs/personas/sita-editor';
 
 describe('Important Links Module - User Stories (e2e)', () => {
   let app: INestApplication;
@@ -45,6 +53,13 @@ describe('Important Links Module - User Stories (e2e)', () => {
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
     importantLinksStories = new ImportantLinksStories(app);
     markdownGenerator = new MarkdownGenerator();
+
+    // Register personas
+    PersonaManager.addPersona(touristViewer);
+    PersonaManager.addPersona(raviJournalist);
+    PersonaManager.addPersona(rameshAdmin);
+    PersonaManager.addPersona(priyaDocumentManager);
+    PersonaManager.addPersona(sitaEditor);
 
     // Clean and prepare database
     await TestUtils.cleanupDatabase(prismaService);
@@ -86,7 +101,7 @@ describe('Important Links Module - User Stories (e2e)', () => {
     ];
 
     for (const user of users) {
-      await TestUtils.createUser(prismaService, user);
+      await TestUtils.createTestUser(prismaService, user, { useExactEmail: true });
     }
 
     // Create initial test important links

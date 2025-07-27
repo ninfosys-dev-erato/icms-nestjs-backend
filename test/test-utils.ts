@@ -129,14 +129,15 @@ export class TestUtils {
       firstName: string;
       lastName: string;
       role?: string;
-    }
+    },
+    options: { useExactEmail?: boolean } = {}
   ): Promise<TestUser> {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const uniqueEmail = `${userData.email}-${Date.now()}-${Math.random()}`;
+    const email = options.useExactEmail ? userData.email : `${userData.email}-${Date.now()}-${Math.random()}`;
     
     const testUser = await prisma.user.create({
       data: {
-        email: uniqueEmail,
+        email: email,
         password: hashedPassword,
         firstName: userData.firstName,
         lastName: userData.lastName,
