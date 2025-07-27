@@ -41,7 +41,7 @@ describe('Auth API Stories 📚', () => {
     await cleanupDatabase();
     
     // Create output directory for generated documentation
-    mkdirSync(join(__dirname, '../../story-docs/output'), { recursive: true });
+    mkdirSync(join(__dirname, '../../story-docs/output/auth'), { recursive: true });
   });
 
   afterAll(async () => {
@@ -151,7 +151,7 @@ describe('Auth API Stories 📚', () => {
       expect(story.errors).toHaveLength(0);
 
       // Save the generated documentation
-      const outputPath = join(__dirname, '../../story-docs/output/ramesh-admin-login.md');
+      const outputPath = join(__dirname, '../../story-docs/output/auth/ramesh-admin-login.md');
       writeFileSync(outputPath, story.generatedDocs.markdown);
       
       console.log(`📝 Story documentation generated: ${outputPath}`);
@@ -237,7 +237,7 @@ describe('Auth API Stories 📚', () => {
 
       expect(story.success).toBe(true);
       
-      const outputPath = join(__dirname, '../../story-docs/output/ramesh-password-change.md');
+      const outputPath = join(__dirname, '../../story-docs/output/auth/ramesh-password-change.md');
       writeFileSync(outputPath, story.generatedDocs.markdown);
     });
   });
@@ -307,7 +307,7 @@ describe('Auth API Stories 📚', () => {
 
       expect(story.success).toBe(true);
       
-      const outputPath = join(__dirname, '../../story-docs/output/sita-editor-login.md');
+      const outputPath = join(__dirname, '../../story-docs/output/auth/sita-editor-login.md');
       writeFileSync(outputPath, story.generatedDocs.markdown);
     });
   });
@@ -354,7 +354,7 @@ describe('Auth API Stories 📚', () => {
       // For security tests, 401 responses are the expected "success" outcome
       expect(story.story.steps.every(step => step.response && step.response.status === 401)).toBe(true);
       
-      const outputPath = join(__dirname, '../../story-docs/output/unauthorized-access-protection.md');
+      const outputPath = join(__dirname, '../../story-docs/output/auth/unauthorized-access-protection.md');
       writeFileSync(outputPath, story.generatedDocs.markdown);
     });
 
@@ -391,7 +391,7 @@ describe('Auth API Stories 📚', () => {
 
       // Rate limiting test - success means the system properly blocked repeated attempts
       
-      const outputPath = join(__dirname, '../../story-docs/output/rate-limiting-protection.md');
+      const outputPath = join(__dirname, '../../story-docs/output/auth/rate-limiting-protection.md');
       writeFileSync(outputPath, story.generatedDocs.markdown);
     });
   });
@@ -411,11 +411,18 @@ Generated from real API tests on ${new Date().toISOString()}
 This documentation tells the story of our API through the eyes of real users. Each story follows a persona (like Ramesh the Admin or Sita the Editor) as they accomplish real tasks using our system.
 
 ### Generated Stories:
-- 📝 [Ramesh's Admin Login Journey](./ramesh-admin-login.md)
-- 🔒 [Ramesh Changes Password](./ramesh-password-change.md) 
-- ✍️ [Sita's Editor Login](./sita-editor-login.md)
-- 🚨 [Unauthorized Access Protection](./unauthorized-access-protection.md)
-- 🛡️ [Rate Limiting Protection](./rate-limiting-protection.md)
+
+#### Authentication Module
+- 📝 [Ramesh's Admin Login Journey](./auth/ramesh-admin-login.md)
+- 🔒 [Ramesh Changes Password](./auth/ramesh-password-change.md) 
+- ✍️ [Sita's Editor Login](./auth/sita-editor-login.md)
+- 🚨 [Unauthorized Access Protection](./auth/unauthorized-access-protection.md)
+- 🛡️ [Rate Limiting Protection](./auth/rate-limiting-protection.md)
+
+#### Content Management Module
+- 🏗️ [Maya's Category Management](./content-management/maya-category-management.md)
+- ✍️ [Sita's Content Creation](./content-management/sita-content-creation.md)
+- 📰 [Ravi's Content Discovery](./content-management/ravi-content-discovery.md)
 
 ## 🎭 Meet Our Users
 
@@ -427,6 +434,12 @@ A 32-year-old communications officer who manages content strategy and publishes 
 
 ### 🧑🏼‍💻 John Smith - Tourist/Public User
 A 28-year-old software developer visiting Nepal who represents public users accessing government information.
+
+### 👩🏽‍💼 Maya Adhikari - Content Manager
+A 38-year-old content manager responsible for organizing and structuring all government website content.
+
+### 👨🏽‍💻 Ravi Thapa - Investigative Journalist
+A 29-year-old journalist who regularly accesses government documents for investigative reporting.
 
 ---
 

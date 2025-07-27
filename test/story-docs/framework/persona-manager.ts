@@ -2,12 +2,18 @@ import { Persona } from './types';
 import { rameshAdmin } from '../personas/ramesh-admin';
 import { sitaEditor } from '../personas/sita-editor';
 import { touristViewer } from '../personas/tourist-viewer';
+import { mayaContentManager } from '../personas/maya-content-manager';
+import { raviJournalist } from '../personas/ravi-journalist';
+import { priyaDocumentManager } from '../personas/priya-document-manager';
 
 export class PersonaManager {
   private static personas: Record<string, Persona> = {
     'ramesh-admin': rameshAdmin,
     'sita-editor': sitaEditor,
     'tourist-viewer': touristViewer,
+    'maya-content-manager': mayaContentManager,
+    'ravi-journalist': raviJournalist,
+    'priya-document-manager': priyaDocumentManager,
   };
 
   static getPersona(id: string): Persona {
