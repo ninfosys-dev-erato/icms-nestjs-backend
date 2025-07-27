@@ -123,3 +123,5 @@ build/Release
 # File upload directories
 uploads/
 *.pdf
+
+story-docs/output/
