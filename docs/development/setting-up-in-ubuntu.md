@@ -1,6 +1,6 @@
-# Setting Up Development Environment in Arch Linux
+# Setting Up Development Environment in Ubuntu
 
-This guide will help you set up a complete development environment for the ICMS (Integrated Content Management System) project on Arch Linux.
+This guide will help you set up a complete development environment for the ICMS (Integrated Content Management System) project on Ubuntu.
 
 ## Table of Contents
 
@@ -18,7 +18,7 @@ This guide will help you set up a complete development environment for the ICMS 
 
 ## Prerequisites
 
-- Arch Linux system with sudo privileges
+- Ubuntu system (20.04 LTS or later recommended) with sudo privileges
 - Internet connection
 - Basic knowledge of terminal commands
 
@@ -28,19 +28,35 @@ First, let's ensure your system is up to date:
 
 ```bash
 # Update system packages
-sudo pacman -Syuu
+sudo apt update && sudo apt upgrade -y
 
 # Install essential development tools
-sudo pacman -S base-devel git curl wget
+sudo apt install -y build-essential git curl wget software-properties-common
 ```
 
 ## Node.js and Package Managers
 
 ### Installing Node.js
 
+#### Option 1: Using NodeSource Repository (Recommended)
+
 ```bash
+# Add NodeSource repository for the latest LTS version
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+
 # Install Node.js and npm
-sudo pacman -S nodejs npm
+sudo apt install -y nodejs
+
+# Verify installation
+node --version
+npm --version
+```
+
+#### Option 2: Using Ubuntu Package Manager
+
+```bash
+# Install Node.js from Ubuntu repositories
+sudo apt install -y nodejs npm
 
 # Verify installation
 node --version
@@ -54,8 +70,13 @@ You can choose between Yarn, pnpm, or use npm. Here are all three options:
 #### Option 1: Yarn (Recommended)
 
 ```bash
-# Install Yarn
-sudo pacman -S yarn
+# Add Yarn repository
+curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+
+# Update package list and install Yarn
+sudo apt update
+sudo apt install -y yarn
 
 # Verify installation
 yarn --version
@@ -88,22 +109,19 @@ npm comes with Node.js, so no additional installation is needed.
 
 ```bash
 # Install PostgreSQL
-sudo pacman -S postgresql
-
-# Initialize the database
-sudo -u postgres initdb -D /var/lib/postgres/data --locale=en_US.UTF-8 --encoding=UTF8
+sudo apt install -y postgresql postgresql-contrib
 
 # Start and enable PostgreSQL service
-sudo systemctl enable --now postgresql.service
+sudo systemctl enable --now postgresql
 
 # Verify service is running
-sudo systemctl status postgresql.service
+sudo systemctl status postgresql
 ```
 
 ### Database Configuration
 
 ```bash
-# Connect to PostgreSQL as postgres user
+# Switch to postgres user
 sudo -u postgres psql
 
 # In the PostgreSQL prompt, run these commands:
@@ -131,7 +149,27 @@ ALTER USER icmsdev CREATEDB;
 \q
 ```
 
-'postgresql://test:test@localhost:5432/icms_test'
+### Configure PostgreSQL for Local Connections
+
+```bash
+# Edit PostgreSQL configuration
+sudo nano /etc/postgresql/*/main/postgresql.conf
+
+# Uncomment and modify this line:
+# listen_addresses = 'localhost'
+
+# Edit client authentication configuration
+sudo nano /etc/postgresql/*/main/pg_hba.conf
+
+# Add or modify these lines for local connections:
+# local   all             postgres                                peer
+# local   all             all                                     md5
+# host    all             all             127.0.0.1/32            md5
+# host    all             all             ::1/128                 md5
+
+# Restart PostgreSQL to apply changes
+sudo systemctl restart postgresql
+```
 
 ### Test Database Connection
 
@@ -148,11 +186,11 @@ psql -U icmsdev -d icmslocal -h localhost
 ### Installation and Setup
 
 ```bash
-# Install Redis (Valkey in Arch Linux)
-sudo pacman -S redis
+# Install Redis
+sudo apt install -y redis-server
 
 # Start and enable Redis service
-sudo systemctl enable --now valkey
+sudo systemctl enable --now redis-server
 
 # Verify Redis is running
 redis-cli ping
@@ -163,7 +201,7 @@ redis-cli ping
 
 ```bash
 # Edit Redis configuration
-sudo vim /etc/valkey.conf
+sudo nano /etc/redis/redis.conf
 
 # Add or modify these lines:
 # requirepass dev@123
@@ -171,7 +209,7 @@ sudo vim /etc/valkey.conf
 # port 6379
 
 # Restart Redis to apply changes
-sudo systemctl restart valkey
+sudo systemctl restart redis-server
 
 # Test Redis with authentication
 redis-cli
@@ -184,15 +222,87 @@ PING
 
 ### Installation and Setup
 
-```bash
-# Install MinIO server and client
-sudo pacman -S minio minio-client
+#### Option 1: Using Binary (Recommended)
 
-# Start and enable MinIO service
+```bash
+# Download MinIO binary
+wget https://dl.min.io/server/minio/release/linux-amd64/minio
+
+# Make it executable and move to system path
+chmod +x minio
+sudo mv minio /usr/local/bin/
+
+# Create MinIO user and directories
+sudo useradd -r minio-user -s /sbin/nologin
+sudo mkdir /opt/minio
+sudo mkdir /etc/minio
+sudo chown minio-user:minio-user /opt/minio
+sudo chown minio-user:minio-user /etc/minio
+
+# Create MinIO service file
+sudo tee /etc/systemd/system/minio.service > /dev/null <<EOF
+[Unit]
+Description=MinIO
+Documentation=https://docs.min.io
+Wants=network-online.target
+After=network-online.target
+AssertFileIsExecutable=/usr/local/bin/minio
+
+[Service]
+WorkingDirectory=/usr/local/
+
+User=minio-user
+Group=minio-user
+ProtectProc=invisible
+
+ExecStart=/usr/local/bin/minio server /opt/minio --console-address ":9001"
+
+# Let systemd restart this service always
+Restart=always
+
+# Specifies the maximum file descriptor number that can be opened by this process
+LimitNOFILE=65536
+
+# Specifies the maximum number of threads this process can create
+TasksMax=infinity
+
+# Disable timeout logic and wait until process is stopped
+TimeoutStopSec=infinity
+SendSIGKILL=no
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd and start MinIO
+sudo systemctl daemon-reload
 sudo systemctl enable --now minio
 
 # Verify MinIO is running
 sudo systemctl status minio
+```
+
+#### Option 2: Using Docker (Alternative)
+
+```bash
+# Install Docker if not already installed
+sudo apt install -y docker.io docker-compose
+
+# Start and enable Docker
+sudo systemctl enable --now docker
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+
+# Run MinIO with Docker
+docker run -d \
+  --name minio \
+  -p 9000:9000 \
+  -p 9001:9001 \
+  -e "MINIO_ROOT_USER=minioadmin" \
+  -e "MINIO_ROOT_PASSWORD=minioadmin" \
+  -v minio_data:/data \
+  minio/minio server /data --console-address ":9001"
 ```
 
 ### MinIO Configuration
@@ -207,14 +317,19 @@ MinIO runs on port 9000 by default with these credentials:
 ### Create Development Bucket
 
 ```bash
+# Install MinIO client
+wget https://dl.min.io/client/mc/release/linux-amd64/mc
+chmod +x mc
+sudo mv mc /usr/local/bin/
+
 # Configure MinIO client
-mcli alias set local http://localhost:9000 minioadmin minioadmin
+mc alias set local http://localhost:9000 minioadmin minioadmin
 
 # Create a bucket for development
-mcli mb local/icms-dev
+mc mb local/icms-dev
 
 # List buckets to verify
-mcli ls local
+mc ls local
 ```
 
 ## S3-Compatible Storage Configuration
@@ -283,15 +398,15 @@ After setting up your storage configuration, test it:
 
 ```bash
 # Test MinIO connection
-mcli ls local
+mc ls local
 
 # Test S3 bucket access
-mcli ls local/icms-dev
+mc ls local/icms-dev
 
 # Upload a test file
 echo "test" > test.txt
-mcli cp test.txt local/icms-dev/
-mcli ls local/icms-dev/
+mc cp test.txt local/icms-dev/
+mc ls local/icms-dev/
 rm test.txt
 ```
 
@@ -320,11 +435,11 @@ npm run start:dev
 
 ```bash
 # Install additional development tools
-sudo pacman -S vim neovim htop tree jq
+sudo apt install -y vim nano htop tree jq unzip
 
 # Install Docker (optional, for containerized development)
-sudo pacman -S docker docker-compose
-sudo systemctl enable --now docker.service
+sudo apt install -y docker.io docker-compose
+sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
 ```
 
@@ -332,9 +447,9 @@ sudo usermod -aG docker $USER
 
 Recommended IDEs for this project:
 
-- **VS Code**: `sudo pacman -S code`
+- **VS Code**: Download from https://code.visualstudio.com/
 - **WebStorm**: Available from JetBrains website
-- **Vim/Neovim**: Already installed above
+- **Vim/Nano**: Already installed above
 
 ## Environment Configuration
 
@@ -602,7 +717,7 @@ psql -U icmsdev -d icmslocal -h localhost -c "SELECT version();"
 redis-cli -a dev@123 ping
 
 # Test MinIO
-mcli ls local
+mc ls local
 
 # Test Node.js
 node --version
@@ -630,12 +745,12 @@ npx prisma db pull
 
 ```bash
 # Test MinIO bucket access
-mcli ls local/icms-dev
+mc ls local/icms-dev
 
 # Test file upload to MinIO
 echo "test content" > test-upload.txt
-mcli cp test-upload.txt local/icms-dev/
-mcli ls local/icms-dev/
+mc cp test-upload.txt local/icms-dev/
+mc ls local/icms-dev/
 rm test-upload.txt
 
 # Verify storage configuration in application
@@ -672,19 +787,25 @@ sudo journalctl -u postgresql
 
 # Reset PostgreSQL password if needed
 sudo -u postgres psql -c "ALTER USER icmsdev PASSWORD 'dev@123';"
+
+# Check PostgreSQL configuration
+sudo nano /etc/postgresql/*/main/pg_hba.conf
 ```
 
 #### Redis Connection Issues
 
 ```bash
 # Check if Redis is running
-sudo systemctl status valkey
+sudo systemctl status redis-server
 
 # Check Redis logs
-sudo journalctl -u valkey
+sudo journalctl -u redis-server
 
 # Test Redis connection
 redis-cli -a dev@123 ping
+
+# Check Redis configuration
+sudo nano /etc/redis/redis.conf
 ```
 
 #### MinIO Issues
@@ -726,16 +847,16 @@ pnpm install
 
 ```bash
 # Start all services
-sudo systemctl start postgresql valkey minio
+sudo systemctl start postgresql redis-server minio
 
 # Stop all services
-sudo systemctl stop postgresql valkey minio
+sudo systemctl stop postgresql redis-server minio
 
 # Restart all services
-sudo systemctl restart postgresql valkey minio
+sudo systemctl restart postgresql redis-server minio
 
 # Check status of all services
-sudo systemctl status postgresql valkey minio
+sudo systemctl status postgresql redis-server minio
 ```
 
 ### Network and Firewall
@@ -744,20 +865,11 @@ sudo systemctl status postgresql valkey minio
 # Check if ports are open
 sudo netstat -tlnp | grep -E ':(5432|6379|9000|9001)'
 
-# If using iptables firewall, allow necessary ports
-sudo iptables -A INPUT -p tcp --dport 5432 -j ACCEPT  # PostgreSQL
-sudo iptables -A INPUT -p tcp --dport 6379 -j ACCEPT  # Redis
-sudo iptables -A INPUT -p tcp --dport 9000 -j ACCEPT  # MinIO
-sudo iptables -A INPUT -p tcp --dport 9001 -j ACCEPT  # MinIO Console
-
-# If using ufw (if installed)
+# If using UFW firewall, allow necessary ports
 sudo ufw allow 5432/tcp  # PostgreSQL
 sudo ufw allow 6379/tcp  # Redis
 sudo ufw allow 9000/tcp  # MinIO
 sudo ufw allow 9001/tcp  # MinIO Console
-
-# Save iptables rules (if using iptables)
-sudo iptables-save > /etc/iptables/iptables.rules
 ```
 
 ## Next Steps
@@ -770,8 +882,9 @@ sudo iptables-save > /etc/iptables/iptables.rules
 
 ## Additional Resources
 
-- [Arch Linux Wiki - PostgreSQL](https://wiki.archlinux.org/title/PostgreSQL)
-- [Arch Linux Wiki - Redis](https://wiki.archlinux.org/title/Redis)
+- [Ubuntu Documentation](https://ubuntu.com/tutorials)
+- [PostgreSQL Ubuntu Installation](https://www.postgresql.org/download/linux/ubuntu/)
+- [Redis Ubuntu Installation](https://redis.io/docs/getting-started/installation/install-redis-on-linux/)
 - [Node.js Documentation](https://nodejs.org/docs/)
 - [Yarn Documentation](https://yarnpkg.com/getting-started)
 - [pnpm Documentation](https://pnpm.io/)
