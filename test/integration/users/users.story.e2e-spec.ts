@@ -227,26 +227,34 @@ describe('Users Module Stories (e2e)', () => {
       const fs = require('fs');
       const path = require('path');
       
-      const outputDir = path.join(__dirname, '../../story-docs/stories/users');
+      const outputDir = path.join(__dirname, '../../story-docs/output/users');
       
+      // Ensure output directory exists
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
       }
 
-      // Generate comprehensive documentation
-      const documentation = generateUsersModuleDocumentation();
-      
-      fs.writeFileSync(
-        path.join(outputDir, 'README.md'),
-        documentation,
-        'utf-8'
-      );
+      // Generate individual story documents
+      for (const storyResult of storyResults) {
+        if (storyResult.story) {
+          const markdown = await markdownGenerator.generateStoryDocumentation(storyResult.story);
+          const fileName = `${storyResult.story.id}.md`;
+          const filePath = path.join(outputDir, fileName);
+          
+          fs.writeFileSync(filePath, markdown);
+          console.log(`📄 Generated story documentation: ${fileName}`);
+        }
+      }
 
+      // Generate overview document
+      const overview = generateUsersModuleDocumentation();
+      fs.writeFileSync(path.join(outputDir, 'README.md'), overview);
+      
       console.log('\n📚 Users Module Story Documentation Generated!');
       console.log(`📁 Location: ${outputDir}/README.md`);
       
     } catch (error) {
-      console.error('Documentation generation error:', error);
+      console.error('❌ Error generating documentation:', error.message);
     }
   };
 
@@ -552,5 +560,32 @@ Generated on: ${new Date().toISOString()}
         throw error;
       }
     }, 90000);
+  });
+
+  describe('🔄 Bulk Operations Stories', () => {
+    it('📊 Ramesh performs bulk operations and system management tasks', async () => {
+      console.log('\n🎬 Running Story: Ramesh Bulk User Operations Journey');
+      
+      const storyContext = {
+        getHttpServer: () => httpServer,
+        request: request(httpServer)
+      };
+
+      try {
+        const storyResult = await createRameshBulkUserOperationsStory(storyContext);
+        
+        storyResults.push(storyResult);
+        
+        expect(storyResult.success).toBe(true);
+        expect(storyResult.story).toBeDefined();
+        expect(storyResult.story.persona.name).toBe('Ramesh Shrestha');
+        
+        console.log(`✅ Ramesh's bulk operations story completed successfully in ${(storyResult.story.metadata.duration / 1000).toFixed(2)}s`);
+      } catch (error) {
+        console.error('❌ Ramesh\'s bulk operations story failed:', error.message);
+        storyResults.push({ success: false, errors: [error.message] });
+        throw error;
+      }
+    }, 120000);
   });
 }); 
