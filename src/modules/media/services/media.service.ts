@@ -376,12 +376,12 @@ export class MediaService {
       createdAt: media.createdAt,
       updatedAt: media.updatedAt,
       albums: media.albums?.map((albumRelation: any) => ({
-        id: albumRelation.album.id,
-        name: albumRelation.album.name,
-        description: albumRelation.album.description,
-        isActive: albumRelation.album.isActive,
-        createdAt: albumRelation.album.createdAt,
-        updatedAt: albumRelation.album.updatedAt,
+        id: albumRelation.mediaAlbum.id,
+        name: albumRelation.mediaAlbum.name,
+        description: albumRelation.mediaAlbum.description,
+        isActive: albumRelation.mediaAlbum.isActive,
+        createdAt: albumRelation.mediaAlbum.createdAt,
+        updatedAt: albumRelation.mediaAlbum.updatedAt,
         mediaCount: 0, // TODO: Calculate actual count
         media: [],
       })) || [],

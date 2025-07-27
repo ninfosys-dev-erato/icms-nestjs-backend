@@ -6,6 +6,12 @@ import { mayaContentManager } from '../personas/maya-content-manager';
 import { raviJournalist } from '../personas/ravi-journalist';
 import { priyaDocumentManager } from '../personas/priya-document-manager';
 import { kiranHelpCoordinator } from '../personas/kiran-help-coordinator';
+import { mayaHRManager } from '../personas/maya-hr-manager';
+import { deepakDepartmentHead } from '../personas/deepak-department-head';
+import { sarahEmployee } from '../personas/sarah-employee';
+import { arjunMediaAdmin } from '../personas/arjun-media-admin';
+import { priyaPhotographer } from '../personas/priya-photographer';
+import { ritaCitizen } from '../personas/rita-citizen';
 
 export class PersonaManager {
   private static personas: Record<string, Persona> = {
@@ -16,6 +22,12 @@ export class PersonaManager {
     'ravi-journalist': raviJournalist,
     'priya-document-manager': priyaDocumentManager,
     'kiran-help-coordinator': kiranHelpCoordinator,
+    'maya-hr-manager': mayaHRManager,
+    'deepak-department-head': deepakDepartmentHead,
+    'sarah-employee': sarahEmployee,
+    'arjun-media-admin': arjunMediaAdmin,
+    'priya-photographer': priyaPhotographer,
+    'rita-citizen': ritaCitizen,
   };
 
   static getPersona(id: string): Persona {
@@ -99,6 +111,25 @@ export class PersonaManager {
       case 'documents':
       case 'document management':
         return this.getPersona('priya-document-manager');
+
+      case 'hr':
+      case 'human resources':
+      case 'employee':
+      case 'employees':
+      case 'hr management':
+        return this.getPersona('maya-hr-manager');
+
+      case 'department':
+      case 'departments':
+      case 'department head':
+      case 'department management':
+        return this.getPersona('deepak-department-head');
+
+      case 'employee directory':
+      case 'employee access':
+      case 'staff':
+      case 'team member':
+        return this.getPersona('sarah-employee');
         
       default:
         return this.getPersona('tourist-viewer'); // Default to viewer

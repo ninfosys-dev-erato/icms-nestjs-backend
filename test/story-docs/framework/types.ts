@@ -97,6 +97,7 @@ export interface StoryContext {
   previousSteps: StoryStepResult[];
   currentStep: number;
   testData: Record<string, any>;
+  request?: any; // SuperTest request object for making HTTP calls
 }
 
 export interface StoryStepResult {

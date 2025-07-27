@@ -118,13 +118,17 @@ export class StoryBuilder {
     const errors: string[] = [];
     let overallSuccess = true;
 
+    // Import request here to avoid circular dependencies
+    const request = require('supertest');
+
     // Create story context
     const context: StoryContext = {
       persona: this.persona,
       scenario: this.scenario,
       previousSteps: [],
       currentStep: 0,
-      testData: this.testData
+      testData: this.testData,
+      request: request(this.app.getHttpServer ? this.app.getHttpServer() : this.app)
     };
 
     // Execute each step

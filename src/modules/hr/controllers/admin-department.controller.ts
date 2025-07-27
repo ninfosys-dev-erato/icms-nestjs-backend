@@ -159,6 +159,51 @@ export class AdminDepartmentController {
     }
   }
 
+  @Get('export')
+  @ApiOperation({ summary: 'Export departments (Admin)' })
+  @ApiResponse({ status: 200, description: 'Departments exported successfully' })
+  @ApiQuery({ name: 'format', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiQuery({ name: 'parentId', required: false, type: String })
+  @Roles('ADMIN', 'EDITOR')
+  async exportDepartments(
+    @Res() response: Response,
+    @Query('format') format: 'json' | 'csv' | 'pdf' = 'json',
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+    @Query('isActive') isActive?: boolean,
+    @Query('parentId') parentId?: string
+  ): Promise<void> {
+    try {
+      const query: DepartmentQueryDto = {
+        page,
+        limit,
+        search,
+        isActive,
+        parentId
+      };
+      const buffer = await this.departmentService.exportDepartments(query, format);
+      
+      const contentType = format === 'json' ? 'application/json' : 'application/octet-stream';
+      const filename = `departments-export.${format}`;
+      
+      response.setHeader('Content-Type', contentType);
+      response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      response.send(buffer);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'DEPARTMENT_EXPORT_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get department by ID (Admin)' })
   @ApiResponse({ status: 200, description: 'Department retrieved successfully' })
@@ -273,35 +318,6 @@ export class AdminDepartmentController {
       );
 
       response.status(status).json(apiResponse);
-    }
-  }
-
-  @Get('export')
-  @ApiOperation({ summary: 'Export departments (Admin)' })
-  @ApiResponse({ status: 200, description: 'Departments exported successfully' })
-  @ApiQuery({ name: 'format', required: false, type: String })
-  @Roles('ADMIN', 'EDITOR')
-  async exportDepartments(
-    @Res() response: Response,
-    @Query() query: DepartmentQueryDto,
-    @Query('format') format: 'json' | 'csv' | 'pdf' = 'json'
-  ): Promise<void> {
-    try {
-      const buffer = await this.departmentService.exportDepartments(query, format);
-      
-      const contentType = format === 'json' ? 'application/json' : 'application/octet-stream';
-      const filename = `departments-export.${format}`;
-      
-      response.setHeader('Content-Type', contentType);
-      response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      response.send(buffer);
-    } catch (error) {
-      const apiResponse = ApiResponseBuilder.error(
-        'DEPARTMENT_EXPORT_ERROR',
-        error.message
-      );
-
-      response.status(500).json(apiResponse);
     }
   }
 
