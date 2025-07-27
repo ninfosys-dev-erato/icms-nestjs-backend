@@ -8,6 +8,14 @@ export default registerAs('app', () => ({
   appName: process.env.APP_NAME || 'ICMS Backend',
   appVersion: process.env.APP_VERSION || '1.0.0',
 
+  // Bootstrap
+  bootstrap: {
+    userEmail: process.env.USEREMAIL,
+    userPassword: process.env.USERPASSWORD,
+    defaultEmail: 'admin@example.com',
+    defaultPassword: 'Admin@123',
+  },
+
   // Database
   database: {
     url: process.env.DATABASE_URL,
