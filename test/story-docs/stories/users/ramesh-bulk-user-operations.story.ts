@@ -242,10 +242,25 @@ export const createRameshBulkUserOperationsStory = async (context: any) => {
         .get('/api/v1/admin/users/activity?limit=10')
         .set('Authorization', `Bearer ${token}`);
 
+      // Determine overall success based on both responses
+      const overallSuccess = statsResponse.status === 200 && activityResponse.status === 200;
+      const overallStatus = overallSuccess ? 200 : Math.max(statsResponse.status, activityResponse.status);
+
       return {
         narrative: `Ramesh verifies that bulk operations were successful by reviewing updated user statistics and recent activity logs.`,
         expectation: `The system should reflect the results of bulk operations in statistics and provide detailed audit trails for all changes.`,
-        response: { statistics: statsResponse, activity: activityResponse },
+        response: { 
+          status: overallStatus,
+          body: { 
+            statistics: statsResponse.body, 
+            activity: activityResponse.body,
+            verification: {
+              statisticsStatus: statsResponse.status,
+              activityStatus: activityResponse.status,
+              success: overallSuccess
+            }
+          }
+        },
         explanation: `Verification ensures bulk operations completed successfully and provides audit trails for compliance and troubleshooting purposes.`,
         apiCall: {
           method: 'GET',

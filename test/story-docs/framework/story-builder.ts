@@ -166,7 +166,7 @@ export class StoryBuilder {
 
     // Create story object
     const story = {
-      id: `${this.persona.id}-${this.scenario.id}-${Date.now()}`,
+      id: `${this.persona.id}-${this.scenario.id}`,
       title: `${this.persona.name}: ${this.scenario.title}`,
       persona: this.persona,
       scenario: this.scenario,

@@ -1,0 +1,218 @@
+{
+  "id": "sita-editor-link-validation",
+  "title": "Sita Sharma: Validate Important Links Data",
+  "persona": {
+    "id": "sita-editor",
+    "name": "Sita Sharma",
+    "role": "EDITOR",
+    "age": 32,
+    "occupation": "Communications Officer",
+    "technicalLevel": "INTERMEDIATE",
+    "background": "\n    Sita Sharma is a 32-year-old communications officer who joined the government \n    office 5 years ago with a background in journalism and public relations. \n    She's passionate about making government information accessible to citizens \n    and takes pride in crafting clear, engaging content.\n    \n    She manages the office's content strategy, from daily announcements to \n    important policy documents. Sita is comfortable with technology but sometimes \n    struggles with overly complex systems. She values efficiency and appreciates \n    tools that help her work faster.\n    \n    Sita often works under tight deadlines, especially when urgent announcements \n    need to be published. She's detail-oriented but needs systems that don't \n    slow her down with unnecessary complexity.\n  ",
+    "goals": [
+      "Publish timely and accurate content for citizens",
+      "Manage content calendar and publication schedules",
+      "Upload and organize media files efficiently",
+      "Create engaging announcements and news articles",
+      "Maintain consistent messaging across all platforms",
+      "Respond quickly to urgent publication requests"
+    ],
+    "painPoints": [
+      "Slow file upload processes that interrupt her workflow",
+      "Complex content management interfaces",
+      "Lack of draft/preview functionality",
+      "Difficulty organizing content into proper categories",
+      "Systems that don't save work automatically",
+      "Unclear publication status and approval workflows"
+    ],
+    "email": "sita.sharma@icms.gov.np",
+    "password": "SitaEditor@2024",
+    "avatar": "👩🏽‍💻"
+  },
+  "scenario": {
+    "id": "link-validation",
+    "title": "Validate Important Links Data",
+    "description": "The system validates important links data including URL format, required fields, and business rules.",
+    "category": "Data Validation",
+    "prerequisites": [
+      "Validation rules are configured",
+      "Test data with various validation scenarios",
+      "Error handling is properly implemented"
+    ],
+    "estimatedDuration": "90 seconds",
+    "difficulty": "MEDIUM"
+  },
+  "introduction": "Sita Sharma rushes to their computer to understand how the system validates important links data and handles errors before the end of the day.",
+  "steps": [
+    {
+      "id": "test-required-fields",
+      "narrative": "Sita Sharma attempts to create a link without required fields to test validation",
+      "expectation": "The system should reject the request and provide clear validation errors",
+      "apiCall": {
+        "method": "POST",
+        "endpoint": "/api/v1/admin/important-links",
+        "payload": {
+          "linkTitle": {
+            "en": "",
+            "ne": ""
+          },
+          "linkUrl": "",
+          "order": 1,
+          "isActive": true
+        }
+      },
+      "response": {
+        "status": 401,
+        "body": {
+          "success": false,
+          "error": {
+            "code": "UNAUTHORIZED_ERROR",
+            "message": "Unauthorized"
+          },
+          "meta": {
+            "timestamp": "2025-07-27T11:08:57.084Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 12
+      },
+      "explanation": "Input validation ensures data quality by requiring essential fields for important links"
+    },
+    {
+      "id": "test-url-validation",
+      "narrative": "Sita Sharma tests URL validation by submitting an invalid URL format",
+      "expectation": "The system should validate URL format and reject invalid URLs",
+      "apiCall": {
+        "method": "POST",
+        "endpoint": "/api/v1/admin/important-links",
+        "payload": {
+          "linkTitle": {
+            "en": "Test Link",
+            "ne": "परीक्षण लिङ्क"
+          },
+          "linkUrl": "not-a-valid-url",
+          "order": 1,
+          "isActive": true
+        }
+      },
+      "response": {
+        "status": 401,
+        "body": {
+          "success": false,
+          "error": {
+            "code": "UNAUTHORIZED_ERROR",
+            "message": "Unauthorized"
+          },
+          "meta": {
+            "timestamp": "2025-07-27T11:08:57.094Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 8
+      },
+      "explanation": "URL validation prevents broken links and ensures users can access the resources"
+    },
+    {
+      "id": "test-order-validation",
+      "narrative": "Sita Sharma tests order validation with a negative order value",
+      "expectation": "The system should require positive order values for proper sorting",
+      "apiCall": {
+        "method": "POST",
+        "endpoint": "/api/v1/admin/important-links",
+        "payload": {
+          "linkTitle": {
+            "en": "Test Link",
+            "ne": "परीक्षण लिङ्क"
+          },
+          "linkUrl": "https://valid.gov.np",
+          "order": -1,
+          "isActive": true
+        }
+      },
+      "response": {
+        "status": 401,
+        "body": {
+          "success": false,
+          "error": {
+            "code": "UNAUTHORIZED_ERROR",
+            "message": "Unauthorized"
+          },
+          "meta": {
+            "timestamp": "2025-07-27T11:08:57.099Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 4
+      },
+      "explanation": "Order validation ensures proper link sequencing and display priority"
+    }
+  ],
+  "conclusion": "❌ **Journey Encountered Issues**\n        \n        Sita Sharma completed 0 out of 3 steps successfully. \n        3 step(s) failed, preventing them from fully achieving \n        their goal of validate important links data.\n        \n        This indicates areas where the API or user experience could be improved.",
+  "metadata": {
+    "generatedAt": "2025-07-27T11:08:57.100Z",
+    "testResults": [
+      {
+        "stepId": "test-required-fields",
+        "success": false,
+        "actualResponse": {
+          "status": 401,
+          "body": {
+            "success": false,
+            "error": {
+              "code": "UNAUTHORIZED_ERROR",
+              "message": "Unauthorized"
+            },
+            "meta": {
+              "timestamp": "2025-07-27T11:08:57.084Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 12
+        },
+        "actualTiming": 12
+      },
+      {
+        "stepId": "test-url-validation",
+        "success": false,
+        "actualResponse": {
+          "status": 401,
+          "body": {
+            "success": false,
+            "error": {
+              "code": "UNAUTHORIZED_ERROR",
+              "message": "Unauthorized"
+            },
+            "meta": {
+              "timestamp": "2025-07-27T11:08:57.094Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 8
+        },
+        "actualTiming": 8
+      },
+      {
+        "stepId": "test-order-validation",
+        "success": false,
+        "actualResponse": {
+          "status": 401,
+          "body": {
+            "success": false,
+            "error": {
+              "code": "UNAUTHORIZED_ERROR",
+              "message": "Unauthorized"
+            },
+            "meta": {
+              "timestamp": "2025-07-27T11:08:57.099Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 4
+        },
+        "actualTiming": 4
+      }
+    ],
+    "duration": 25,
+    "success": false
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "module": "Important Links",
+  "generatedAt": "2025-07-27T11:08:57.603Z",
+  "totalStories": 6,
+  "successfulStories": 3,
+  "failedStories": 3,
+  "stories": [
+    {
+      "name": "Public Access Story",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Pagination Story",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Footer Links Story",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "Admin Management Story",
+      "success": false,
+      "error": null
+    },
+    {
+      "name": "Bulk Operations Story",
+      "success": false,
+      "error": null
+    },
+    {
+      "name": "Validation Story",
+      "success": false,
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,416 @@
+{
+  "id": "ramesh-admin-manage-important-links",
+  "title": "Ramesh Kumar: Manage Important Links Administration",
+  "persona": {
+    "id": "ramesh-admin",
+    "name": "Ramesh Kumar",
+    "role": "ADMIN",
+    "age": 45,
+    "occupation": "Senior Government Officer",
+    "technicalLevel": "INTERMEDIATE",
+    "background": "\n    Ramesh Kumar is a dedicated 45-year-old senior government officer who has been \n    working in the public sector for over 20 years. He started as a junior clerk \n    and worked his way up through determination and continuous learning. \n    \n    He's responsible for ensuring that the government office's digital presence \n    is accurate and up-to-date. Though he's comfortable with computers, he \n    prefers interfaces that are clear and straightforward. He values accuracy \n    and completeness in all information systems.\n    \n    Ramesh arrives at the office every morning at 9 AM sharp and methodically \n    goes through his tasks. He's particularly careful about data accuracy \n    because he knows that citizens depend on the information his office provides.\n  ",
+    "goals": [
+      "Maintain accurate office information on the website",
+      "Ensure all government announcements are published timely",
+      "Manage user accounts and permissions effectively",
+      "Keep all documents properly organized and accessible",
+      "Respond to citizen inquiries promptly",
+      "Maintain the security and integrity of the system"
+    ],
+    "painPoints": [
+      "Complex interfaces that require too many clicks",
+      "Error messages that don't clearly explain what went wrong",
+      "Systems that are slow to respond during busy hours",
+      "Having to remember multiple passwords for different systems",
+      "File upload processes that fail without clear feedback",
+      "Difficulty finding specific functions in cluttered dashboards"
+    ],
+    "email": "ramesh.kumar@icms.gov.np",
+    "password": "RameshSecure@2024",
+    "avatar": "👨🏽‍💼"
+  },
+  "scenario": {
+    "id": "manage-important-links",
+    "title": "Manage Important Links Administration",
+    "description": "An administrator manages important links including creation, updates, and organization.",
+    "category": "Administration",
+    "prerequisites": [
+      "Admin authentication is working",
+      "Link management permissions are configured",
+      "URL validation is enabled"
+    ],
+    "estimatedDuration": "2 minutes",
+    "difficulty": "MEDIUM"
+  },
+  "introduction": "Ramesh Kumar, a 45-year-old Senior Government Officer, arrives at the office ready to manage important government links to ensure citizens have access to current resources.",
+  "steps": [
+    {
+      "id": "admin-view-all-links",
+      "narrative": "Ramesh Kumar logs into the admin system to review all important links",
+      "expectation": "He should see all important links including inactive ones for management",
+      "apiCall": {
+        "method": "GET",
+        "endpoint": "/api/v1/admin/important-links",
+        "headers": {
+          "Authorization": "Bearer [TOKEN]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": [
+            {
+              "id": "cmdlktfdw0003jsvcsymy91ay",
+              "linkTitle": {
+                "en": "Government Portal",
+                "ne": "सरकारी पोर्टल"
+              },
+              "linkUrl": "https://www.gov.np",
+              "order": 1,
+              "isActive": true,
+              "createdAt": "2025-07-27T11:08:55.461Z",
+              "updatedAt": "2025-07-27T11:08:55.461Z"
+            },
+            {
+              "id": "cmdlktfe00004jsvctdciymgb",
+              "linkTitle": {
+                "en": "Ministry of Education",
+                "ne": "शिक्षा मन्त्रालय"
+              },
+              "linkUrl": "https://moe.gov.np",
+              "order": 2,
+              "isActive": true,
+              "createdAt": "2025-07-27T11:08:55.464Z",
+              "updatedAt": "2025-07-27T11:08:55.464Z"
+            },
+            {
+              "id": "cmdlktfe10005jsvcqdlp5q7q",
+              "linkTitle": {
+                "en": "National Portal",
+                "ne": "राष्ट्रिय पोर्टल"
+              },
+              "linkUrl": "https://nepal.gov.np",
+              "order": 3,
+              "isActive": true,
+              "createdAt": "2025-07-27T11:08:55.465Z",
+              "updatedAt": "2025-07-27T11:08:55.465Z"
+            },
+            {
+              "id": "cmdlktfe20006jsvcutek23fj",
+              "linkTitle": {
+                "en": "Tourist Information",
+                "ne": "पर्यटक सूचना"
+              },
+              "linkUrl": "https://tourism.gov.np",
+              "order": 4,
+              "isActive": true,
+              "createdAt": "2025-07-27T11:08:55.467Z",
+              "updatedAt": "2025-07-27T11:08:55.467Z"
+            },
+            {
+              "id": "cmdlktfe30007jsvctmn1pqhe",
+              "linkTitle": {
+                "en": "Inactive Link",
+                "ne": "निष्क्रिय लिङ्क"
+              },
+              "linkUrl": "https://old.gov.np",
+              "order": 5,
+              "isActive": false,
+              "createdAt": "2025-07-27T11:08:55.468Z",
+              "updatedAt": "2025-07-27T11:08:55.468Z"
+            }
+          ],
+          "meta": {
+            "timestamp": "2025-07-27T11:08:56.470Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 28
+      },
+      "explanation": "Admin interface provides complete visibility of all important links regardless of status"
+    },
+    {
+      "id": "create-new-link",
+      "narrative": "Ramesh Kumar creates a new important link for a recently launched government portal",
+      "expectation": "The system should validate the data and create the new important link",
+      "apiCall": {
+        "method": "POST",
+        "endpoint": "/api/v1/admin/important-links",
+        "headers": {
+          "Authorization": "Bearer [TOKEN]"
+        },
+        "payload": {
+          "linkTitle": {
+            "en": "New Government Portal",
+            "ne": "नयाँ सरकारी पोर्टल"
+          },
+          "linkUrl": "https://newportal.gov.np",
+          "order": 10,
+          "isActive": true
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "success": true,
+          "data": {
+            "id": "cmdlktg6b000djsvccybkudxi",
+            "linkTitle": {
+              "en": "New Government Portal",
+              "ne": "नयाँ सरकारी पोर्टल"
+            },
+            "linkUrl": "https://newportal.gov.np",
+            "order": 10,
+            "isActive": true,
+            "createdAt": "2025-07-27T11:08:56.483Z",
+            "updatedAt": "2025-07-27T11:08:56.483Z"
+          },
+          "meta": {
+            "timestamp": "2025-07-27T11:08:56.484Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 13
+      },
+      "explanation": "The new important link is created with proper validation and stored for public access"
+    },
+    {
+      "id": "update-existing-link",
+      "narrative": "Ramesh Kumar updates the important link to correct the title and adjust the display order",
+      "expectation": "The system should update the link information while preserving other data",
+      "apiCall": {
+        "method": "PUT",
+        "endpoint": "/api/v1/admin/important-links/cmdlktg6b000djsvccybkudxi",
+        "headers": {
+          "Authorization": "Bearer [TOKEN]"
+        },
+        "payload": {
+          "linkTitle": {
+            "en": "Updated Government Portal",
+            "ne": "अपडेटेड सरकारी पोर्टल"
+          },
+          "order": 5
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "id": "cmdlktg6b000djsvccybkudxi",
+            "linkTitle": {
+              "en": "Updated Government Portal",
+              "ne": "अपडेटेड सरकारी पोर्टल"
+            },
+            "linkUrl": "https://newportal.gov.np",
+            "order": 5,
+            "isActive": true,
+            "createdAt": "2025-07-27T11:08:56.483Z",
+            "updatedAt": "2025-07-27T11:08:56.493Z"
+          },
+          "meta": {
+            "timestamp": "2025-07-27T11:08:56.495Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 11
+      },
+      "explanation": "The important link is updated with new information while maintaining data integrity"
+    },
+    {
+      "id": "get-link-statistics",
+      "narrative": "Ramesh Kumar checks the important links statistics to understand the current state",
+      "expectation": "He should see comprehensive statistics about total, active, and inactive links",
+      "apiCall": {
+        "method": "GET",
+        "endpoint": "/api/v1/admin/important-links/statistics",
+        "headers": {
+          "Authorization": "Bearer [TOKEN]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "total": 6,
+            "active": 5,
+            "inactive": 1,
+            "lastUpdated": "2025-07-27T11:08:56.493Z"
+          },
+          "meta": {
+            "timestamp": "2025-07-27T11:08:56.517Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 24
+      },
+      "explanation": "Statistics provide valuable insights for managing the important links collection effectively"
+    }
+  ],
+  "conclusion": "✅ **Journey Completed Successfully**\n        \n        Ramesh Kumar successfully completed all 4 steps of their journey. \n        The system responded appropriately at each stage, allowing them to achieve their goal \n        of manage important links administration.\n        \n        This demonstrates that the API is working correctly for this user scenario.",
+  "metadata": {
+    "generatedAt": "2025-07-27T11:08:56.522Z",
+    "testResults": [
+      {
+        "stepId": "admin-view-all-links",
+        "success": true,
+        "actualResponse": {
+          "status": 200,
+          "body": {
+            "success": true,
+            "data": [
+              {
+                "id": "cmdlktfdw0003jsvcsymy91ay",
+                "linkTitle": {
+                  "en": "Government Portal",
+                  "ne": "सरकारी पोर्टल"
+                },
+                "linkUrl": "https://www.gov.np",
+                "order": 1,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:55.461Z",
+                "updatedAt": "2025-07-27T11:08:55.461Z"
+              },
+              {
+                "id": "cmdlktfe00004jsvctdciymgb",
+                "linkTitle": {
+                  "en": "Ministry of Education",
+                  "ne": "शिक्षा मन्त्रालय"
+                },
+                "linkUrl": "https://moe.gov.np",
+                "order": 2,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:55.464Z",
+                "updatedAt": "2025-07-27T11:08:55.464Z"
+              },
+              {
+                "id": "cmdlktfe10005jsvcqdlp5q7q",
+                "linkTitle": {
+                  "en": "National Portal",
+                  "ne": "राष्ट्रिय पोर्टल"
+                },
+                "linkUrl": "https://nepal.gov.np",
+                "order": 3,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:55.465Z",
+                "updatedAt": "2025-07-27T11:08:55.465Z"
+              },
+              {
+                "id": "cmdlktfe20006jsvcutek23fj",
+                "linkTitle": {
+                  "en": "Tourist Information",
+                  "ne": "पर्यटक सूचना"
+                },
+                "linkUrl": "https://tourism.gov.np",
+                "order": 4,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:55.467Z",
+                "updatedAt": "2025-07-27T11:08:55.467Z"
+              },
+              {
+                "id": "cmdlktfe30007jsvctmn1pqhe",
+                "linkTitle": {
+                  "en": "Inactive Link",
+                  "ne": "निष्क्रिय लिङ्क"
+                },
+                "linkUrl": "https://old.gov.np",
+                "order": 5,
+                "isActive": false,
+                "createdAt": "2025-07-27T11:08:55.468Z",
+                "updatedAt": "2025-07-27T11:08:55.468Z"
+              }
+            ],
+            "meta": {
+              "timestamp": "2025-07-27T11:08:56.470Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 28
+        },
+        "actualTiming": 28
+      },
+      {
+        "stepId": "create-new-link",
+        "success": true,
+        "actualResponse": {
+          "status": 201,
+          "body": {
+            "success": true,
+            "data": {
+              "id": "cmdlktg6b000djsvccybkudxi",
+              "linkTitle": {
+                "en": "New Government Portal",
+                "ne": "नयाँ सरकारी पोर्टल"
+              },
+              "linkUrl": "https://newportal.gov.np",
+              "order": 10,
+              "isActive": true,
+              "createdAt": "2025-07-27T11:08:56.483Z",
+              "updatedAt": "2025-07-27T11:08:56.483Z"
+            },
+            "meta": {
+              "timestamp": "2025-07-27T11:08:56.484Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 13
+        },
+        "actualTiming": 13
+      },
+      {
+        "stepId": "update-existing-link",
+        "success": true,
+        "actualResponse": {
+          "status": 200,
+          "body": {
+            "success": true,
+            "data": {
+              "id": "cmdlktg6b000djsvccybkudxi",
+              "linkTitle": {
+                "en": "Updated Government Portal",
+                "ne": "अपडेटेड सरकारी पोर्टल"
+              },
+              "linkUrl": "https://newportal.gov.np",
+              "order": 5,
+              "isActive": true,
+              "createdAt": "2025-07-27T11:08:56.483Z",
+              "updatedAt": "2025-07-27T11:08:56.493Z"
+            },
+            "meta": {
+              "timestamp": "2025-07-27T11:08:56.495Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 11
+        },
+        "actualTiming": 11
+      },
+      {
+        "stepId": "get-link-statistics",
+        "success": true,
+        "actualResponse": {
+          "status": 200,
+          "body": {
+            "success": true,
+            "data": {
+              "total": 6,
+              "active": 5,
+              "inactive": 1,
+              "lastUpdated": "2025-07-27T11:08:56.493Z"
+            },
+            "meta": {
+              "timestamp": "2025-07-27T11:08:56.517Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 24
+        },
+        "actualTiming": 24
+      }
+    ],
+    "duration": 78,
+    "success": true
+  }
+}
