@@ -101,7 +101,7 @@ export class MediaService {
           altText: metadata.altText,
           title: metadata.title,
           description: metadata.description,
-          ...(metadata.tags && metadata.tags.length > 0 && { tags: metadata.tags.join(',') }),
+          ...(metadata.tags && metadata.tags.length > 0 && { tags: metadata.tags.join('-') }),
           isPublic: metadata.isPublic?.toString() || 'true',
         }
       );

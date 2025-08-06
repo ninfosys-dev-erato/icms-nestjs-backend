@@ -84,7 +84,7 @@ export class BackblazeB2StorageService extends FileStorageService {
     console.log('  Endpoint:', this.config.endpoint);
 
     this.httpClient = axios.create({
-      timeout: 30000, // 30 seconds timeout
+      timeout: 60000, // Increased from 30000 to 60000 (60 seconds)
       headers: {
         'User-Agent': 'NestJS-BackblazeB2-Client/1.0',
       },
@@ -112,71 +112,70 @@ export class BackblazeB2StorageService extends FileStorageService {
       await this.ensureUploadUrl();
       console.log('✅ BackblazeB2: Upload URL obtained');
 
-      const formData = new FormData();
-      formData.append('file', buffer, {
-        filename: key.split('/').pop() || 'file',
-        contentType: contentType || 'application/octet-stream',
-      });
+      // Calculate SHA1 hash of the file content
+      const crypto = require('crypto');
+      const sha1Hash = crypto.createHash('sha1').update(buffer).digest('hex');
+      console.log('  SHA1 hash:', sha1Hash);
 
-      // Add metadata as form fields
+      // Prepare headers for Backblaze B2
+      const headers = {
+        'Authorization': this.uploadAuthToken!,
+        'X-Bz-File-Name': key, // Required by Backblaze B2
+        'X-Bz-Content-Sha1': sha1Hash, // Required by Backblaze B2
+        'Content-Type': contentType || 'application/octet-stream',
+        'Content-Length': buffer.length
+      };
+
+      // Add metadata headers if provided
       if (metadata) {
         Object.entries(metadata).forEach(([key, value]) => {
-          // Skip undefined values - Backblaze doesn't accept them
+          // Skip undefined/null values and convert to string
           if (value !== undefined && value !== null) {
-            formData.append(`X-Bz-Info-${key}`, String(value));
+            // Sanitize metadata values for Backblaze B2
+            const sanitizedValue = String(value)
+              .replace(/[^\w\-]/g, '') // Only allow alphanumeric and hyphens
+              .trim()
+              .substring(0, 100); // Limit length to 100 characters
+            
+            if (sanitizedValue.length > 0) {
+              headers[`X-Bz-Info-${key}`] = sanitizedValue;
+            }
           }
         });
-        console.log('📋 BackblazeB2: Metadata added to form data');
+        console.log('📋 BackblazeB2: Metadata added to headers');
       }
 
       console.log('📤 BackblazeB2: Sending upload request...');
       console.log('  Upload URL:', this.uploadUrl);
       console.log('  Upload Auth Token (first 20 chars):', this.uploadAuthToken?.substring(0, 20) + '...');
-      console.log('  FormData fields:');
-      console.log('    - file:', {
-        filename: key.split('/').pop() || 'file',
-        contentType: contentType || 'application/octet-stream',
-        size: buffer.length
-      });
+      console.log('  Headers:', headers);
       
-      if (metadata) {
-        console.log('    - metadata fields:');
-        Object.entries(metadata).forEach(([key, value]) => {
-          console.log(`      X-Bz-Info-${key}: ${value}`);
-        });
-      }
-
       let response;
       try {
         response = await this.retryOperation(async () => {
-          const headers = {
-            ...formData.getHeaders(),
-            'Authorization': this.uploadAuthToken!,
-          };
-          
           console.log('  Request headers:', headers);
           
-          return this.httpClient.post(this.uploadUrl!, formData, { headers });
+          return this.httpClient.post(this.uploadUrl!, buffer, { headers });
         });
       } catch (error) {
         console.error('❌ BackblazeB2: Upload with metadata failed, trying without metadata...');
         
+        // Get a fresh upload URL for retry
+        await this.ensureUploadUrl();
+        console.log('✅ BackblazeB2: Fresh upload URL obtained for retry');
+        
         // Try again without metadata
-        const simpleFormData = new FormData();
-        simpleFormData.append('file', buffer, {
-          filename: key.split('/').pop() || 'file',
-          contentType: contentType || 'application/octet-stream',
-        });
+        const simpleHeaders = {
+          ...headers,
+          'X-Bz-File-Name': key, // Required by Backblaze B2
+          'Content-Type': contentType || 'application/octet-stream',
+          'Content-Length': buffer.length
+        };
         
         console.log('🔄 BackblazeB2: Retrying upload without metadata...');
         
         response = await this.retryOperation(async () => {
-          const headers = {
-            ...simpleFormData.getHeaders(),
-            'Authorization': this.uploadAuthToken!,
-          };
-          
-          return this.httpClient.post(this.uploadUrl!, simpleFormData, { headers });
+          return this.httpClient.post(this.uploadUrl!, buffer, { headers: simpleHeaders });
         });
       }
 
@@ -208,6 +207,21 @@ export class BackblazeB2StorageService extends FileStorageService {
       // Log the full error response for debugging
       if (error.response?.data) {
         console.error('  Full error response:', JSON.stringify(error.response.data, null, 2));
+      }
+      
+      // Classify the error type
+      if (error.code === 'ECONNABORTED') {
+        console.error('  Error type: TIMEOUT - Request timed out');
+      } else if (error.response?.status === 400) {
+        console.error('  Error type: BAD_REQUEST - Invalid request (likely metadata issue)');
+      } else if (error.response?.status === 401) {
+        console.error('  Error type: UNAUTHORIZED - Authentication failed');
+      } else if (error.response?.status === 403) {
+        console.error('  Error type: FORBIDDEN - Permission denied');
+      } else if (error.response?.status >= 500) {
+        console.error('  Error type: SERVER_ERROR - Backblaze server error');
+      } else {
+        console.error('  Error type: UNKNOWN - Other error');
       }
       
       this.logger.error(`Failed to upload file ${key}: ${error.message}`);
