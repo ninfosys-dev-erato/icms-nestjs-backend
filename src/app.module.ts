@@ -72,7 +72,7 @@ import configuration from '@/config/configuration';
     FAQModule,
     
     // Media Module
-    MediaModule,
+   MediaModule,
     
     // Translation Module
     TranslationModule,

@@ -4,6 +4,7 @@ import { CreateOfficeSettingsDto } from '../dto/create-office-settings.dto';
 import { UpdateOfficeSettingsDto } from '../dto/update-office-settings.dto';
 import { OfficeSettingsResponseDto } from '../dto/office-settings-response.dto';
 import { TranslatableEntityHelper } from '../../../common/types/translatable.entity';
+import { MediaService } from '../../media/services/media.service';
 
 // Re-export DTOs for use in tests
 export { CreateOfficeSettingsDto, UpdateOfficeSettingsDto, OfficeSettingsResponseDto };
@@ -34,7 +35,10 @@ export interface SEOOfficeSettings {
 
 @Injectable()
 export class OfficeSettingsService {
-  constructor(private readonly officeSettingsRepository: OfficeSettingsRepository) {}
+  constructor(
+    private readonly officeSettingsRepository: OfficeSettingsRepository,
+    private readonly mediaService: MediaService,
+  ) {}
 
   async getOfficeSettings(lang?: string): Promise<OfficeSettingsResponseDto> {
     const settings = await this.officeSettingsRepository.findFirst();
@@ -226,7 +230,7 @@ export class OfficeSettingsService {
     };
   }
 
-  async updateBackgroundPhoto(id: string, file: Express.Multer.File): Promise<OfficeSettingsResponseDto> {
+  async updateBackgroundPhoto(id: string, file: Express.Multer.File, userId: string): Promise<OfficeSettingsResponseDto> {
     // Check if settings exist first
     const existingSettings = await this.officeSettingsRepository.findById(id);
     if (!existingSettings) {
@@ -250,11 +254,24 @@ export class OfficeSettingsService {
       throw new BadRequestException('File size too large. Maximum size is 5MB');
     }
 
-    // TODO: Upload to S3 and get URL
-    const photoUrl = `uploads/background-photos/${file.filename}`;
+    // Upload to media service (which uses Backblaze)
+    const metadata = {
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      folder: 'office-settings',
+      altText: 'Office background photo',
+      title: 'Office Background',
+      description: 'Background photo for office settings',
+      tags: ['background', 'office', 'photo'],
+      isPublic: true,
+    };
 
+    const mediaResponse = await this.mediaService.uploadMedia(file, metadata, userId);
+
+    // Update office settings with the media URL
     const settings = await this.officeSettingsRepository.update(id, {
-      backgroundPhoto: photoUrl,
+      backgroundPhoto: mediaResponse.data.url,
     });
 
     return this.transformToResponseDto(settings);
@@ -264,6 +281,18 @@ export class OfficeSettingsService {
     const existingSettings = await this.officeSettingsRepository.findById(id);
     if (!existingSettings) {
       throw new NotFoundException('Office settings not found');
+    }
+
+    // If there's an existing background photo, try to delete it from media service
+    if (existingSettings.backgroundPhotoId) {
+      try {
+        // Extract media ID from URL or find media by URL
+        // For now, we'll just update the settings without deleting the media
+        // TODO: Implement media deletion when we have a way to find media by URL
+        console.log('Background photo ID to be removed:', existingSettings.backgroundPhotoId);
+      } catch (error) {
+        console.warn('Failed to delete background photo from media service:', error.message);
+      }
     }
 
     const settings = await this.officeSettingsRepository.update(id, {
@@ -279,7 +308,7 @@ export class OfficeSettingsService {
       directorate: settings.directorate,
       officeName: settings.officeName,
       officeAddress: settings.officeAddress,
-      backgroundPhoto: settings.backgroundPhoto,
+      backgroundPhoto: settings.backgroundPhotoId, // Use backgroundPhotoId as the URL
       email: settings.email,
       phoneNumber: settings.phoneNumber,
       xLink: settings.xLink,

@@ -1,471 +1,507 @@
-import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum, IsArray, ValidateNested, IsNotEmpty, IsUrl } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsOptional, IsBoolean, IsNumber, IsArray, IsEnum, IsNotEmpty, MaxLength, Min, Max } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
-// ========================================
-// COMMON TYPES
-// ========================================
-
-export class TranslatableEntityDto {
-  @ApiProperty({ example: 'English text' })
-  @IsString()
-  @IsNotEmpty()
-  en: string;
-
-  @ApiProperty({ example: 'नेपाली पाठ' })
-  @IsString()
-  @IsNotEmpty()
-  ne: string;
+export enum MediaCategory {
+  IMAGE = 'image',
+  DOCUMENT = 'document',
+  VIDEO = 'video',
+  AUDIO = 'audio',
+  OTHER = 'other'
 }
 
-export enum MediaType {
-  IMAGE = 'IMAGE',
-  VIDEO = 'VIDEO',
-  AUDIO = 'AUDIO',
-  DOCUMENT = 'DOCUMENT'
+export enum MediaFolder {
+  SLIDERS = 'sliders',
+  OFFICE_SETTINGS = 'office-settings',
+  USERS = 'users',
+  CONTENT = 'content',
+  DOCUMENTS = 'documents',
+  REPORTS = 'reports',
+  VIDEOS = 'videos',
+  AUDIO = 'audio',
+  GENERAL = 'general'
 }
 
-// ========================================
-// MEDIA DTOs
-// ========================================
+export interface FileTypeConfig {
+  types: string[];
+  maxSize: number;
+  folders: string[];
+}
 
+export const FILE_TYPE_CONFIG: Record<string, FileTypeConfig> = {
+  images: {
+    types: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'],
+    maxSize: 5 * 1024 * 1024, // 5MB
+    folders: ['sliders', 'office-settings', 'users', 'content', 'general']
+  },
+  documents: {
+    types: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    folders: ['documents', 'reports', 'content']
+  },
+  videos: {
+    types: ['video/mp4', 'video/webm', 'video/quicktime'],
+    maxSize: 50 * 1024 * 1024, // 50MB
+    folders: ['videos', 'content']
+  },
+  audio: {
+    types: ['audio/mpeg', 'audio/wav', 'audio/ogg'],
+    maxSize: 20 * 1024 * 1024, // 20MB
+    folders: ['audio', 'content']
+  }
+};
+
+// Create Media DTO
 export class CreateMediaDto {
-  @ApiProperty({ example: 'image_123.jpg' })
   @IsString()
   @IsNotEmpty()
-  fileName: string;
-
-  @ApiProperty({ example: 'office_photo.jpg' })
-  @IsString()
-  @IsNotEmpty()
+  @MaxLength(255)
   originalName: string;
 
-  @ApiProperty({ example: 'uploads/images/image_123.jpg' })
   @IsString()
   @IsNotEmpty()
-  filePath: string;
-
-  @ApiProperty({ example: 1024000 })
-  @IsNumber()
-  fileSize: number;
-
-  @ApiProperty({ example: 'image/jpeg' })
-  @IsString()
-  @IsNotEmpty()
-  mimeType: string;
-
-  @ApiProperty({ enum: MediaType, example: MediaType.IMAGE })
-  @IsEnum(MediaType)
-  mediaType: MediaType;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => TranslatableEntityDto)
-  altText?: TranslatableEntityDto;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => TranslatableEntityDto)
-  caption?: TranslatableEntityDto;
-
-  @ApiPropertyOptional({ example: 1920 })
-  @IsOptional()
-  @IsNumber()
-  width?: number;
-
-  @ApiPropertyOptional({ example: 1080 })
-  @IsOptional()
-  @IsNumber()
-  height?: number;
-
-  @ApiPropertyOptional({ example: 120 })
-  @IsOptional()
-  @IsNumber()
-  duration?: number;
-
-  @ApiPropertyOptional({ example: true })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-}
-
-export class UpdateMediaDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => TranslatableEntityDto)
-  altText?: TranslatableEntityDto;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => TranslatableEntityDto)
-  caption?: TranslatableEntityDto;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-}
-
-export class MediaResponseDto {
-  @ApiProperty({ example: 'media_id' })
-  id: string;
-
-  @ApiProperty({ example: 'image_123.jpg' })
+  @MaxLength(255)
   fileName: string;
 
-  @ApiProperty({ example: 'office_photo.jpg' })
-  originalName: string;
-
-  @ApiProperty({ example: 'uploads/images/image_123.jpg' })
-  filePath: string;
-
-  @ApiProperty({ example: 1024000 })
-  fileSize: number;
-
-  @ApiProperty({ example: 'image/jpeg' })
-  mimeType: string;
-
-  @ApiProperty({ enum: MediaType, example: MediaType.IMAGE })
-  mediaType: MediaType;
-
-  @ApiPropertyOptional()
-  altText?: TranslatableEntityDto;
-
-  @ApiPropertyOptional()
-  caption?: TranslatableEntityDto;
-
-  @ApiPropertyOptional({ example: 1920 })
-  width?: number;
-
-  @ApiPropertyOptional({ example: 1080 })
-  height?: number;
-
-  @ApiPropertyOptional({ example: 120 })
-  duration?: number;
-
-  @ApiProperty({ example: true })
-  isActive: boolean;
-
-  @ApiProperty({ example: 'https://cdn.example.com/uploads/images/image_123.jpg' })
+  @IsString()
+  @IsNotEmpty()
   url: string;
 
-  @ApiPropertyOptional({ example: 'https://cdn.example.com/uploads/images/thumbnails/image_123.jpg' })
-  thumbnailUrl?: string;
+  @IsString()
+  @IsNotEmpty()
+  fileId: string;
 
-  @ApiProperty()
-  createdAt: Date;
+  @IsNumber()
+  @Min(0)
+  size: number;
 
-  @ApiProperty()
-  updatedAt: Date;
+  @IsString()
+  @IsNotEmpty()
+  contentType: string;
 
-  @ApiProperty({ type: 'array', items: { $ref: '#/components/schemas/MediaAlbumResponseDto' } })
-  albums: any[];
+  @IsString()
+  @IsNotEmpty()
+  uploadedBy: string;
+
+  @IsString()
+  @IsNotEmpty()
+  folder: string;
+
+  @IsEnum(MediaCategory)
+  category: MediaCategory;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  altText?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  metadata?: any;
 }
 
+// Update Media DTO
+export class UpdateMediaDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  altText?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  metadata?: any;
+}
+
+// Media Response DTO
+export class MediaResponseDto {
+  id: string;
+  fileName: string;
+  originalName: string;
+  url: string;
+  fileId: string;
+  size: number;
+  contentType: string;
+  uploadedBy: string;
+  folder: string;
+  category: MediaCategory;
+  altText?: string;
+  title?: string;
+  description?: string;
+  tags?: string[];
+  isPublic: boolean;
+  isActive: boolean;
+  metadata?: any;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Media Query DTO
 export class MediaQueryDto {
-  @ApiPropertyOptional({ example: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  page?: number;
+  @Min(1)
+  page?: number = 1;
 
-  @ApiPropertyOptional({ example: 10 })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  limit?: number;
+  @Min(1)
+  @Max(100)
+  limit?: number = 10;
 
-  @ApiPropertyOptional({ example: 'office' })
   @IsOptional()
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ enum: MediaType })
   @IsOptional()
-  @IsEnum(MediaType)
-  mediaType?: MediaType;
+  @IsEnum(MediaCategory)
+  category?: MediaCategory;
 
-  @ApiPropertyOptional({ example: 'album_id' })
   @IsOptional()
   @IsString()
-  albumId?: string;
+  folder?: string;
 
-  @ApiPropertyOptional({ example: true })
   @IsOptional()
-  @Type(() => Boolean)
+  @IsString()
+  uploadedBy?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ example: 'createdAt' })
   @IsOptional()
   @IsString()
-  sort?: string;
+  sortBy?: string = 'createdAt';
 
-  @ApiPropertyOptional({ example: 'desc' })
   @IsOptional()
   @IsString()
-  order?: 'asc' | 'desc';
+  sortOrder?: 'asc' | 'desc' = 'desc';
 }
 
-export class BulkCreateMediaDto {
-  @ApiProperty({ type: [CreateMediaDto] })
+// Upload Response DTO
+export class UploadResponseDto {
+  success: boolean;
+  data: MediaResponseDto;
+  message?: string;
+}
+
+// Bulk Upload DTO
+export class BulkUploadDto {
   @IsArray()
-  @ValidateNested({ each: true })
   @Type(() => CreateMediaDto)
-  media: CreateMediaDto[];
+  files: CreateMediaDto[];
 }
 
-export class BulkUpdateMediaDto {
-  @ApiProperty({ type: [String] })
+// Bulk Upload Response DTO
+export class BulkUploadResponseDto {
+  success: boolean;
+  data: {
+    uploaded: MediaResponseDto[];
+    failed: Array<{
+      originalName: string;
+      error: string;
+    }>;
+  };
+  message?: string;
+}
+
+// Media Search DTO
+export class MediaSearchDto {
+  @IsString()
+  @IsNotEmpty()
+  query: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  limit?: number = 10;
+
+  @IsOptional()
+  @IsEnum(MediaCategory)
+  category?: MediaCategory;
+
+  @IsOptional()
+  @IsString()
+  folder?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  ids: string[];
-
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => UpdateMediaDto)
-  updates: UpdateMediaDto;
+  tags?: string[];
 }
 
-export class MediaStatistics {
-  @ApiProperty({ example: 100 })
-  total: number;
+// Media Library DTO
+export class MediaLibraryDto {
+  categories: Array<{
+    category: MediaCategory;
+    count: number;
+    totalSize: number;
+  }>;
+  folders: Array<{
+    folder: string;
+    count: number;
+    totalSize: number;
+  }>;
+  recent: MediaResponseDto[];
+  popular: MediaResponseDto[];
+}
 
-  @ApiProperty({ example: { IMAGE: 50, VIDEO: 30, AUDIO: 15, DOCUMENT: 5 } })
-  byType: Record<MediaType, number>;
-
-  @ApiProperty({ example: 1024000000 })
+// Media Statistics DTO
+export class MediaStatisticsDto {
+  totalFiles: number;
   totalSize: number;
-
-  @ApiProperty({ example: 10240000 })
-  averageSize: number;
+  categories: Record<MediaCategory, number>;
+  folders: Record<string, number>;
+  uploadsToday: number;
+  uploadsThisWeek: number;
+  uploadsThisMonth: number;
 }
 
-export class ResizeOptions {
-  @ApiPropertyOptional({ example: 800 })
-  @IsOptional()
-  @IsNumber()
-  width?: number;
+// File Upload Validation DTO
+export class FileUploadValidationDto {
+  @IsString()
+  @IsNotEmpty()
+  originalName: string;
 
-  @ApiPropertyOptional({ example: 600 })
-  @IsOptional()
   @IsNumber()
-  height?: number;
+  @Min(0)
+  size: number;
 
-  @ApiPropertyOptional({ example: 80 })
-  @IsOptional()
-  @IsNumber()
-  quality?: number;
-}
+  @IsString()
+  @IsNotEmpty()
+  mimetype: string;
 
-export class WatermarkOptions {
-  @ApiPropertyOptional({ example: 'Watermark Text' })
+  @IsString()
+  @IsNotEmpty()
+  folder: string;
+
   @IsOptional()
   @IsString()
-  text?: string;
+  @MaxLength(500)
+  altText?: string;
 
-  @ApiPropertyOptional({ example: 'bottom-right' })
   @IsOptional()
   @IsString()
-  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+  @MaxLength(255)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
 }
 
-export class MediaProcessingOptions {
-  @ApiPropertyOptional()
+// Media Processing Options DTO
+export class MediaProcessingOptionsDto {
   @IsOptional()
-  @ValidateNested()
-  @Type(() => ResizeOptions)
-  resize?: ResizeOptions;
+  resize?: {
+    width?: number;
+    height?: number;
+    quality?: number;
+  };
 
-  @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
   optimize?: boolean;
 
-  @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
   generateThumbnail?: boolean;
 
-  @ApiPropertyOptional()
   @IsOptional()
-  @ValidateNested()
-  @Type(() => WatermarkOptions)
-  watermark?: WatermarkOptions;
+  watermark?: {
+    text?: string;
+    position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+  };
 }
 
-// ========================================
-// MEDIA ALBUM DTOs
-// ========================================
-
-export class CreateMediaAlbumDto {
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => TranslatableEntityDto)
-  name: TranslatableEntityDto;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => TranslatableEntityDto)
-  description?: TranslatableEntityDto;
-
-  @ApiPropertyOptional({ example: true })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-}
-
-export class UpdateMediaAlbumDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => TranslatableEntityDto)
-  name?: TranslatableEntityDto;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => TranslatableEntityDto)
-  description?: TranslatableEntityDto;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-}
-
-export class MediaAlbumResponseDto {
-  @ApiProperty({ example: 'album_id' })
-  id: string;
-
-  @ApiProperty()
-  name: TranslatableEntityDto;
-
-  @ApiPropertyOptional()
-  description?: TranslatableEntityDto;
-
-  @ApiProperty({ example: true })
-  isActive: boolean;
-
-  @ApiProperty()
-  createdAt: Date;
-
-  @ApiProperty()
-  updatedAt: Date;
-
-  @ApiProperty({ example: 10 })
-  mediaCount: number;
-
-  @ApiProperty({ type: [MediaResponseDto] })
-  media: any[];
-}
-
-export class AlbumStatistics {
-  @ApiProperty({ example: 20 })
-  total: number;
-
-  @ApiProperty({ example: 15 })
-  active: number;
-
-  @ApiProperty({ example: 18 })
-  withMedia: number;
-
-  @ApiProperty({ example: 5.5 })
-  averageMediaPerAlbum: number;
-}
-
-// ========================================
-// S3 DTOs
-// ========================================
-
-export class UploadResult {
-  @ApiProperty({ example: 'uploads/images/image_123.jpg' })
-  key: string;
-
-  @ApiProperty({ example: 'https://cdn.example.com/uploads/images/image_123.jpg' })
-  url: string;
-
-  @ApiProperty({ example: 1024000 })
-  size: number;
-
-  @ApiProperty({ example: 'image/jpeg' })
-  mimeType: string;
-
-  @ApiProperty({ example: 'etag123' })
-  etag: string;
-}
-
-export class FileMetadata {
-  @ApiProperty({ example: 1024000 })
-  size: number;
-
-  @ApiProperty({ example: 'image/jpeg' })
-  mimeType: string;
-
-  @ApiProperty()
-  lastModified: Date;
-
-  @ApiProperty({ example: 'etag123' })
-  etag: string;
-}
-
-// ========================================
-// COMMON DTOs
-// ========================================
-
-export class ValidationError {
-  @ApiProperty({ example: 'fileName' })
-  field: string;
-
-  @ApiProperty({ example: 'File name is required' })
-  message: string;
-
-  @ApiProperty({ example: 'REQUIRED_FIELD' })
-  code: string;
-}
-
-export class ValidationResult {
-  @ApiProperty({ example: true })
+// Validation Result DTO
+export class ValidationResultDto {
   isValid: boolean;
-
-  @ApiProperty({ type: [ValidationError] })
-  errors: ValidationError[];
+  errors: Array<{
+    field: string;
+    message: string;
+    code: string;
+  }>;
 }
 
-export class BulkOperationResult {
-  @ApiProperty({ example: 5 })
-  success: number;
-
-  @ApiProperty({ example: 1 })
+// Bulk Operation Result DTO
+export class BulkOperationResultDto {
+  success: boolean;
+  processed: number;
+  succeeded: number;
   failed: number;
-
-  @ApiProperty({ type: [String] })
-  errors: string[];
+  errors: Array<{
+    id: string;
+    error: string;
+  }>;
 }
 
-export class ImportResult {
-  @ApiProperty({ example: 10 })
-  success: number;
+// Media URL Generation DTO
+export class MediaUrlDto {
+  @IsString()
+  @IsNotEmpty()
+  mediaId: string;
 
-  @ApiProperty({ example: 2 })
-  failed: number;
+  @IsOptional()
+  @IsString()
+  variant?: string;
 
-  @ApiProperty({ type: [String] })
-  errors: string[];
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  expiresIn?: number;
 }
 
-export class ExportResult {
-  @ApiProperty({ type: [MediaResponseDto] })
-  data: MediaResponseDto[];
+// Media Metadata DTO
+export class MediaMetadataDto {
+  width?: number;
+  height?: number;
+  duration?: number;
+  format?: string;
+  bitrate?: number;
+  fps?: number;
+  channels?: number;
+  sampleRate?: number;
+  [key: string]: any;
+}
 
-  @ApiProperty({ example: 10 })
-  total: number;
+// Media Folder Structure DTO
+export class MediaFolderStructureDto {
+  folders: Array<{
+    name: string;
+    path: string;
+    count: number;
+    totalSize: number;
+    lastModified: Date;
+  }>;
+  files: Array<{
+    name: string;
+    path: string;
+    size: number;
+    type: string;
+    lastModified: Date;
+  }>;
+}
 
-  @ApiProperty()
-  exportedAt: Date;
+// Media Import DTO
+export class MediaImportDto {
+  @IsString()
+  @IsNotEmpty()
+  sourceUrl: string;
+
+  @IsString()
+  @IsNotEmpty()
+  folder: string;
+
+  @IsEnum(MediaCategory)
+  category: MediaCategory;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+}
+
+// Media Export DTO
+export class MediaExportDto {
+  @IsArray()
+  @IsString({ each: true })
+  mediaIds: string[];
+
+  @IsOptional()
+  @IsString()
+  format?: 'json' | 'csv' | 'xml';
+
+  @IsOptional()
+  @IsBoolean()
+  includeMetadata?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  includeUrls?: boolean;
 } 

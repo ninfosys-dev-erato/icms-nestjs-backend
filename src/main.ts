@@ -44,11 +44,30 @@ async function bootstrap() {
   // Cookie parser
   app.use(cookieParser());
 
+  // Global request logging middleware for debugging
+  app.use((req, res, next) => {
+    if (req.path.includes('/media/upload') || req.path.includes('/office-settings') && req.method === 'POST') {
+      console.log('🌐 DEBUG: Incoming Request');
+      console.log('  Method:', req.method);
+      console.log('  URL:', req.url);
+      console.log('  Path:', req.path);
+      console.log('  Content-Type:', req.headers['content-type']);
+      console.log('  Content-Length:', req.headers['content-length']);
+      console.log('  User-Agent:', req.headers['user-agent']);
+      console.log('  Authorization:', req.headers['authorization'] ? 'Present' : 'Missing');
+      console.log('  Body keys:', Object.keys(req.body || {}));
+      console.log('  Files:', req.files ? Object.keys(req.files) : 'None');
+      console.log('  File:', req.file ? 'Present' : 'None');
+      console.log('=====================================');
+    }
+    next();
+  });
+
   // Global pipes
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
+      forbidNonWhitelisted: false, // Changed from true to false to allow extra fields in multipart/form-data
       transform: true,
       transformOptions: {
         enableImplicitConversion: true,

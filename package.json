@@ -29,7 +29,6 @@
     "test:story-hr": "jest --config ./test/jest-e2e.json --testPathPatterns=hr.*story.e2e-spec.ts",
     "test:story-important-links": "jest --config ./test/jest-e2e.json --testPathPatterns=important-links.*story.e2e-spec.ts",
     "test:story-media": "jest --config ./test/jest-e2e.json --testPathPatterns=media.*story.e2e-spec.ts",
-
     "test:story-users": "jest --config ./test/jest-e2e.json --testPathPatterns=users.*story.e2e-spec.ts",
     "test:faq": "jest --config ./test/jest-e2e.json --testPathPatterns=faq.*story.e2e-spec.ts",
     "test:bootstrap": "./test/run-bootstrap-tests.sh all",
@@ -78,7 +77,10 @@
     "@nestjs/websockets": "^11.1.5",
     "@paralleldrive/cuid2": "^2.2.2",
     "@prisma/client": "^6.12.0",
+    "@types/axios": "^0.14.4",
+    "@types/sharp": "^0.32.0",
     "aws-sdk": "^2.1692.0",
+    "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",

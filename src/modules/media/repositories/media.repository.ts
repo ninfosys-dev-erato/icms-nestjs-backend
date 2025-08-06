@@ -1,34 +1,69 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import { Media, MediaType } from '../entities/media.entity';
 import { 
-  CreateMediaDto, 
-  UpdateMediaDto, 
-  MediaQueryDto,
-  MediaStatistics,
-  BulkCreateMediaDto,
-  BulkUpdateMediaDto
+  MediaQueryDto, 
+  MediaCategory, 
+  MediaFolder,
+  CreateMediaDto,
+  UpdateMediaDto,
+  MediaResponseDto,
+  MediaSearchDto,
+  MediaStatisticsDto,
+  MediaLibraryDto
 } from '../dto/media.dto';
 
 @Injectable()
 export class MediaRepository {
+  private readonly logger = new Logger(MediaRepository.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
-  async findById(id: string): Promise<Media | null> {
-    return this.prisma.media.findUnique({
-      where: { id },
-      include: {
-        albums: {
-          include: {
-            mediaAlbum: true
-          }
-        }
-      }
-    }) as any;
+  async create(data: CreateMediaDto): Promise<MediaResponseDto> {
+    try {
+      const media = await this.prisma.media.create({
+        data: {
+          fileName: data.fileName,
+          originalName: data.originalName,
+          url: data.url,
+          fileId: data.fileId,
+          size: data.size,
+          contentType: data.contentType,
+          uploadedBy: data.uploadedBy,
+          folder: data.folder,
+          category: data.category,
+          altText: data.altText,
+          title: data.title,
+          description: data.description,
+          tags: data.tags || [],
+          isPublic: data.isPublic ?? true,
+          isActive: data.isActive ?? true,
+          metadata: data.metadata,
+        },
+      });
+
+      this.logger.debug(`Media created: ${media.id}`);
+      return this.transformToResponseDto(media);
+    } catch (error) {
+      this.logger.error(`Failed to create media: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async findById(id: string): Promise<MediaResponseDto | null> {
+    try {
+      const media = await this.prisma.media.findUnique({
+        where: { id },
+      });
+
+      return media ? this.transformToResponseDto(media) : null;
+    } catch (error) {
+      this.logger.error(`Failed to find media by ID ${id}: ${error.message}`);
+      throw error;
+    }
   }
 
   async findAll(query: MediaQueryDto): Promise<{
-    data: Media[];
+    data: MediaResponseDto[];
     pagination: {
       page: number;
       limit: number;
@@ -38,72 +73,79 @@ export class MediaRepository {
       hasPrev: boolean;
     };
   }> {
-    const { page = 1, limit = 10, search, mediaType, albumId, isActive, sort = 'createdAt', order = 'desc' } = query;
-    const skip = (page - 1) * limit;
+    try {
+      const { page = 1, limit = 10, search, category, folder, uploadedBy, tags, isPublic, isActive, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
-    const where: any = {};
+      const skip = (page - 1) * limit;
 
-    if (search) {
-      where.OR = [
-        { fileName: { contains: search, mode: 'insensitive' } },
-        { originalName: { contains: search, mode: 'insensitive' } },
-        { altText: { path: ['en'], string_contains: search } },
-        { altText: { path: ['ne'], string_contains: search } },
-        { caption: { path: ['en'], string_contains: search } },
-        { caption: { path: ['ne'], string_contains: search } },
-      ];
-    }
+      // Build where clause
+      const where: any = {};
 
-    if (mediaType) {
-      where.mediaType = mediaType;
-    }
+      if (search) {
+        where.OR = [
+          { originalName: { contains: search, mode: 'insensitive' } },
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { tags: { hasSome: [search] } },
+        ];
+      }
 
-    if (albumId) {
-      where.albums = {
-        some: {
-          mediaAlbumId: albumId
-        }
-      };
-    }
+      if (category) {
+        where.category = category;
+      }
 
-    if (isActive !== undefined) {
-      where.isActive = isActive;
-    }
+      if (folder) {
+        where.folder = folder;
+      }
 
-    const [data, total] = await Promise.all([
-      this.prisma.media.findMany({
+      if (uploadedBy) {
+        where.uploadedBy = uploadedBy;
+      }
+
+      if (tags && tags.length > 0) {
+        where.tags = { hasSome: tags };
+      }
+
+      if (isPublic !== undefined) {
+        where.isPublic = isPublic;
+      }
+
+      if (isActive !== undefined) {
+        where.isActive = isActive;
+      }
+
+      // Get total count
+      const total = await this.prisma.media.count({ where });
+
+      // Get data
+      const media = await this.prisma.media.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { [sort]: order },
-        include: {
-          albums: {
-            include: {
-              mediaAlbum: true
-            }
-          }
-        }
-      }),
-      this.prisma.media.count({ where })
-    ]);
+        orderBy: { [sortBy]: sortOrder },
+      });
 
-    const totalPages = Math.ceil(total / limit);
+      const totalPages = Math.ceil(total / limit);
 
-    return {
-      data: data as any,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
-      },
-    };
+      return {
+        data: media.map(item => this.transformToResponseDto(item)),
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to find all media: ${error.message}`);
+      throw error;
+    }
   }
 
-  async findByType(mediaType: MediaType, query: MediaQueryDto): Promise<{
-    data: Media[];
+  async findByCategory(category: MediaCategory, query: MediaQueryDto): Promise<{
+    data: MediaResponseDto[];
     pagination: {
       page: number;
       limit: number;
@@ -113,11 +155,11 @@ export class MediaRepository {
       hasPrev: boolean;
     };
   }> {
-    return this.findAll({ ...query, mediaType });
+    return this.findAll({ ...query, category });
   }
 
-  async findByAlbum(albumId: string, query: MediaQueryDto): Promise<{
-    data: Media[];
+  async findByFolder(folder: string, query: MediaQueryDto): Promise<{
+    data: MediaResponseDto[];
     pagination: {
       page: number;
       limit: number;
@@ -127,11 +169,11 @@ export class MediaRepository {
       hasPrev: boolean;
     };
   }> {
-    return this.findAll({ ...query, albumId });
+    return this.findAll({ ...query, folder });
   }
 
-  async search(searchTerm: string, query: MediaQueryDto): Promise<{
-    data: Media[];
+  async findByUser(userId: string, query: MediaQueryDto): Promise<{
+    data: MediaResponseDto[];
     pagination: {
       page: number;
       limit: number;
@@ -141,176 +183,378 @@ export class MediaRepository {
       hasPrev: boolean;
     };
   }> {
-    return this.findAll({ ...query, search: searchTerm });
+    return this.findAll({ ...query, uploadedBy: userId });
   }
 
-  async create(data: CreateMediaDto): Promise<Media> {
-    return this.prisma.media.create({
-      data: {
-        fileName: data.fileName,
-        originalName: data.originalName,
-        filePath: data.filePath,
-        fileSize: data.fileSize,
-        mimeType: data.mimeType,
-        mediaType: data.mediaType,
-        altText: data.altText as any,
-        caption: data.caption as any,
-        width: data.width,
-        height: data.height,
-        duration: data.duration,
-        isActive: data.isActive ?? true,
-      },
-      include: {
-        albums: {
-          include: {
-            mediaAlbum: true
-          }
-        }
-      }
-    }) as any;
+  async search(searchDto: MediaSearchDto): Promise<{
+    data: MediaResponseDto[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }> {
+    const { query, page = 1, limit = 10, category, folder, tags } = searchDto;
+
+    const searchQuery: MediaQueryDto = {
+      page,
+      limit,
+      search: query,
+      category,
+      folder,
+      tags,
+    };
+
+    return this.findAll(searchQuery);
   }
 
-  async update(id: string, data: UpdateMediaDto): Promise<Media> {
-    return this.prisma.media.update({
-      where: { id },
-      data: {
-        altText: data.altText as any,
-        caption: data.caption as any,
-        isActive: data.isActive,
-      },
-      include: {
-        albums: {
-          include: {
-            mediaAlbum: true
-          }
-        }
-      }
-    }) as any;
+  async update(id: string, data: UpdateMediaDto): Promise<MediaResponseDto> {
+    try {
+      const media = await this.prisma.media.update({
+        where: { id },
+        data: {
+          altText: data.altText,
+          title: data.title,
+          description: data.description,
+          tags: data.tags,
+          isPublic: data.isPublic,
+          isActive: data.isActive,
+          metadata: data.metadata,
+        },
+      });
+
+      this.logger.debug(`Media updated: ${id}`);
+      return this.transformToResponseDto(media);
+    } catch (error) {
+      this.logger.error(`Failed to update media ${id}: ${error.message}`);
+      throw error;
+    }
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.media.delete({
-      where: { id }
-    });
-  }
-
-  async findByFilePath(filePath: string): Promise<Media | null> {
-    return this.prisma.media.findFirst({
-      where: { filePath },
-      include: {
-        albums: {
-          include: {
-            mediaAlbum: true
-          }
-        }
-      }
-    }) as any;
-  }
-
-  async findByIds(ids: string[]): Promise<Media[]> {
-    return this.prisma.media.findMany({
-      where: { id: { in: ids } },
-      include: {
-        albums: {
-          include: {
-            mediaAlbum: true
-          }
-        }
-      }
-    }) as any;
-  }
-
-  async getStatistics(): Promise<MediaStatistics> {
-    const [total, byType, totalSize, averageSize] = await Promise.all([
-      this.prisma.media.count(),
-      this.prisma.media.groupBy({
-        by: ['mediaType'],
-        _count: { mediaType: true }
-      }),
-      this.prisma.media.aggregate({
-        _sum: { fileSize: true }
-      }),
-      this.prisma.media.aggregate({
-        _avg: { fileSize: true }
-      })
-    ]);
-
-    const byTypeRecord: Record<MediaType, number> = {
-      [MediaType.IMAGE]: 0,
-      [MediaType.VIDEO]: 0,
-      [MediaType.AUDIO]: 0,
-      [MediaType.DOCUMENT]: 0,
-    };
-
-    byType.forEach(item => {
-      byTypeRecord[item.mediaType as MediaType] = item._count.mediaType;
-    });
-
-    return {
-      total,
-      byType: byTypeRecord,
-      totalSize: totalSize._sum.fileSize || 0,
-      averageSize: Math.round(averageSize._avg.fileSize || 0),
-    };
-  }
-
-  async bulkCreate(data: BulkCreateMediaDto): Promise<Media[]> {
-    const createdMedia = await Promise.all(
-      data.media.map(item => 
-        this.prisma.media.create({
-          data: {
-            fileName: item.fileName,
-            originalName: item.originalName,
-            filePath: item.filePath,
-            fileSize: item.fileSize,
-            mimeType: item.mimeType,
-            mediaType: item.mediaType,
-            altText: item.altText as any,
-            caption: item.caption as any,
-            width: item.width,
-            height: item.height,
-            duration: item.duration,
-            isActive: item.isActive ?? true,
-          },
-          include: {
-            albums: {
-              include: {
-                mediaAlbum: true
-              }
-            }
-          }
-        })
-      )
-    );
-
-    return createdMedia as any;
-  }
-
-  async bulkUpdate(data: BulkUpdateMediaDto): Promise<Media[]> {
-    const updates = data.ids.map(id => 
-      this.prisma.media.update({
+    try {
+      await this.prisma.media.delete({
         where: { id },
-        data: {
-          altText: data.updates.altText as any,
-          caption: data.updates.caption as any,
-          isActive: data.updates.isActive,
-        },
-        include: {
-          albums: {
-            include: {
-              mediaAlbum: true
-            }
-          }
-        }
-      })
-    );
+      });
 
-    return Promise.all(updates) as any;
+      this.logger.debug(`Media deleted: ${id}`);
+    } catch (error) {
+      this.logger.error(`Failed to delete media ${id}: ${error.message}`);
+      throw error;
+    }
   }
 
-  async bulkDelete(ids: string[]): Promise<void> {
-    await this.prisma.media.deleteMany({
-      where: { id: { in: ids } }
-    });
+  async bulkDelete(ids: string[]): Promise<{ success: number; failed: number; errors: string[] }> {
+    try {
+      const result = await this.prisma.media.deleteMany({
+        where: {
+          id: { in: ids },
+        },
+      });
+
+      this.logger.debug(`Bulk deleted ${result.count} media files`);
+      return {
+        success: result.count,
+        failed: ids.length - result.count,
+        errors: [],
+      };
+    } catch (error) {
+      this.logger.error(`Failed to bulk delete media: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async bulkUpdate(ids: string[], data: UpdateMediaDto): Promise<{ success: number; failed: number; errors: string[] }> {
+    try {
+      const result = await this.prisma.media.updateMany({
+        where: {
+          id: { in: ids },
+        },
+        data: {
+          altText: data.altText,
+          title: data.title,
+          description: data.description,
+          tags: data.tags,
+          isPublic: data.isPublic,
+          isActive: data.isActive,
+          metadata: data.metadata,
+        },
+      });
+
+      this.logger.debug(`Bulk updated ${result.count} media files`);
+      return {
+        success: result.count,
+        failed: ids.length - result.count,
+        errors: [],
+      };
+    } catch (error) {
+      this.logger.error(`Failed to bulk update media: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getStatistics(): Promise<MediaStatisticsDto> {
+    try {
+      const [
+        totalFiles,
+        totalSize,
+        categories,
+        folders,
+        uploadsToday,
+        uploadsThisWeek,
+        uploadsThisMonth,
+      ] = await Promise.all([
+        this.prisma.media.count(),
+        this.prisma.media.aggregate({
+          _sum: { size: true },
+        }),
+        this.prisma.media.groupBy({
+          by: ['category'],
+          _count: { id: true },
+        }),
+        this.prisma.media.groupBy({
+          by: ['folder'],
+          _count: { id: true },
+        }),
+        this.prisma.media.count({
+          where: {
+            createdAt: {
+              gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            },
+          },
+        }),
+        this.prisma.media.count({
+          where: {
+            createdAt: {
+              gte: new Date(new Date().setDate(new Date().getDate() - 7)),
+            },
+          },
+        }),
+        this.prisma.media.count({
+          where: {
+            createdAt: {
+              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+            },
+          },
+        }),
+      ]);
+
+      const categoryStats: Record<MediaCategory, number> = {
+        [MediaCategory.IMAGE]: 0,
+        [MediaCategory.DOCUMENT]: 0,
+        [MediaCategory.VIDEO]: 0,
+        [MediaCategory.AUDIO]: 0,
+        [MediaCategory.OTHER]: 0,
+      };
+
+      categories.forEach((cat) => {
+        categoryStats[cat.category as MediaCategory] = cat._count.id;
+      });
+
+      const folderStats: Record<string, number> = {};
+      folders.forEach((folder) => {
+        folderStats[folder.folder] = folder._count.id;
+      });
+
+      return {
+        totalFiles,
+        totalSize: totalSize._sum.size || 0,
+        categories: categoryStats,
+        folders: folderStats,
+        uploadsToday,
+        uploadsThisWeek,
+        uploadsThisMonth,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get media statistics: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getLibrary(): Promise<MediaLibraryDto> {
+    try {
+      const [
+        categories,
+        folders,
+        recent,
+        popular,
+      ] = await Promise.all([
+        this.prisma.media.groupBy({
+          by: ['category'],
+          _count: { id: true },
+          _sum: { size: true },
+        }),
+        this.prisma.media.groupBy({
+          by: ['folder'],
+          _count: { id: true },
+          _sum: { size: true },
+        }),
+        this.prisma.media.findMany({
+          take: 10,
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.media.findMany({
+          take: 10,
+          orderBy: { size: 'desc' },
+        }),
+      ]);
+
+      return {
+        categories: categories.map((cat) => ({
+          category: cat.category as MediaCategory,
+          count: cat._count.id,
+          totalSize: cat._sum.size || 0,
+        })),
+        folders: folders.map((folder) => ({
+          folder: folder.folder,
+          count: folder._count.id,
+          totalSize: folder._sum.size || 0,
+        })),
+        recent: recent.map((item) => this.transformToResponseDto(item)),
+        popular: popular.map((item) => this.transformToResponseDto(item)),
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get media library: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async findByTags(tags: string[], query: MediaQueryDto): Promise<{
+    data: MediaResponseDto[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }> {
+    return this.findAll({ ...query, tags });
+  }
+
+  async findPublic(query: MediaQueryDto): Promise<{
+    data: MediaResponseDto[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }> {
+    return this.findAll({ ...query, isPublic: true, isActive: true });
+  }
+
+  async countByCategory(category: MediaCategory): Promise<number> {
+    try {
+      return await this.prisma.media.count({
+        where: { category },
+      });
+    } catch (error) {
+      this.logger.error(`Failed to count media by category ${category}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async countByFolder(folder: string): Promise<number> {
+    try {
+      return await this.prisma.media.count({
+        where: { folder },
+      });
+    } catch (error) {
+      this.logger.error(`Failed to count media by folder ${folder}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getTotalSize(): Promise<number> {
+    try {
+      const result = await this.prisma.media.aggregate({
+        _sum: { size: true },
+      });
+      return result._sum.size || 0;
+    } catch (error) {
+      this.logger.error(`Failed to get total media size: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async findDuplicates(fileName: string, size: number): Promise<MediaResponseDto[]> {
+    try {
+      const duplicates = await this.prisma.media.findMany({
+        where: {
+          OR: [
+            { fileName },
+            { originalName: fileName },
+            { size, originalName: { contains: fileName.split('.')[0] } },
+          ],
+        },
+      });
+
+      return duplicates.map((item) => this.transformToResponseDto(item));
+    } catch (error) {
+      this.logger.error(`Failed to find duplicates for ${fileName}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async cleanupOrphanedMedia(): Promise<{ cleaned: number; errors: string[] }> {
+    try {
+      // Find media that are not referenced by any entity
+      const orphanedMedia = await this.prisma.media.findMany({
+        where: {
+          AND: [
+            { sliders: { none: {} } },
+            { officeSettings: { none: {} } },
+            { profilePictures: { none: {} } },
+          ],
+        },
+      });
+
+      if (orphanedMedia.length === 0) {
+        return { cleaned: 0, errors: [] };
+      }
+
+      const result = await this.prisma.media.deleteMany({
+        where: {
+          id: { in: orphanedMedia.map((m) => m.id) },
+        },
+      });
+
+      this.logger.debug(`Cleaned up ${result.count} orphaned media files`);
+      return { cleaned: result.count, errors: [] };
+    } catch (error) {
+      this.logger.error(`Failed to cleanup orphaned media: ${error.message}`);
+      return { cleaned: 0, errors: [error.message] };
+    }
+  }
+
+  private transformToResponseDto(media: any): MediaResponseDto {
+    return {
+      id: media.id,
+      fileName: media.fileName,
+      originalName: media.originalName,
+      url: media.url,
+      fileId: media.fileId,
+      size: media.size,
+      contentType: media.contentType,
+      uploadedBy: media.uploadedBy,
+      folder: media.folder,
+      category: media.category,
+      altText: media.altText,
+      title: media.title,
+      description: media.description,
+      tags: media.tags || [],
+      isPublic: media.isPublic,
+      isActive: media.isActive,
+      metadata: media.metadata,
+      createdAt: media.createdAt,
+      updatedAt: media.updatedAt,
+    };
   }
 } 

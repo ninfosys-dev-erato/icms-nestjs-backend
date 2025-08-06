@@ -5,7 +5,7 @@ export class OfficeSettings {
   directorate: TranslatableEntity;
   officeName: TranslatableEntity;
   officeAddress: TranslatableEntity;
-  backgroundPhoto?: string;
+  backgroundPhotoId?: string;
   email: string;
   phoneNumber: TranslatableEntity;
   xLink?: string;

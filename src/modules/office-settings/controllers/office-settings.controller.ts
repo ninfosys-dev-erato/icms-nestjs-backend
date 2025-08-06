@@ -12,6 +12,7 @@ import {
   UseInterceptors,
   UseGuards,
   HttpCode,
+  Request,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -119,7 +120,31 @@ export class OfficeSettingsController {
   @Post(':id/background-photo')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      // Add logging to see what's happening during file upload
+      fileFilter: (req, file, callback) => {
+        console.log('🔍 DEBUG: Office Settings FileInterceptor fileFilter called');
+        console.log('  File object:', {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          encoding: file.encoding,
+          mimetype: file.mimetype,
+          size: file.size
+        });
+        console.log('  Request body before file processing:', req.body);
+        console.log('  Request headers in fileFilter:', {
+          'content-type': req.headers['content-type'],
+          'content-length': req.headers['content-length']
+        });
+        callback(null, true);
+      },
+      // Add error handling
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      }
+    })
+  )
   @ApiOperation({ summary: 'Update background photo (Admin)' })
   @ApiConsumes('multipart/form-data')
   @HttpCode(200)
@@ -130,8 +155,61 @@ export class OfficeSettingsController {
   async updateBackgroundPhoto(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
+    @Request() req: any,
   ) {
-    return this.officeSettingsService.updateBackgroundPhoto(id, file);
+    try {
+      // DEBUG: Log everything about the request
+      console.log('🔍 DEBUG: Office Settings Background Photo Upload Request Details');
+      console.log('=====================================');
+      
+      // Log request headers
+      console.log('📋 Request Headers:');
+      console.log('  Content-Type:', req.headers['content-type']);
+      console.log('  Content-Length:', req.headers['content-length']);
+      console.log('  User-Agent:', req.headers['user-agent']);
+      console.log('  Authorization:', req.headers['authorization'] ? 'Present' : 'Missing');
+      
+      // Log file information
+      console.log('📁 File Information:');
+      if (file) {
+        console.log('  ✅ File received:');
+        console.log('    - originalname:', file.originalname);
+        console.log('    - mimetype:', file.mimetype);
+        console.log('    - size:', file.size);
+        console.log('    - fieldname:', file.fieldname);
+        console.log('    - buffer length:', file.buffer?.length);
+        console.log('    - encoding:', file.encoding);
+      } else {
+        console.log('  ❌ No file received');
+      }
+      
+      // Log raw request body
+      console.log('📦 Raw Request Body:');
+      console.log('  Body keys:', Object.keys(req.body || {}));
+      console.log('  Body content:', req.body);
+      
+      // Log multer information
+      console.log('🔧 Multer Information:');
+      console.log('  Files in request:', req.files);
+      console.log('  File in request:', req.file);
+      
+      // Log form data fields
+      console.log('📝 Form Data Fields:');
+      if (req.body) {
+        Object.entries(req.body).forEach(([key, value]) => {
+          console.log(`  ${key}:`, value, `(type: ${typeof value})`);
+        });
+      }
+      
+      console.log('=====================================');
+
+      return this.officeSettingsService.updateBackgroundPhoto(id, file, req.user.id);
+    } catch (error) {
+      console.error('❌ ERROR in updateBackgroundPhoto:', error);
+      console.error('  Error message:', error.message);
+      console.error('  Error stack:', error.stack);
+      throw error;
+    }
   }
 
   @Delete(':id/background-photo')

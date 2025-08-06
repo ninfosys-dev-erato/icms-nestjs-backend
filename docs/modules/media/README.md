@@ -1,832 +1,693 @@
-# Media Management Module
+# Universal Media Management System
 
 ## Overview
 
-The Media Management module provides comprehensive file management capabilities with support for multiple media types (images, videos, audio, documents), album organization, S3 integration, and advanced processing features. This module serves as the central hub for all media assets in the CMS.
+The Universal Media Management System provides comprehensive file management capabilities with Backblaze B2 integration, supporting all content types across the entire application. This system serves as the central hub for all media assets including sliders, office settings, user profiles, content management, and more.
 
-## Module Purpose
+## Features
 
-- **Multi-Media Support:** Handle images, videos, audio, and documents
-- **Album Management:** Organize media into albums and galleries
-- **S3 Integration:** Secure cloud storage with CDN support
-- **Image Processing:** Automatic resizing, optimization, and thumbnails
-- **File Validation:** Security and format validation
-- **Bilingual Metadata:** Alt text and captions in multiple languages
+### 🚀 Core Features
 
-## Database Schema
+- **Universal File Support**: Images, documents, videos, audio, and other media types
+- **Backblaze B2 Integration**: Robust cloud storage with CDN support
+- **Advanced File Validation**: Type, size, and security validation
+- **Comprehensive Metadata**: Rich metadata storage and management
+- **Media Library**: Organized media management with categories and folders
+- **Search & Filtering**: Advanced search capabilities with tags and metadata
+- **Bulk Operations**: Upload, update, and delete multiple files
+- **Image Processing**: Resize, optimize, and generate thumbnails
+- **Import/Export**: Import from URLs, export media data
+- **Access Control**: Role-based permissions and ownership management
 
-### Media Entity
-```typescript
-interface Media {
-  id: string;
-  fileName: string;
-  originalName: string;
-  filePath: string; // S3 path
-  fileSize: number;
-  mimeType: string;
-  mediaType: MediaType;
-  altText?: TranslatableEntity;
-  caption?: TranslatableEntity;
-  width?: number;
-  height?: number;
-  duration?: number; // For video/audio in seconds
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  
+### 📁 Supported Content Types
+
+#### Images
+
+- **Formats**: JPEG, PNG, WebP, GIF, SVG
+- **Max Size**: 5MB
+- **Folders**: sliders, office-settings, users, content, general
+- **Features**: Automatic metadata extraction, resizing, optimization
+
+#### Documents
+
+- **Formats**: PDF, DOC, DOCX
+- **Max Size**: 10MB
+- **Folders**: documents, reports, content
+- **Features**: Version control, metadata extraction
+
+#### Videos
+
+- **Formats**: MP4, WebM, QuickTime
+- **Max Size**: 50MB
+- **Folders**: videos, content
+- **Features**: Duration extraction, thumbnail generation
+
+#### Audio
+
+- **Formats**: MP3, WAV, OGG
+- **Max Size**: 20MB
+- **Folders**: audio, content
+- **Features**: Duration extraction, metadata extraction
+
+## Architecture
+
+### System Components
+
+```
+┌─────────────────────────────────────┐
+│         Media Controller            │
+│  ┌─────────────┬─────────────────┐  │
+│  │   Upload    │   Management    │  │
+│  │  Endpoints  │   Endpoints     │  │
+│  └─────────────┴─────────────────┘  │
+└─────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────┐
+│         Media Service               │
+│  ┌─────────────┬─────────────────┐  │
+│  │   Business  │   File Storage  │  │
+│  │    Logic    │   Integration   │  │
+│  └─────────────┴─────────────────┘  │
+└─────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────┐
+│       Media Repository              │
+│  ┌─────────────┬─────────────────┐  │
+│  │   Database  │   Query         │  │
+│  │  Operations │   Building      │  │
+│  └─────────────┴─────────────────┘  │
+└─────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────┐
+│      Backblaze B2 Service           │
+│  ┌─────────────┬─────────────────┐  │
+│  │   Upload    │   Download      │  │
+│  │   Delete    │   URL Gen       │  │
+│  └─────────────┴─────────────────┘  │
+└─────────────────────────────────────┘
+```
+
+### Database Schema
+
+```prisma
+model Media {
+  id            String   @id @default(cuid())
+  fileName      String   // Backblaze filename
+  originalName  String   // Original uploaded filename
+  url           String   // Public Backblaze URL
+  fileId        String   // Backblaze file ID
+  size          Int      // File size in bytes
+  contentType   String   // MIME type
+  uploadedBy    String   // User ID
+  folder        String   // Content type folder
+  category      String   // Media category
+  altText       String?  // Alt text for accessibility
+  title         String?  // Media title
+  description   String?  // Media description
+  tags          String[] // Searchable tags
+  isPublic      Boolean  @default(true)
+  isActive      Boolean  @default(true)
+  metadata      Json?    // Additional metadata
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
   // Relations
-  albums: MediaAlbum[];
-  sliders: Slider[];
-}
-
-enum MediaType {
-  IMAGE = 'IMAGE',
-  VIDEO = 'VIDEO',
-  AUDIO = 'AUDIO',
-  DOCUMENT = 'DOCUMENT'
-}
-
-interface TranslatableEntity {
-  en: string;
-  ne: string;
-}
-```
-
-### MediaAlbum Entity
-```typescript
-interface MediaAlbum {
-  id: string;
-  name: TranslatableEntity;
-  description?: TranslatableEntity;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  
-  // Relations
-  media: Media[];
-}
-```
-
-## DTOs (Data Transfer Objects)
-
-### Media DTOs
-
-#### CreateMediaDto
-```typescript
-interface CreateMediaDto {
-  fileName: string;
-  originalName: string;
-  filePath: string;
-  fileSize: number;
-  mimeType: string;
-  mediaType: MediaType;
-  altText?: TranslatableEntity;
-  caption?: TranslatableEntity;
-  width?: number;
-  height?: number;
-  duration?: number;
-  isActive?: boolean;
-}
-```
-
-#### UpdateMediaDto
-```typescript
-interface UpdateMediaDto {
-  altText?: TranslatableEntity;
-  caption?: TranslatableEntity;
-  isActive?: boolean;
-}
-```
-
-#### MediaResponseDto
-```typescript
-interface MediaResponseDto {
-  id: string;
-  fileName: string;
-  originalName: string;
-  filePath: string;
-  fileSize: number;
-  mimeType: string;
-  mediaType: MediaType;
-  altText?: TranslatableEntity;
-  caption?: TranslatableEntity;
-  width?: number;
-  height?: number;
-  duration?: number;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  url: string;
-  thumbnailUrl?: string;
-  albums: MediaAlbumResponseDto[];
-}
-```
-
-#### MediaQueryDto
-```typescript
-interface MediaQueryDto {
-  page?: number;
-  limit?: number;
-  search?: string;
-  mediaType?: MediaType;
-  albumId?: string;
-  isActive?: boolean;
-  sort?: string;
-  order?: 'asc' | 'desc';
-}
-```
-
-### MediaAlbum DTOs
-
-#### CreateMediaAlbumDto
-```typescript
-interface CreateMediaAlbumDto {
-  name: TranslatableEntity;
-  description?: TranslatableEntity;
-  isActive?: boolean;
-}
-```
-
-#### UpdateMediaAlbumDto
-```typescript
-interface UpdateMediaAlbumDto {
-  name?: TranslatableEntity;
-  description?: TranslatableEntity;
-  isActive?: boolean;
-}
-```
-
-#### MediaAlbumResponseDto
-```typescript
-interface MediaAlbumResponseDto {
-  id: string;
-  name: TranslatableEntity;
-  description?: TranslatableEntity;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  mediaCount: number;
-  media: MediaResponseDto[];
-}
-```
-
-## Repository Interfaces
-
-### MediaRepository
-```typescript
-interface MediaRepository {
-  // Find media by ID
-  findById(id: string): Promise<Media | null>;
-  
-  // Find all media with pagination and filters
-  findAll(query: MediaQueryDto): Promise<PaginatedMediaResult>;
-  
-  // Find media by type
-  findByType(mediaType: MediaType, query: MediaQueryDto): Promise<PaginatedMediaResult>;
-  
-  // Find media by album
-  findByAlbum(albumId: string, query: MediaQueryDto): Promise<PaginatedMediaResult>;
-  
-  // Search media
-  search(searchTerm: string, query: MediaQueryDto): Promise<PaginatedMediaResult>;
-  
-  // Create media
-  create(data: CreateMediaDto): Promise<Media>;
-  
-  // Update media
-  update(id: string, data: UpdateMediaDto): Promise<Media>;
-  
-  // Delete media
-  delete(id: string): Promise<void>;
-  
-  // Get media statistics
-  getStatistics(): Promise<MediaStatistics>;
-  
-  // Find media by file path
-  findByFilePath(filePath: string): Promise<Media | null>;
-  
-  // Get media by IDs
-  findByIds(ids: string[]): Promise<Media[]>;
-}
-
-interface PaginatedMediaResult {
-  data: Media[];
-  pagination: PaginationInfo;
-}
-
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-}
-
-interface MediaStatistics {
-  total: number;
-  byType: Record<MediaType, number>;
-  totalSize: number;
-  averageSize: number;
-}
-```
-
-### MediaAlbumRepository
-```typescript
-interface MediaAlbumRepository {
-  // Find album by ID
-  findById(id: string): Promise<MediaAlbum | null>;
-  
-  // Find all albums
-  findAll(): Promise<MediaAlbum[]>;
-  
-  // Find active albums
-  findActive(): Promise<MediaAlbum[]>;
-  
-  // Create album
-  create(data: CreateMediaAlbumDto): Promise<MediaAlbum>;
-  
-  // Update album
-  update(id: string, data: UpdateMediaAlbumDto): Promise<MediaAlbum>;
-  
-  // Delete album
-  delete(id: string): Promise<void>;
-  
-  // Add media to album
-  addMediaToAlbum(albumId: string, mediaId: string): Promise<void>;
-  
-  // Remove media from album
-  removeMediaFromAlbum(albumId: string, mediaId: string): Promise<void>;
-  
-  // Get album with media count
-  findWithMediaCount(id: string): Promise<MediaAlbumWithCount>;
-  
-  // Get album statistics
-  getStatistics(): Promise<AlbumStatistics>;
-}
-
-interface MediaAlbumWithCount extends MediaAlbum {
-  mediaCount: number;
-}
-
-interface AlbumStatistics {
-  total: number;
-  active: number;
-  withMedia: number;
-  averageMediaPerAlbum: number;
-}
-```
-
-## Service Interfaces
-
-### MediaService
-```typescript
-interface MediaService {
-  // Get media by ID
-  getMediaById(id: string): Promise<MediaResponseDto>;
-  
-  // Get all media with pagination
-  getAllMedia(query: MediaQueryDto): Promise<PaginatedMediaResponse>;
-  
-  // Get media by type
-  getMediaByType(mediaType: MediaType, query: MediaQueryDto): Promise<PaginatedMediaResponse>;
-  
-  // Get media by album
-  getMediaByAlbum(albumId: string, query: MediaQueryDto): Promise<PaginatedMediaResponse>;
-  
-  // Search media
-  searchMedia(searchTerm: string, query: MediaQueryDto): Promise<PaginatedMediaResponse>;
-  
-  // Upload media
-  uploadMedia(file: Express.Multer.File, metadata?: Partial<CreateMediaDto>): Promise<MediaResponseDto>;
-  
-  // Update media
-  updateMedia(id: string, data: UpdateMediaDto): Promise<MediaResponseDto>;
-  
-  // Delete media
-  deleteMedia(id: string): Promise<void>;
-  
-  // Process media (resize, optimize, etc.)
-  processMedia(id: string, options: MediaProcessingOptions): Promise<MediaResponseDto>;
-  
-  // Generate thumbnail
-  generateThumbnail(id: string, width: number, height: number): Promise<string>;
-  
-  // Validate file
-  validateFile(file: Express.Multer.File): Promise<ValidationResult>;
-  
-  // Get media statistics
-  getMediaStatistics(): Promise<MediaStatistics>;
-  
-  // Get media URL
-  getMediaUrl(id: string, variant?: string): Promise<string>;
-  
-  // Bulk operations
-  bulkDelete(ids: string[]): Promise<BulkOperationResult>;
-  bulkUpdate(ids: string[], data: UpdateMediaDto): Promise<BulkOperationResult>;
-}
-
-interface PaginatedMediaResponse {
-  data: MediaResponseDto[];
-  pagination: PaginationInfo;
-}
-
-interface MediaProcessingOptions {
-  resize?: {
-    width?: number;
-    height?: number;
-    quality?: number;
-  };
-  optimize?: boolean;
-  generateThumbnail?: boolean;
-  watermark?: {
-    text?: string;
-    position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
-  };
-}
-
-interface ValidationResult {
-  isValid: boolean;
-  errors: ValidationError[];
-}
-
-interface ValidationError {
-  field: string;
-  message: string;
-  code: string;
-}
-
-interface BulkOperationResult {
-  success: number;
-  failed: number;
-  errors: string[];
-}
-```
-
-### MediaAlbumService
-```typescript
-interface MediaAlbumService {
-  // Get album by ID
-  getAlbumById(id: string): Promise<MediaAlbumResponseDto>;
-  
-  // Get all albums
-  getAllAlbums(): Promise<MediaAlbumResponseDto[]>;
-  
-  // Get active albums
-  getActiveAlbums(): Promise<MediaAlbumResponseDto[]>;
-  
-  // Create album
-  createAlbum(data: CreateMediaAlbumDto): Promise<MediaAlbumResponseDto>;
-  
-  // Update album
-  updateAlbum(id: string, data: UpdateMediaAlbumDto): Promise<MediaAlbumResponseDto>;
-  
-  // Delete album
-  deleteAlbum(id: string): Promise<void>;
-  
-  // Add media to album
-  addMediaToAlbum(albumId: string, mediaId: string): Promise<void>;
-  
-  // Remove media from album
-  removeMediaFromAlbum(albumId: string, mediaId: string): Promise<void>;
-  
-  // Reorder media in album
-  reorderMediaInAlbum(albumId: string, mediaIds: string[]): Promise<void>;
-  
-  // Validate album data
-  validateAlbum(data: CreateMediaAlbumDto | UpdateMediaAlbumDto): Promise<ValidationResult>;
-  
-  // Get album statistics
-  getAlbumStatistics(): Promise<AlbumStatistics>;
-  
-  // Export album
-  exportAlbum(id: string, format: 'json' | 'zip'): Promise<Buffer>;
-}
-```
-
-### S3Service
-```typescript
-interface S3Service {
-  // Upload file to S3
-  uploadFile(file: Express.Multer.File, folder?: string): Promise<UploadResult>;
-  
-  // Download file from S3
-  downloadFile(key: string): Promise<Buffer>;
-  
-  // Delete file from S3
-  deleteFile(key: string): Promise<void>;
-  
-  // Get file URL
-  getFileUrl(key: string, expiresIn?: number): Promise<string>;
-  
-  // Check if file exists
-  fileExists(key: string): Promise<boolean>;
-  
-  // Copy file
-  copyFile(sourceKey: string, destinationKey: string): Promise<void>;
-  
-  // Get file metadata
-  getFileMetadata(key: string): Promise<FileMetadata>;
-  
-  // Generate presigned URL
-  generatePresignedUrl(key: string, operation: 'get' | 'put', expiresIn?: number): Promise<string>;
-}
-
-interface UploadResult {
-  key: string;
-  url: string;
-  size: number;
-  mimeType: string;
-  etag: string;
-}
-
-interface FileMetadata {
-  size: number;
-  mimeType: string;
-  lastModified: Date;
-  etag: string;
-}
-```
-
-## Controller Interfaces
-
-### PublicMediaController
-```typescript
-interface PublicMediaController {
-  // Get all media
-  getAllMedia(
-    @Query() query: MediaQueryDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Get media by ID
-  getMediaById(
-    @Param('id') id: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Get media by type
-  getMediaByType(
-    @Param('type') type: MediaType,
-    @Query() query: MediaQueryDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Search media
-  searchMedia(
-    @Query('q') searchTerm: string,
-    @Query() query: MediaQueryDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Get media URL
-  getMediaUrl(
-    @Param('id') id: string,
-    @Query('variant') variant?: string,
-    @Res() response: Response
-  ): Promise<void>;
-}
-```
-
-### AdminMediaController
-```typescript
-interface AdminMediaController {
-  // Get media by ID (admin)
-  getMediaById(
-    @Param('id') id: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Upload media
-  uploadMedia(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() metadata?: Partial<CreateMediaDto>,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Update media
-  updateMedia(
-    @Param('id') id: string,
-    @Body() data: UpdateMediaDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Delete media
-  deleteMedia(
-    @Param('id') id: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Process media
-  processMedia(
-    @Param('id') id: string,
-    @Body() options: MediaProcessingOptions,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Get media statistics
-  getMediaStatistics(
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Bulk operations
-  bulkDelete(
-    @Body() ids: string[],
-    @Res() response: Response
-  ): Promise<void>;
-  
-  bulkUpdate(
-    @Body() data: { ids: string[]; updates: UpdateMediaDto },
-    @Res() response: Response
-  ): Promise<void>;
-}
-```
-
-### MediaAlbumController
-```typescript
-interface MediaAlbumController {
-  // Get all albums
-  getAllAlbums(
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Get album by ID
-  getAlbumById(
-    @Param('id') id: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Create album
-  createAlbum(
-    @Body() data: CreateMediaAlbumDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Update album
-  updateAlbum(
-    @Param('id') id: string,
-    @Body() data: UpdateMediaAlbumDto,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Delete album
-  deleteAlbum(
-    @Param('id') id: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Add media to album
-  addMediaToAlbum(
-    @Param('albumId') albumId: string,
-    @Param('mediaId') mediaId: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Remove media from album
-  removeMediaFromAlbum(
-    @Param('albumId') albumId: string,
-    @Param('mediaId') mediaId: string,
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Reorder media in album
-  reorderMediaInAlbum(
-    @Param('albumId') albumId: string,
-    @Body() mediaIds: string[],
-    @Res() response: Response
-  ): Promise<void>;
-  
-  // Export album
-  exportAlbum(
-    @Param('id') id: string,
-    @Query('format') format: 'json' | 'zip',
-    @Res() response: Response
-  ): Promise<void>;
+  user          User     @relation("UploadedMedia", fields: [uploadedBy], references: [id])
+  sliders       Slider[]
+  officeSettings OfficeSettings[]
+  profilePictures User[] @relation("ProfilePicture")
+  content       Content[] // For future content module
 }
 ```
 
 ## API Endpoints
 
-### Public Media Endpoints
+### Authentication
 
-#### GET /api/v1/media
-**Description:** Get all media
-**Access:** Public
+All endpoints require JWT authentication unless specified as public.
 
-**Query Parameters:**
-- `page`: Page number
-- `limit`: Items per page
-- `search`: Search term
-- `mediaType`: Media type filter
-- `albumId`: Album filter
-- `isActive`: Active status filter
+### File Upload Endpoints
+
+#### POST `/api/v1/media/upload`
+
+Upload a single file with metadata.
+
+**Request:**
+
+```bash
+curl -X POST http://localhost:3000/api/v1/media/upload \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "file=@image.jpg" \
+  -F "folder=sliders" \
+  -F "title=Office Banner" \
+  -F "description=Main office banner for homepage" \
+  -F "altText=Office banner image" \
+  -F "tags=banner,office,homepage" \
+  -F "isPublic=true"
+```
 
 **Response:**
+
 ```json
 {
   "success": true,
-  "data": [
-    {
-      "id": "media_id",
-      "fileName": "image_123.jpg",
-      "originalName": "office_photo.jpg",
-      "filePath": "uploads/images/image_123.jpg",
-      "fileSize": 1024000,
-      "mimeType": "image/jpeg",
-      "mediaType": "IMAGE",
-      "altText": {
-        "en": "Office building",
-        "ne": "कार्यालय भवन"
-      },
-      "caption": {
-        "en": "Main office building",
-        "ne": "मुख्य कार्यालय भवन"
-      },
+  "data": {
+    "id": "media_id",
+    "fileName": "sliders/1234567890-banner.jpg",
+    "originalName": "banner.jpg",
+    "url": "https://f004.backblazeb2.com/file/bucket-name/sliders/1234567890-banner.jpg",
+    "fileId": "backblaze_file_id",
+    "size": 1024000,
+    "contentType": "image/jpeg",
+    "uploadedBy": "user_id",
+    "folder": "sliders",
+    "category": "image",
+    "altText": "Office banner image",
+    "title": "Office Banner",
+    "description": "Main office banner for homepage",
+    "tags": ["banner", "office", "homepage"],
+    "isPublic": true,
+    "isActive": true,
+    "metadata": {
       "width": 1920,
       "height": 1080,
-      "isActive": true,
-      "url": "https://cdn.example.com/uploads/images/image_123.jpg",
-      "thumbnailUrl": "https://cdn.example.com/uploads/images/thumbnails/image_123.jpg",
-      "createdAt": "2024-01-01T00:00:00Z",
-      "updatedAt": "2024-01-01T00:00:00Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 100,
-    "totalPages": 10
+      "format": "JPEG"
+    },
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  "message": "File uploaded successfully"
+}
+```
+
+#### POST `/api/v1/media/bulk-upload`
+
+Upload multiple files with shared metadata.
+
+**Request:**
+
+```bash
+curl -X POST http://localhost:3000/api/v1/media/bulk-upload \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "files=@image1.jpg" \
+  -F "files=@image2.jpg" \
+  -F "folder=content" \
+  -F "tags=content,images"
+```
+
+### Media Management Endpoints
+
+#### GET `/api/v1/media`
+
+Get all media with pagination and filtering.
+
+**Query Parameters:**
+
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 10, max: 100)
+- `search`: Search term
+- `category`: Filter by category (image, document, video, audio)
+- `folder`: Filter by folder
+- `uploadedBy`: Filter by user
+- `tags`: Filter by tags (comma-separated)
+- `isPublic`: Filter by public status
+- `isActive`: Filter by active status
+- `sortBy`: Sort field (default: createdAt)
+- `sortOrder`: Sort order (asc/desc, default: desc)
+
+**Example:**
+
+```bash
+curl -X GET "http://localhost:3000/api/v1/media?category=image&folder=sliders&page=1&limit=20" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+#### GET `/api/v1/media/public`
+
+Get public media (no authentication required).
+
+#### GET `/api/v1/media/library`
+
+Get media library with categories and statistics.
+
+#### GET `/api/v1/media/statistics`
+
+Get comprehensive media statistics (Admin/Editor only).
+
+#### GET `/api/v1/media/category/:category`
+
+Get media by category.
+
+#### GET `/api/v1/media/folder/:folder`
+
+Get media by folder.
+
+#### GET `/api/v1/media/user/:userId`
+
+Get media by user.
+
+#### GET `/api/v1/media/my-media`
+
+Get current user's media.
+
+#### GET `/api/v1/media/search`
+
+Search media by query, category, folder, or tags.
+
+#### GET `/api/v1/media/tags`
+
+Get media by tags.
+
+#### GET `/api/v1/media/:id`
+
+Get media by ID.
+
+#### GET `/api/v1/media/:id/url`
+
+Get media URL with optional expiration.
+
+### Media Update Endpoints
+
+#### PUT `/api/v1/media/:id`
+
+Update media metadata.
+
+**Request:**
+
+```json
+{
+  "title": "Updated Title",
+  "description": "Updated description",
+  "altText": "Updated alt text",
+  "tags": ["updated", "tags"],
+  "isPublic": false
+}
+```
+
+#### POST `/api/v1/media/:id/process`
+
+Process media (resize, optimize, etc.).
+
+**Request:**
+
+```json
+{
+  "resize": {
+    "width": 800,
+    "height": 600,
+    "quality": 80
+  },
+  "optimize": true,
+  "generateThumbnail": true
+}
+```
+
+### Media Delete Endpoints
+
+#### DELETE `/api/v1/media/:id`
+
+Delete a single media file.
+
+#### POST `/api/v1/media/bulk-delete`
+
+Delete multiple media files (Admin/Editor only).
+
+**Request:**
+
+```json
+{
+  "ids": ["media_id_1", "media_id_2", "media_id_3"]
+}
+```
+
+#### POST `/api/v1/media/bulk-update`
+
+Update multiple media files (Admin/Editor only).
+
+**Request:**
+
+```json
+{
+  "ids": ["media_id_1", "media_id_2"],
+  "updates": {
+    "isPublic": false,
+    "tags": ["updated", "tags"]
   }
 }
 ```
 
-#### GET /api/v1/media/{id}
-**Description:** Get media by ID
-**Access:** Public
+### Advanced Features
 
-#### GET /api/v1/media/type/{type}
-**Description:** Get media by type
-**Access:** Public
+#### POST `/api/v1/media/import`
 
-#### GET /api/v1/media/search
-**Description:** Search media
-**Access:** Public
+Import media from URL (Admin/Editor only).
 
-#### GET /api/v1/media/{id}/url
-**Description:** Get media URL
-**Access:** Public
+**Request:**
 
-### Admin Media Endpoints
+```json
+{
+  "sourceUrl": "https://example.com/image.jpg",
+  "folder": "content",
+  "category": "image",
+  "title": "Imported Image",
+  "description": "Imported from external URL",
+  "tags": ["imported", "external"]
+}
+```
 
-#### POST /api/v1/admin/media/upload
-**Description:** Upload media
-**Access:** Admin, Editor
+#### POST `/api/v1/media/export`
 
-**Request:** Multipart form data with file and metadata
+Export media data (Admin/Editor only).
 
-#### PUT /api/v1/admin/media/{id}
-**Description:** Update media
-**Access:** Admin, Editor
+**Request:**
 
-#### DELETE /api/v1/admin/media/{id}
-**Description:** Delete media
-**Access:** Admin only
+```json
+{
+  "mediaIds": ["media_id_1", "media_id_2"],
+  "format": "json",
+  "includeMetadata": true,
+  "includeUrls": true
+}
+```
 
-#### POST /api/v1/admin/media/{id}/process
-**Description:** Process media
-**Access:** Admin, Editor
+#### POST `/api/v1/media/cleanup`
 
-#### GET /api/v1/admin/media/statistics
-**Description:** Get media statistics
-**Access:** Admin, Editor
+Clean up orphaned media files (Admin only).
 
-### Album Endpoints
+### Configuration Endpoints
 
-#### GET /api/v1/albums
-**Description:** Get all albums
-**Access:** Public
+#### GET `/api/v1/media/file-types/config`
 
-#### GET /api/v1/albums/{id}
-**Description:** Get album by ID
-**Access:** Public
+Get supported file types configuration.
 
-#### POST /api/v1/admin/albums
-**Description:** Create album
-**Access:** Admin, Editor
+#### GET `/api/v1/media/folders/list`
 
-#### PUT /api/v1/admin/albums/{id}
-**Description:** Update album
-**Access:** Admin, Editor
+Get available folders.
 
-#### DELETE /api/v1/admin/albums/{id}
-**Description:** Delete album
-**Access:** Admin only
+#### GET `/api/v1/media/categories/list`
 
-#### POST /api/v1/admin/albums/{albumId}/media/{mediaId}
-**Description:** Add media to album
-**Access:** Admin, Editor
+Get available categories.
 
-#### DELETE /api/v1/admin/albums/{albumId}/media/{mediaId}
-**Description:** Remove media from album
-**Access:** Admin, Editor
+## Configuration
 
-## Business Logic
+### Environment Variables
 
-### 1. File Upload Process
-- **File validation** (type, size, security)
-- **Virus scanning** for uploaded files
-- **S3 upload** with proper folder structure
-- **Metadata extraction** (dimensions, duration, etc.)
-- **Thumbnail generation** for images
-- **Database record creation**
+```bash
+# Storage Provider
+STORAGE_PROVIDER=backblaze-b2
 
-### 2. Image Processing
-- **Automatic resizing** based on configuration
-- **Quality optimization** for web delivery
-- **Thumbnail generation** in multiple sizes
-- **Watermarking** support
-- **Format conversion** (WebP, AVIF support)
+# Backblaze B2 Configuration
+BACKBLAZE_APPLICATION_KEY_ID=your_application_key_id
+BACKBLAZE_APPLICATION_KEY=your_application_key
+BACKBLAZE_BUCKET_ID=your_bucket_id
+BACKBLAZE_BUCKET_NAME=your_bucket_name
+BACKBLAZE_ENDPOINT=https://api.backblazeb2.com
+BACKBLAZE_MAX_RETRIES=3
+BACKBLAZE_RETRY_DELAY=1000
 
-### 3. Album Management
-- **Flexible album organization**
-- **Media ordering** within albums
-- **Album sharing** and permissions
-- **Bulk operations** for efficiency
+# Media Upload Configuration
+MAX_FILE_SIZE_IMAGE=5242880      # 5MB for images
+MAX_FILE_SIZE_DOCUMENT=10485760  # 10MB for documents
+MAX_FILE_SIZE_VIDEO=52428800     # 50MB for videos
+MAX_FILE_SIZE_AUDIO=20971520     # 20MB for audio
 
-### 4. CDN Integration
-- **S3 CloudFront** integration
-- **Cache invalidation** strategies
-- **Geographic distribution** for performance
-- **HTTPS enforcement** for security
+ALLOWED_IMAGE_TYPES=image/jpeg,image/png,image/webp,image/gif,image/svg+xml
+ALLOWED_DOCUMENT_TYPES=application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document
+ALLOWED_VIDEO_TYPES=video/mp4,video/webm,video/quicktime
+ALLOWED_AUDIO_TYPES=audio/mpeg,audio/wav,audio/ogg
+```
+
+### File Type Configuration
+
+```typescript
+const FILE_TYPE_CONFIG = {
+  images: {
+    types: [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/svg+xml',
+    ],
+    maxSize: 5 * 1024 * 1024, // 5MB
+    folders: ['sliders', 'office-settings', 'users', 'content', 'general'],
+  },
+  documents: {
+    types: [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    folders: ['documents', 'reports', 'content'],
+  },
+  videos: {
+    types: ['video/mp4', 'video/webm', 'video/quicktime'],
+    maxSize: 50 * 1024 * 1024, // 50MB
+    folders: ['videos', 'content'],
+  },
+  audio: {
+    types: ['audio/mpeg', 'audio/wav', 'audio/ogg'],
+    maxSize: 20 * 1024 * 1024, // 20MB
+    folders: ['audio', 'content'],
+  },
+};
+```
+
+## Integration Examples
+
+### Slider Module Integration
+
+```typescript
+// Upload slider image
+const sliderImage = await this.mediaService.uploadMedia(
+  file,
+  {
+    folder: 'sliders',
+    title: 'Homepage Slider',
+    description: 'Main homepage slider image',
+    tags: ['slider', 'homepage'],
+    isPublic: true,
+  },
+  userId,
+);
+
+// Use in slider creation
+const slider = await this.sliderService.create({
+  title: { en: 'Welcome', ne: 'स्वागत छ' },
+  mediaId: sliderImage.data.id,
+  position: 1,
+  displayTime: 5000,
+  isActive: true,
+});
+```
+
+### Office Settings Integration
+
+```typescript
+// Upload background photo
+const backgroundPhoto = await this.mediaService.uploadMedia(
+  file,
+  {
+    folder: 'office-settings',
+    title: 'Office Background',
+    description: 'Office background photo',
+    tags: ['office', 'background'],
+    isPublic: true,
+  },
+  userId,
+);
+
+// Update office settings
+await this.officeSettingsService.update({
+  backgroundPhotoId: backgroundPhoto.data.id,
+  // ... other settings
+});
+```
+
+### User Profile Integration
+
+```typescript
+// Upload profile picture
+const profilePicture = await this.mediaService.uploadMedia(
+  file,
+  {
+    folder: 'users',
+    title: 'Profile Picture',
+    description: 'User profile picture',
+    tags: ['profile', 'user'],
+    isPublic: false,
+  },
+  userId,
+);
+
+// Update user profile
+await this.userService.update(userId, {
+  profilePictureId: profilePicture.data.id,
+  // ... other profile data
+});
+```
 
 ## Error Handling
 
-### File Upload Errors
+### Common Error Responses
+
+#### File Validation Error
+
 ```json
 {
   "success": false,
   "error": {
-    "code": "FILE_UPLOAD_ERROR",
-    "message": "File upload failed",
+    "code": "VALIDATION_ERROR",
+    "message": "File validation failed",
     "details": [
       {
-        "field": "file",
-        "message": "File size exceeds limit",
-        "code": "FILE_TOO_LARGE"
+        "field": "size",
+        "message": "File size 10485760 exceeds maximum allowed size 5242880",
+        "code": "FILE_SIZE_EXCEEDED"
       }
     ]
   }
 }
 ```
 
-### Media Not Found
+#### Unsupported File Type
+
 ```json
 {
   "success": false,
   "error": {
-    "code": "NOT_FOUND_ERROR",
-    "message": "Media not found",
-    "details": []
+    "code": "UNSUPPORTED_FILE_TYPE",
+    "message": "File type application/exe is not supported"
   }
 }
 ```
 
-## Performance Considerations
+#### Upload Failed
 
-### 1. File Optimization
-- **Image compression** and optimization
-- **Lazy loading** for large galleries
-- **Progressive loading** for better UX
-- **CDN caching** strategies
-
-### 2. Storage Optimization
-- **S3 lifecycle policies** for cost management
-- **File deduplication** to save space
-- **Archive policies** for old files
-- **Backup strategies** for data protection
-
-### 3. Database Optimization
-- **Indexing** on frequently queried fields
-- **Query optimization** for large datasets
-- **Connection pooling** for high concurrency
-- **Caching** for frequently accessed data
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UPLOAD_FAILED",
+    "message": "Failed to upload file to Backblaze B2"
+  }
+}
+```
 
 ## Security Considerations
 
-### 1. File Upload Security
-- **File type validation** to prevent malicious uploads
-- **Virus scanning** for all uploaded files
-- **File size limits** to prevent abuse
-- **Secure file storage** with encryption
+### File Validation
 
-### 2. Access Control
-- **Public read access** for approved media
-- **Admin/Editor write access** for management
-- **Album-level permissions** for organization
-- **Audit logging** for all operations
+- **Type Validation**: Only allowed MIME types are accepted
+- **Size Limits**: Configurable size limits per content type
+- **Folder Restrictions**: Files can only be uploaded to compatible folders
+- **Duplicate Detection**: Prevents duplicate file uploads
 
-### 3. Data Protection
-- **S3 bucket policies** for secure access
-- **Encryption at rest** and in transit
-- **Access logging** for security monitoring
-- **Backup and recovery** procedures 
+### Access Control
+
+- **Authentication**: All endpoints require JWT authentication
+- **Authorization**: Role-based access control (Admin, Editor, Viewer)
+- **Ownership**: Users can only modify their own media (unless Admin)
+- **Public/Private**: Control over media visibility
+
+### Data Protection
+
+- **Secure URLs**: Backblaze B2 provides secure, signed URLs
+- **Metadata Sanitization**: All metadata is validated and sanitized
+- **Audit Trail**: All operations are logged with user information
+
+## Performance Optimization
+
+### Caching Strategy
+
+- **CDN Integration**: Backblaze B2 provides global CDN
+- **URL Caching**: Generated URLs are cached for performance
+- **Metadata Caching**: Frequently accessed metadata is cached
+
+### Database Optimization
+
+- **Indexing**: Proper database indexes for fast queries
+- **Pagination**: Efficient pagination for large datasets
+- **Query Optimization**: Optimized queries for filtering and search
+
+### File Processing
+
+- **Async Processing**: Image processing is done asynchronously
+- **Batch Operations**: Bulk operations for better performance
+- **Compression**: Automatic image compression and optimization
+
+## Monitoring and Maintenance
+
+### Health Checks
+
+- **Backblaze B2 Connectivity**: Regular connectivity checks
+- **Database Health**: Database connection monitoring
+- **File Integrity**: Periodic file integrity checks
+
+### Cleanup Operations
+
+- **Orphaned Files**: Automatic cleanup of unreferenced files
+- **Temporary Files**: Cleanup of temporary upload files
+- **Database Cleanup**: Regular database maintenance
+
+### Analytics
+
+- **Upload Statistics**: Track upload patterns and usage
+- **Storage Analytics**: Monitor storage usage and costs
+- **Performance Metrics**: Track API response times and throughput
+
+## Troubleshooting
+
+### Common Issues
+
+#### Upload Failures
+
+1. **Check Backblaze B2 credentials**
+2. **Verify bucket permissions**
+3. **Check file size and type restrictions**
+4. **Review network connectivity**
+
+#### Authentication Issues
+
+1. **Verify JWT token validity**
+2. **Check user permissions**
+3. **Ensure proper role assignments**
+
+#### Performance Issues
+
+1. **Monitor CDN performance**
+2. **Check database query performance**
+3. **Review file processing queue**
+
+### Debug Mode
+
+Enable debug logging for detailed troubleshooting:
+
+```bash
+LOG_LEVEL=debug
+```
+
+## Future Enhancements
+
+### Planned Features
+
+- **Video Transcoding**: Automatic video format conversion
+- **Advanced Image Processing**: Filters, effects, and transformations
+- **AI-Powered Tagging**: Automatic tag generation using AI
+- **Version Control**: File versioning and history tracking
+- **Advanced Analytics**: Detailed usage analytics and insights
+- **Multi-Region Support**: Global CDN with multiple regions
+- **Backup and Recovery**: Automated backup and disaster recovery
+- **Advanced Search**: Full-text search with AI-powered relevance
+
+### Integration Roadmap
+
+- **Content Management**: Full integration with content management system
+- **E-commerce**: Product image management
+- **Social Media**: Social media integration and sharing
+- **Mobile Apps**: Mobile-optimized upload and management
+- **Third-party Services**: Integration with external media services
