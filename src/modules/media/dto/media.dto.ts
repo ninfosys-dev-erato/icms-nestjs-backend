@@ -504,4 +504,14 @@ export class MediaExportDto {
   @IsOptional()
   @IsBoolean()
   includeUrls?: boolean;
+}
+
+// Presigned URL Response DTO
+export class PresignedUrlResponseDto {
+  presignedUrl: string;
+  expiresIn: number;
+  operation: 'get' | 'put';
+  mediaId: string;
+  fileName: string;
+  contentType: string;
 } 

@@ -374,18 +374,27 @@ export class BackblazeB2StorageService extends FileStorageService {
     try {
       await this.ensureAuthenticated();
 
-      const expirySeconds = Math.floor((expiresIn || 3600) / 1000);
-
       if (operation === 'get') {
-        const response = await this.retryOperation(async () => {
-          return this.httpClient.get(
-            `${this.apiUrl}/b2api/v2/b2_download_file_by_name`,
+        // For Backblaze B2, we need to get the file info first to get the file ID
+        const fileInfo = await this.getFileInfo(key);
+        
+        if (!fileInfo) {
+          throw new Error('File not found');
+        }
+
+        // For Backblaze B2, we need to use the download authorization API
+        // This creates a temporary authorization token for the file
+        const expirySeconds = expiresIn || 900; // 24 hours default (already in seconds)
+        
+        const authResponse = await this.retryOperation(async () => {
+          return this.httpClient.post(
+            `${this.apiUrl}/b2api/v2/b2_get_download_authorization`,
             {
-              params: {
-                bucketName: this.config.bucketName,
-                fileName: key,
-                b2ContentDisposition: `attachment; filename="${key.split('/').pop()}"`,
-              },
+              bucketId: this.config.bucketId,
+              fileNamePrefix: key,
+              validDurationInSeconds: expirySeconds,
+            },
+            {
               headers: {
                 'Authorization': this.authToken!,
               },
@@ -393,7 +402,15 @@ export class BackblazeB2StorageService extends FileStorageService {
           );
         });
 
-        return response.data.downloadUrl;
+        const authData = authResponse.data;
+        const downloadUrl = `${this.downloadUrl}/file/${this.config.bucketName}/${key}?Authorization=${authData.authorizationToken}`;
+        
+        console.log('🔗 BackblazeB2: Generated presigned download URL');
+        console.log('  File:', key);
+        console.log('  Download URL:', downloadUrl);
+        console.log('  Expires in:', expirySeconds, 'seconds');
+        
+        return downloadUrl;
       } else {
         // For PUT operations, we need to get an upload URL
         await this.ensureUploadUrl();

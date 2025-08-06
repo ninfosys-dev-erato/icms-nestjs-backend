@@ -384,6 +384,24 @@ export class MediaService {
     return media.url;
   }
 
+  async generatePresignedUrl(
+    mediaId: string,
+    operation: 'get' | 'put',
+    expiresIn?: number
+  ): Promise<string> {
+    const media = await this.mediaRepository.findById(mediaId);
+    
+    if (!media) {
+      throw new NotFoundException('Media not found');
+    }
+
+    return this.fileStorageService.generatePresignedUrl(
+      media.fileName,
+      operation,
+      expiresIn
+    );
+  }
+
   async processMedia(id: string, options: MediaProcessingOptionsDto): Promise<MediaResponseDto> {
     const media = await this.mediaRepository.findById(id);
     

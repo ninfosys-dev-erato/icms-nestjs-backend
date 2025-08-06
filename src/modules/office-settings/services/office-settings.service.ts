@@ -47,7 +47,7 @@ export class OfficeSettingsService {
       throw new NotFoundException('Office settings not found');
     }
 
-    return this.transformToResponseDto(settings, lang);
+    return await this.transformToResponseDto(settings, lang);
   }
 
   async getOfficeSettingsById(id: string): Promise<OfficeSettingsResponseDto> {
@@ -57,7 +57,7 @@ export class OfficeSettingsService {
       throw new NotFoundException('Office settings not found');
     }
 
-    return this.transformToResponseDto(settings);
+    return await this.transformToResponseDto(settings);
   }
 
   async createOfficeSettings(data: CreateOfficeSettingsDto): Promise<OfficeSettingsResponseDto> {
@@ -71,7 +71,7 @@ export class OfficeSettingsService {
     }
 
     const settings = await this.officeSettingsRepository.create(data);
-    return this.transformToResponseDto(settings);
+    return await this.transformToResponseDto(settings);
   }
 
   async updateOfficeSettings(id: string, data: UpdateOfficeSettingsDto): Promise<OfficeSettingsResponseDto> {
@@ -87,7 +87,7 @@ export class OfficeSettingsService {
     }
 
     const settings = await this.officeSettingsRepository.update(id, data);
-    return this.transformToResponseDto(settings);
+    return await this.transformToResponseDto(settings);
   }
 
   async upsertOfficeSettings(data: CreateOfficeSettingsDto): Promise<OfficeSettingsResponseDto> {
@@ -97,7 +97,7 @@ export class OfficeSettingsService {
     }
 
     const settings = await this.officeSettingsRepository.upsert(data);
-    return this.transformToResponseDto(settings);
+    return await this.transformToResponseDto(settings);
   }
 
   async deleteOfficeSettings(id: string): Promise<void> {
@@ -254,6 +254,14 @@ export class OfficeSettingsService {
       throw new BadRequestException('File size too large. Maximum size is 5MB');
     }
 
+    console.log('🔄 Office Settings: Starting background photo upload process');
+    console.log('  File details:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      bufferLength: file.buffer?.length
+    });
+
     // Upload to media service (which uses Backblaze)
     const metadata = {
       originalName: file.originalname,
@@ -267,14 +275,68 @@ export class OfficeSettingsService {
       isPublic: true,
     };
 
+    console.log('📤 Office Settings: Calling media service with metadata:', metadata);
+
     const mediaResponse = await this.mediaService.uploadMedia(file, metadata, userId);
 
-    // Update office settings with the media URL
-    const settings = await this.officeSettingsRepository.update(id, {
-      backgroundPhoto: mediaResponse.data.url,
+    console.log('📥 Office Settings: Media service response received');
+    console.log('  Media response success:', mediaResponse.success);
+    console.log('  Media response data exists:', !!mediaResponse.data);
+    console.log('  Media response message:', mediaResponse.message);
+    console.log('  Full media response:', JSON.stringify(mediaResponse, null, 2));
+    
+    if (mediaResponse.data) {
+      console.log('📋 Office Settings: Media data details:');
+      console.log('  ID:', mediaResponse.data.id);
+      console.log('  fileName:', mediaResponse.data.fileName);
+      console.log('  originalName:', mediaResponse.data.originalName);
+      console.log('  url:', mediaResponse.data.url);
+      console.log('  typeof id:', typeof mediaResponse.data.id);
+    }
+
+    if (!mediaResponse.success || !mediaResponse.data) {
+      throw new BadRequestException('Failed to upload media: ' + (mediaResponse.message || 'Unknown error'));
+    }
+
+    console.log('💾 Office Settings: Updating office settings with media ID');
+    console.log('  Media ID to store:', mediaResponse.data.id);
+    console.log('  Current backgroundPhotoId:', existingSettings.backgroundPhotoId);
+
+    // Create the update data object
+    const updateData = {
+      backgroundPhoto: mediaResponse.data.id, // Store the media ID, not the URL
+    };
+    
+    console.log('🔧 Office Settings: Update data being passed to repository:', updateData);
+    console.log('  backgroundPhoto value:', updateData.backgroundPhoto);
+    console.log('  typeof backgroundPhoto:', typeof updateData.backgroundPhoto);
+
+    // Update office settings with the media ID (not URL)
+    let settings;
+    try {
+      settings = await this.officeSettingsRepository.update(id, updateData);
+      console.log('✅ Office Settings: Repository update successful');
+    } catch (error) {
+      console.error('❌ Office Settings: Repository update failed:', error);
+      throw new BadRequestException('Failed to update office settings: ' + error.message);
+    }
+
+    console.log('✅ Office Settings: Background photo updated successfully');
+    console.log('  Media ID:', mediaResponse.data.id);
+    console.log('  Media URL:', mediaResponse.data.url);
+    console.log('  Stored in backgroundPhotoId:', settings.backgroundPhotoId);
+    console.log('  Updated settings:', {
+      id: settings.id,
+      backgroundPhotoId: settings.backgroundPhotoId,
+      updatedAt: settings.updatedAt
     });
 
-    return this.transformToResponseDto(settings);
+    console.log('🔄 Office Settings: Transforming to response DTO...');
+    const responseDto = await this.transformToResponseDto(settings);
+    console.log('✅ Office Settings: Response DTO created');
+    console.log('  Response backgroundPhoto:', responseDto.backgroundPhoto);
+    
+    return responseDto;
   }
 
   async removeBackgroundPhoto(id: string): Promise<OfficeSettingsResponseDto> {
@@ -283,32 +345,58 @@ export class OfficeSettingsService {
       throw new NotFoundException('Office settings not found');
     }
 
-    // If there's an existing background photo, try to delete it from media service
+    // If there's an existing background photo, delete it from media service
     if (existingSettings.backgroundPhotoId) {
       try {
-        // Extract media ID from URL or find media by URL
-        // For now, we'll just update the settings without deleting the media
-        // TODO: Implement media deletion when we have a way to find media by URL
-        console.log('Background photo ID to be removed:', existingSettings.backgroundPhotoId);
+        console.log('🗑️ Office Settings: Removing background photo');
+        console.log('  Current backgroundPhotoId:', existingSettings.backgroundPhotoId);
+        
+        // Delete the media from the media service
+        await this.mediaService.deleteMedia(existingSettings.backgroundPhotoId);
+        console.log('✅ Office Settings: Background photo deleted from media service');
       } catch (error) {
-        console.warn('Failed to delete background photo from media service:', error.message);
+        console.warn('⚠️ Office Settings: Failed to delete background photo from media service:', error.message);
+        // Continue with the removal even if media deletion fails
       }
     }
 
     const settings = await this.officeSettingsRepository.update(id, {
-      backgroundPhoto: null,
+      backgroundPhoto: null, // This clears the backgroundPhotoId field
     });
 
-    return this.transformToResponseDto(settings);
+    console.log('✅ Office Settings: Background photo removed successfully');
+
+    return await this.transformToResponseDto(settings);
   }
 
-  private transformToResponseDto(settings: any, lang?: string): OfficeSettingsResponseDto {
-    return {
+  private async transformToResponseDto(settings: any, lang?: string): Promise<OfficeSettingsResponseDto> {
+    let backgroundPhotoUrl: string | undefined;
+
+    // If there's a backgroundPhotoId, generate a presigned URL
+    if (settings.backgroundPhotoId) {
+      try {
+        // Generate a presigned URL for secure access
+        backgroundPhotoUrl = await this.mediaService.generatePresignedUrl(
+          settings.backgroundPhotoId,
+          'get',
+          86400 // 24 hours expiration
+        );
+        console.log('🖼️ Office Settings: Generated presigned URL for background photo');
+        console.log('  Media ID:', settings.backgroundPhotoId);
+        console.log('  Presigned URL generated successfully');
+      } catch (error) {
+        console.warn('⚠️ Office Settings: Failed to generate presigned URL for background photo:', error.message);
+        // If presigned URL generation fails, set to null to indicate the reference is broken
+        backgroundPhotoUrl = undefined;
+      }
+    }
+
+    const response = {
       id: settings.id,
       directorate: settings.directorate,
       officeName: settings.officeName,
       officeAddress: settings.officeAddress,
-      backgroundPhoto: settings.backgroundPhotoId, // Use backgroundPhotoId as the URL
+      backgroundPhoto: backgroundPhotoUrl, // Use the presigned URL
       email: settings.email,
       phoneNumber: settings.phoneNumber,
       xLink: settings.xLink,
@@ -318,6 +406,8 @@ export class OfficeSettingsService {
       createdAt: settings.createdAt,
       updatedAt: settings.updatedAt,
     };
+
+    return response;
   }
 
   private isValidEmail(email: string): boolean {

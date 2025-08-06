@@ -56,7 +56,7 @@ export class OfficeSettingsRepository {
         directorate: data.directorate as any,
         officeName: data.officeName as any,
         officeAddress: data.officeAddress as any,
-        backgroundPhotoId: data.backgroundPhoto,
+        backgroundPhotoId: data.backgroundPhoto || null,
         email: data.email,
         phoneNumber: data.phoneNumber as any,
         xLink: data.xLink,
@@ -83,21 +83,47 @@ export class OfficeSettingsRepository {
   }
 
   async update(id: string, data: UpdateOfficeSettingsDto): Promise<OfficeSettings> {
+    console.log('🔧 Office Settings Repository: Update called');
+    console.log('  ID:', id);
+    console.log('  Update data:', data);
+    console.log('  backgroundPhoto value:', data.backgroundPhoto);
+    console.log('  backgroundPhoto !== undefined:', data.backgroundPhoto !== undefined);
+    
+    // Add stack trace to see what's calling this method
+    console.log('📍 Office Settings Repository: Call stack:');
+    const stack = new Error().stack;
+    const relevantStack = stack?.split('\n').slice(1, 6).join('\n');
+    console.log(relevantStack);
+
+    // Only update backgroundPhotoId if explicitly provided (not just undefined)
+    // This prevents accidental clearing of backgroundPhotoId from other update calls
+    const updateData = {
+      ...(data.directorate && { directorate: data.directorate as any }),
+      ...(data.officeName && { officeName: data.officeName as any }),
+      ...(data.officeAddress && { officeAddress: data.officeAddress as any }),
+      // Only update backgroundPhotoId if the backgroundPhoto field is explicitly provided
+      ...(data.hasOwnProperty('backgroundPhoto') && { backgroundPhotoId: data.backgroundPhoto || null }),
+      ...(data.email && { email: data.email }),
+      ...(data.phoneNumber && { phoneNumber: data.phoneNumber as any }),
+      ...(data.xLink !== undefined && { xLink: data.xLink }),
+      ...(data.mapIframe !== undefined && { mapIframe: data.mapIframe }),
+      ...(data.website !== undefined && { website: data.website }),
+      ...(data.youtube !== undefined && { youtube: data.youtube }), 
+    };
+
+    console.log('🔧 Office Settings Repository: Prisma update data:', updateData);
+
     const settings = await this.prisma.officeSettings.update({
       where: { id },
-      data: {
-        ...(data.directorate && { directorate: data.directorate as any }),
-        ...(data.officeName && { officeName: data.officeName as any }),
-        ...(data.officeAddress && { officeAddress: data.officeAddress as any }),
-        ...(data.backgroundPhoto && { backgroundPhotoId: data.backgroundPhoto }),
-        ...(data.email && { email: data.email }),
-        ...(data.phoneNumber && { phoneNumber: data.phoneNumber as any }),
-        ...(data.xLink !== undefined && { xLink: data.xLink }),
-        ...(data.mapIframe !== undefined && { mapIframe: data.mapIframe }),
-        ...(data.website !== undefined && { website: data.website }),
-        ...(data.youtube !== undefined && { youtube: data.youtube }), 
-      },
+      data: updateData,
     });
+
+    console.log('🔧 Office Settings Repository: Prisma response:', {
+      id: settings.id,
+      backgroundPhotoId: settings.backgroundPhotoId,
+      updatedAt: settings.updatedAt
+    });
+
     return {
       id: settings.id,
       directorate: settings.directorate as any,
@@ -124,7 +150,7 @@ export class OfficeSettingsRepository {
           directorate: data.directorate as any,
           officeName: data.officeName as any,
           officeAddress: data.officeAddress as any,
-          backgroundPhotoId: data.backgroundPhoto,
+          backgroundPhotoId: data.backgroundPhoto || null,
           email: data.email,
           phoneNumber: data.phoneNumber as any,
           xLink: data.xLink,

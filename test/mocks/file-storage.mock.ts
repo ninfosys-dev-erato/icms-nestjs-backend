@@ -75,7 +75,7 @@ export class MockFileStorageService extends FileStorageService {
     operation: 'get' | 'put',
     expiresIn?: number
   ): Promise<string> {
-    return `https://test-storage.example.com/${key}?operation=${operation}&expires=${expiresIn || 3600}`;
+    return `https://test-storage.example.com/${key}?operation=${operation}&expires=${expiresIn || 86400}`; // 24 hours default
   }
 
   // Override the generateKey method to make it deterministic for tests

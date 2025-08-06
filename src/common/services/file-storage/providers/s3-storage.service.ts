@@ -21,7 +21,7 @@ export class S3StorageService extends FileStorageService {
       accessKeyId: this.configService.get<string>('STORAGE_S3_ACCESS_KEY_ID'),
       secretAccessKey: this.configService.get<string>('STORAGE_S3_SECRET_ACCESS_KEY'),
       forcePathStyle: this.configService.get<boolean>('STORAGE_S3_FORCE_PATH_STYLE', true),
-      signedUrlExpires: this.configService.get<number>('STORAGE_S3_SIGNED_URL_EXPIRES', 3600),
+      signedUrlExpires: this.configService.get<number>('STORAGE_S3_SIGNED_URL_EXPIRES', 86400), // 24 hours default
     };
 
     if (!this.config.bucket || !this.config.accessKeyId || !this.config.secretAccessKey) {
@@ -152,7 +152,7 @@ export class S3StorageService extends FileStorageService {
         Key: key,
       });
 
-      const expires = expiresIn || this.config.signedUrlExpires || 3600;
+      const expires = expiresIn || this.config.signedUrlExpires || 86400; // 24 hours default
       const url = await getSignedUrl(this.s3Client, command, { expiresIn: expires });
       
       return url;
@@ -206,7 +206,7 @@ export class S3StorageService extends FileStorageService {
     expiresIn?: number
   ): Promise<string> {
     try {
-      const expires = expiresIn || this.config.signedUrlExpires || 3600;
+      const expires = expiresIn || this.config.signedUrlExpires || 86400; // 24 hours default
       
       let command;
       if (operation === 'get') {

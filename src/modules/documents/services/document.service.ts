@@ -256,7 +256,7 @@ export class DocumentService {
     await this.documentRepository.incrementDownloadCount(id);
 
     // Generate download URL
-    return this.fileStorageService.generatePresignedUrl(document.filePath, 'get', 3600); // 1 hour expiry
+    return this.fileStorageService.generatePresignedUrl(document.filePath, 'get', 86400); // 24 hours expiry
   }
 
   async createDocumentVersion(documentId: string, file: Express.Multer.File, version: string, changeLog?: any): Promise<DocumentResponseDto> {

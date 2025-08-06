@@ -34,6 +34,7 @@ import {
   MediaUrlDto,
   MediaImportDto,
   MediaExportDto,
+  PresignedUrlResponseDto,
   MediaCategory,
   MediaFolder,
   FILE_TYPE_CONFIG
@@ -421,6 +422,39 @@ export class MediaController {
     urlDto.mediaId = id;
     const url = await this.mediaService.getMediaUrl(urlDto);
     return { url };
+  }
+
+  @Get(':id/presigned-url')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get presigned URL for media viewing/preview' })
+  @ApiResponse({ status: 200, description: 'Presigned URL generated successfully', type: PresignedUrlResponseDto })
+  @ApiResponse({ status: 404, description: 'Media not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBearerAuth()
+  async getPresignedUrl(
+    @Param('id') id: string,
+    @Request() req: any,
+    @Query('expiresIn') expiresIn?: number,
+    @Query('operation') operation: 'get' | 'put' = 'get'
+  ): Promise<PresignedUrlResponseDto> {
+    const media = await this.mediaService.getMediaById(id);
+    
+    // Check if user has access to this media
+    // Allow access to public media or media owned by the user
+    if (!media.isPublic && media.uploadedBy !== req.user.id && req.user.role !== UserRole.ADMIN) {
+      throw new BadRequestException('Access denied to this media');
+    }
+
+          const presignedUrl = await this.mediaService.generatePresignedUrl(id, operation, expiresIn);
+
+      return {
+        presignedUrl,
+        expiresIn: expiresIn || 86400, // 24 hours default
+      operation,
+      mediaId: id,
+      fileName: media.fileName,
+      contentType: media.contentType
+    };
   }
 
   @Put(':id')
