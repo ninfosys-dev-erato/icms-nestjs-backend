@@ -9,7 +9,9 @@ import {
   Query, 
   UseGuards,
   UseInterceptors,
-  UploadedFile
+  UploadedFile,
+  Request,
+  HttpCode
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { 
@@ -234,5 +236,134 @@ export class AdminSliderController {
   @Roles('ADMIN')
   async bulkDelete(@Body() data: { ids: string[] }) {
     return await this.sliderService.bulkDelete(data.ids);
+  }
+
+  @Post(':id/image')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      fileFilter: (req, file, callback) => {
+        console.log('🔍 DEBUG: Slider FileInterceptor fileFilter called');
+        console.log('  File object:', {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          encoding: file.encoding,
+          mimetype: file.mimetype,
+          size: file.size
+        });
+        callback(null, true);
+      },
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB for slider images
+      }
+    })
+  )
+  @ApiOperation({ summary: 'Upload slider image (Admin)' })
+  @ApiConsumes('multipart/form-data')
+  @HttpCode(200)
+  @ApiResponse({ status: 200, description: 'Slider image uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'File validation error' })
+  @ApiResponse({ status: 404, description: 'Slider not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @Roles('ADMIN', 'EDITOR')
+  async uploadSliderImage(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: any,
+  ) {
+    try {
+      console.log('🔍 DEBUG: Slider Image Upload Request Details');
+      console.log('=====================================');
+      
+      console.log('📋 Request Headers:');
+      console.log('  Content-Type:', req.headers['content-type']);
+      console.log('  Content-Length:', req.headers['content-length']);
+      console.log('  Authorization:', req.headers['authorization'] ? 'Present' : 'Missing');
+      
+      console.log('📁 File Information:');
+      if (file) {
+        console.log('  ✅ File received:');
+        console.log('    - originalname:', file.originalname);
+        console.log('    - mimetype:', file.mimetype);
+        console.log('    - size:', file.size);
+        console.log('    - fieldname:', file.fieldname);
+        console.log('    - buffer length:', file.buffer?.length);
+      } else {
+        console.log('  ❌ No file received');
+      }
+      
+      console.log('=====================================');
+
+      return this.sliderService.uploadSliderImage(id, file, req.user.id);
+    } catch (error) {
+      console.error('❌ ERROR in uploadSliderImage:', error);
+      console.error('  Error message:', error.message);
+      console.error('  Error stack:', error.stack);
+      throw error;
+    }
+  }
+
+  @Delete(':id/image')
+  @ApiOperation({ summary: 'Remove slider image (Admin)' })
+  @ApiResponse({ status: 200, description: 'Slider image removed successfully' })
+  @ApiResponse({ status: 404, description: 'Slider not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @Roles('ADMIN', 'EDITOR')
+  async removeSliderImage(@Param('id') id: string) {
+    return await this.sliderService.removeSliderImage(id);
+  }
+
+  @Post('upload-with-slider')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      fileFilter: (req, file, callback) => {
+        console.log('🔍 DEBUG: Slider Upload with Creation FileInterceptor called');
+        console.log('  File object:', {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size
+        });
+        callback(null, true);
+      },
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB for slider images
+      }
+    })
+  )
+  @ApiOperation({ summary: 'Create slider with image upload (Admin)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 201, description: 'Slider created with image successfully' })
+  @ApiResponse({ status: 400, description: 'Validation or file error' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @Roles('ADMIN', 'EDITOR')
+  async createSliderWithImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() sliderData: any, // Form data will be parsed from multipart
+    @Request() req: any,
+  ) {
+    try {
+      console.log('🔍 DEBUG: Create Slider with Image Upload');
+      console.log('=====================================');
+      
+      console.log('📁 File Information:');
+      if (file) {
+        console.log('  ✅ File received:');
+        console.log('    - originalname:', file.originalname);
+        console.log('    - mimetype:', file.mimetype);
+        console.log('    - size:', file.size);
+      } else {
+        console.log('  ❌ No file received');
+      }
+
+      console.log('📝 Slider Data:');
+      console.log('  Data received:', sliderData);
+      
+      console.log('=====================================');
+
+      return this.sliderService.createSliderWithImage(file, sliderData, req.user.id);
+    } catch (error) {
+      console.error('❌ ERROR in createSliderWithImage:', error);
+      throw error;
+    }
   }
 } 

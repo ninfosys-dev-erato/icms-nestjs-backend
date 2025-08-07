@@ -6,9 +6,10 @@ import { SliderRepository } from './repositories/slider.repository';
 import { SliderClickRepository } from './repositories/slider-click.repository';
 import { SliderViewRepository } from './repositories/slider-view.repository';
 import { DatabaseModule } from '../../database/database.module';
+import { MediaModule } from '../media/media.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, MediaModule],
   controllers: [
     PublicSliderController,
     AdminSliderController

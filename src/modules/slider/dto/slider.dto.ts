@@ -386,4 +386,34 @@ export class PaginationInfo {
 
   @ApiProperty({ example: false })
   hasPrev: boolean;
+}
+
+// ========================================
+// SLIDER IMAGE UPLOAD DTOs
+// ========================================
+
+export class CreateSliderWithImageDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TranslatableEntityDto)
+  title?: TranslatableEntityDto;
+
+  @ApiProperty({ example: 1 })
+  @IsNumber()
+  position: number;
+
+  @ApiProperty({ example: 5000 })
+  @IsNumber()
+  displayTime: number;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class SliderImageUploadResponseDto extends SliderResponseDto {
+  @ApiProperty({ example: 'https://f003.backblazeb2.com/file/iCMS-bucket/sliders/...' })
+  imageUrl: string;
 } 

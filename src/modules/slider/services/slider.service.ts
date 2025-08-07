@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { SliderRepository } from '../repositories/slider.repository';
 import { SliderClickRepository } from '../repositories/slider-click.repository';
 import { SliderViewRepository } from '../repositories/slider-view.repository';
+import { MediaService } from '../../media/services/media.service';
 import { 
   CreateSliderDto, 
   UpdateSliderDto, 
@@ -12,7 +13,9 @@ import {
   ValidationResult,
   ValidationError,
   BulkOperationResult,
-  PaginationInfo
+  PaginationInfo,
+  CreateSliderWithImageDto,
+  SliderImageUploadResponseDto
 } from '../dto/slider.dto';
 
 @Injectable()
@@ -21,6 +24,7 @@ export class SliderService {
     private readonly sliderRepository: SliderRepository,
     private readonly sliderClickRepository: SliderClickRepository,
     private readonly sliderViewRepository: SliderViewRepository,
+    private readonly mediaService: MediaService,
   ) {}
 
   async getSliderById(id: string): Promise<SliderResponseDto> {
@@ -360,6 +364,221 @@ export class SliderService {
     return result;
   }
 
+  async uploadSliderImage(id: string, file: Express.Multer.File, userId: string): Promise<SliderResponseDto> {
+    // Check if slider exists
+    const existingSlider = await this.sliderRepository.findById(id);
+    if (!existingSlider) {
+      throw new NotFoundException('Slider not found');
+    }
+
+    // Validate file
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    // Validate file type - only images allowed for sliders
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type. Only JPG, PNG, WebP, and GIF are allowed for sliders');
+    }
+
+    // Validate file size (10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size too large. Maximum size is 10MB');
+    }
+
+    console.log('🔄 Slider: Starting image upload process');
+    console.log('  File details:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      bufferLength: file.buffer?.length
+    });
+
+    // Upload to media service (which uses Backblaze)
+    const metadata = {
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      folder: 'sliders', // This will create the sliders folder in Backblaze
+      altText: `Slider image: ${existingSlider.title?.en || 'Untitled'}`,
+      title: `Slider Image`,
+      description: `Image for slider at position ${existingSlider.position}`,
+      tags: ['slider', 'banner', 'image'],
+      isPublic: true,
+    };
+
+    console.log('📤 Slider: Calling media service with metadata:', metadata);
+
+    const mediaResponse = await this.mediaService.uploadMedia(file, metadata, userId);
+
+    console.log('📥 Slider: Media service response received');
+    console.log('  Media response success:', mediaResponse.success);
+    console.log('  Media response data exists:', !!mediaResponse.data);
+
+    if (!mediaResponse.success || !mediaResponse.data) {
+      throw new BadRequestException('Failed to upload media: ' + (mediaResponse.message || 'Unknown error'));
+    }
+
+    console.log('💾 Slider: Updating slider with media ID');
+    console.log('  Media ID to store:', mediaResponse.data.id);
+    console.log('  Current mediaId:', existingSlider.mediaId);
+
+    // Delete old media if it exists
+    if (existingSlider.mediaId) {
+      try {
+        console.log('🗑️ Slider: Removing old slider image');
+        console.log('  Old mediaId:', existingSlider.mediaId);
+        await this.mediaService.deleteMedia(existingSlider.mediaId);
+        console.log('✅ Slider: Old image deleted from media service');
+      } catch (error) {
+        console.warn('⚠️ Slider: Failed to delete old image from media service:', error.message);
+        // Continue with the update even if old media deletion fails
+      }
+    }
+
+    // Update slider with the new media ID
+    const updateData = {
+      mediaId: mediaResponse.data.id
+    };
+
+    console.log('🔧 Slider: Update data being passed to repository:', updateData);
+
+    let slider;
+    try {
+      slider = await this.sliderRepository.update(id, updateData, userId);
+      console.log('✅ Slider: Repository update successful');
+    } catch (error) {
+      console.error('❌ Slider: Repository update failed:', error);
+      throw new BadRequestException('Failed to update slider: ' + error.message);
+    }
+
+    console.log('✅ Slider: Image uploaded successfully');
+    console.log('  Media ID:', mediaResponse.data.id);
+    console.log('  Media URL:', mediaResponse.data.url);
+    console.log('  Stored in mediaId:', slider.mediaId);
+
+    console.log('🔄 Slider: Transforming to response DTO...');
+    const responseDto = await this.transformToResponseDto(slider);
+    console.log('✅ Slider: Response DTO created');
+
+    return responseDto;
+  }
+
+  async removeSliderImage(id: string): Promise<SliderResponseDto> {
+    const existingSlider = await this.sliderRepository.findById(id);
+    if (!existingSlider) {
+      throw new NotFoundException('Slider not found');
+    }
+
+    // If there's an existing image, delete it from media service
+    if (existingSlider.mediaId) {
+      try {
+        console.log('🗑️ Slider: Removing slider image');
+        console.log('  Current mediaId:', existingSlider.mediaId);
+        
+        // Delete the media from the media service
+        await this.mediaService.deleteMedia(existingSlider.mediaId);
+        console.log('✅ Slider: Image deleted from media service');
+      } catch (error) {
+        console.warn('⚠️ Slider: Failed to delete image from media service:', error.message);
+        // Continue with the removal even if media deletion fails
+      }
+    }
+
+    // Update slider to remove media reference
+    const updateData = {
+      mediaId: undefined // This will remove the mediaId
+    };
+
+    const slider = await this.sliderRepository.update(id, updateData, 'system');
+
+    console.log('✅ Slider: Image removed successfully');
+
+    return await this.transformToResponseDto(slider);
+  }
+
+  async createSliderWithImage(
+    file: Express.Multer.File, 
+    sliderData: any, 
+    userId: string
+  ): Promise<SliderResponseDto> {
+    // Validate file
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type. Only JPG, PNG, WebP, and GIF are allowed for sliders');
+    }
+
+    // Validate file size (10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size too large. Maximum size is 10MB');
+    }
+
+    console.log('🔄 Slider: Creating slider with image upload');
+    console.log('  File details:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size
+    });
+    console.log('  Slider data:', sliderData);
+
+    // Parse slider data from form data
+    const createSliderDto: CreateSliderDto = {
+      title: sliderData.title ? JSON.parse(sliderData.title) : undefined,
+      position: parseInt(sliderData.position) || 1,
+      displayTime: parseInt(sliderData.displayTime) || 5000,
+      isActive: sliderData.isActive === 'true' || sliderData.isActive === true,
+      mediaId: '' // Will be set after media upload
+    };
+
+    // Validate slider data
+    const validation = await this.validateSlider(createSliderDto);
+    if (!validation.isValid) {
+      throw new BadRequestException('Slider validation failed', { cause: validation.errors });
+    }
+
+    // Upload image to media service
+    const metadata = {
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      folder: 'sliders',
+      altText: `Slider image: ${createSliderDto.title?.en || 'Untitled'}`,
+      title: `Slider Image`,
+      description: `Image for slider at position ${createSliderDto.position}`,
+      tags: ['slider', 'banner', 'image'],
+      isPublic: true,
+    };
+
+    console.log('📤 Slider: Uploading image to media service');
+    const mediaResponse = await this.mediaService.uploadMedia(file, metadata, userId);
+
+    if (!mediaResponse.success || !mediaResponse.data) {
+      throw new BadRequestException('Failed to upload media: ' + (mediaResponse.message || 'Unknown error'));
+    }
+
+    console.log('📥 Slider: Image uploaded successfully, creating slider');
+
+    // Set the mediaId from the uploaded image
+    createSliderDto.mediaId = mediaResponse.data.id;
+
+    // Create the slider
+    const slider = await this.sliderRepository.create(createSliderDto, userId);
+
+    console.log('✅ Slider: Created successfully with image');
+    console.log('  Slider ID:', slider.id);
+    console.log('  Media ID:', mediaResponse.data.id);
+
+    return await this.transformToResponseDto(slider);
+  }
+
   private async transformToResponseDto(slider: any): Promise<SliderResponseDto> {
     const [clickCount, viewCount] = await Promise.all([
       this.sliderClickRepository.getClickCount(slider.id),
@@ -368,13 +587,32 @@ export class SliderService {
 
     const clickThroughRate = viewCount > 0 ? (clickCount / viewCount) * 100 : 0;
 
+    // Generate presigned URL for the media if it exists
+    let mediaWithPresignedUrl = slider.media;
+    if (slider.media && slider.mediaId) {
+      try {
+        const presignedUrl = await this.mediaService.generatePresignedUrl(
+          slider.mediaId,
+          'get',
+          86400 // 24 hours expiration
+        );
+        mediaWithPresignedUrl = {
+          ...slider.media,
+          presignedUrl
+        };
+        console.log('🖼️ Slider: Generated presigned URL for media');
+      } catch (error) {
+        console.warn('⚠️ Slider: Failed to generate presigned URL for media:', error.message);
+      }
+    }
+
     return {
       id: slider.id,
       title: slider.title,
       position: slider.position,
       displayTime: slider.displayTime,
       isActive: slider.isActive,
-      media: slider.media,
+      media: mediaWithPresignedUrl,
       clickCount,
       viewCount,
       clickThroughRate,
