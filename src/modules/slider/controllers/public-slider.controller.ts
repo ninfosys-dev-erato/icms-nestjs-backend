@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Body, Param, Query, Req } from '@nestjs/common';
-import { Request } from 'express';
+import { Controller, Get, Post, Body, Param, Query, Req, Res, HttpStatus } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -12,6 +12,7 @@ import {
   SliderQueryDto, 
   SliderResponseDto 
 } from '../dto/slider.dto';
+import { ApiResponseBuilder } from '@/common/types/api-response';
 
 @ApiTags('Public Sliders')
 @Controller('sliders')
@@ -27,8 +28,11 @@ export class PublicSliderController {
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiQuery({ name: 'isPublished', required: false, type: Boolean })
   @ApiQuery({ name: 'position', required: false, type: Number })
-  async getAllSliders(@Query() query?: SliderQueryDto) {
-    return await this.sliderService.getPublishedSliders(query);
+  async getAllSliders(@Res() response: Response, @Query() query?: SliderQueryDto): Promise<void> {
+    const result = await this.sliderService.getPublishedSliders(query);
+    response
+      .status(HttpStatus.OK)
+      .json(ApiResponseBuilder.paginated(result.data, result.pagination));
   }
 
   @Get(':id')
@@ -36,23 +40,26 @@ export class PublicSliderController {
   @ApiResponse({ status: 200, description: 'Slider retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Slider not found' })
   @ApiParam({ name: 'id', description: 'Slider ID' })
-  async getSliderById(@Param('id') id: string) {
-    return await this.sliderService.getSliderById(id);
+  async getSliderById(@Res() response: Response, @Param('id') id: string): Promise<void> {
+    const slider = await this.sliderService.getSliderById(id);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(slider));
   }
 
   @Get('display/active')
   @ApiOperation({ summary: 'Get active sliders for display' })
   @ApiResponse({ status: 200, description: 'Active sliders retrieved successfully' })
-  async getActiveSlidersForDisplay() {
-    return await this.sliderService.getActiveSlidersForDisplay();
+  async getActiveSlidersForDisplay(@Res() response: Response): Promise<void> {
+    const sliders = await this.sliderService.getActiveSlidersForDisplay();
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(sliders));
   }
 
   @Get('position/:position')
   @ApiOperation({ summary: 'Get sliders by position' })
   @ApiResponse({ status: 200, description: 'Sliders retrieved successfully' })
   @ApiParam({ name: 'position', description: 'Slider position' })
-  async getSlidersByPosition(@Param('position') position: number) {
-    return await this.sliderService.getSlidersByPosition(position);
+  async getSlidersByPosition(@Res() response: Response, @Param('position') position: number): Promise<void> {
+    const sliders = await this.sliderService.getSlidersByPosition(position);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(sliders));
   }
 
   @Post(':id/click')
@@ -61,14 +68,17 @@ export class PublicSliderController {
   @ApiResponse({ status: 404, description: 'Slider not found' })
   @ApiParam({ name: 'id', description: 'Slider ID' })
   async recordSliderClick(
+    @Res() response: Response,
     @Param('id') id: string,
     @Req() request: Request
-  ) {
+  ): Promise<void> {
     const ipAddress = request.ip || request.connection.remoteAddress || 'unknown';
     const userAgent = request.headers['user-agent'] || 'unknown';
     
     await this.sliderService.recordSliderClick(id, ipAddress, userAgent);
-    return { message: 'Click recorded successfully' };
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success({ message: 'Click recorded successfully' }),
+    );
   }
 
   @Post(':id/view')
@@ -77,14 +87,17 @@ export class PublicSliderController {
   @ApiResponse({ status: 404, description: 'Slider not found' })
   @ApiParam({ name: 'id', description: 'Slider ID' })
   async recordSliderView(
+    @Res() response: Response,
     @Param('id') id: string,
     @Body() data?: { duration?: number },
     @Req() request?: Request
-  ) {
+  ): Promise<void> {
     const ipAddress = request?.ip || request?.connection?.remoteAddress || 'unknown';
     const userAgent = request?.headers['user-agent'] || 'unknown';
     
     await this.sliderService.recordSliderView(id, ipAddress, userAgent, undefined, data?.duration);
-    return { message: 'View recorded successfully' };
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success({ message: 'View recorded successfully' }),
+    );
   }
 } 

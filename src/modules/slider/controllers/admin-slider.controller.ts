@@ -11,8 +11,11 @@ import {
   UseInterceptors,
   UploadedFile,
   Request,
-  HttpCode
+  HttpCode,
+  Res,
+  HttpStatus,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { 
   ApiTags, 
@@ -37,6 +40,7 @@ import {
   SliderAnalytics,
   BulkOperationResult
 } from '../dto/slider.dto';
+import { ApiResponseBuilder } from '@/common/types/api-response';
 
 @ApiTags('Admin Sliders')
 @ApiBearerAuth()
@@ -55,16 +59,20 @@ export class AdminSliderController {
   @ApiQuery({ name: 'isPublished', required: false, type: Boolean })
   @ApiQuery({ name: 'position', required: false, type: Number })
   @Roles('ADMIN', 'EDITOR')
-  async getAllSliders(@Query() query?: SliderQueryDto) {
-    return await this.sliderService.getAllSliders(query);
+  async getAllSliders(@Res() response: Response, @Query() query?: SliderQueryDto): Promise<void> {
+    const result = await this.sliderService.getAllSliders(query);
+    response
+      .status(HttpStatus.OK)
+      .json(ApiResponseBuilder.paginated(result.data, result.pagination));
   }
 
   @Get('statistics')
   @ApiOperation({ summary: 'Get slider statistics (Admin)' })
   @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
   @Roles('ADMIN', 'EDITOR')
-  async getSliderStatistics() {
-    return await this.sliderService.getSliderStatistics();
+  async getSliderStatistics(@Res() response: Response): Promise<void> {
+    const stats = await this.sliderService.getSliderStatistics();
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(stats));
   }
 
   @Get('search')
@@ -76,10 +84,14 @@ export class AdminSliderController {
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @Roles('ADMIN', 'EDITOR')
   async searchSliders(
+    @Res() response: Response,
     @Query('q') searchTerm: string,
     @Query() query?: SliderQueryDto
-  ) {
-    return await this.sliderService.searchSliders(searchTerm, query);
+  ): Promise<void> {
+    const result = await this.sliderService.searchSliders(searchTerm, query);
+    response
+      .status(HttpStatus.OK)
+      .json(ApiResponseBuilder.paginated(result.data, result.pagination));
   }
 
   @Get(':id')
@@ -88,8 +100,9 @@ export class AdminSliderController {
   @ApiResponse({ status: 404, description: 'Slider not found' })
   @ApiParam({ name: 'id', description: 'Slider ID' })
   @Roles('ADMIN', 'EDITOR')
-  async getSliderById(@Param('id') id: string) {
-    return await this.sliderService.getSliderById(id);
+  async getSliderById(@Res() response: Response, @Param('id') id: string): Promise<void> {
+    const slider = await this.sliderService.getSliderById(id);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(slider));
   }
 
   @Post()
@@ -98,10 +111,12 @@ export class AdminSliderController {
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @Roles('ADMIN', 'EDITOR')
   async createSlider(
+    @Res() response: Response,
     @Body() data: CreateSliderDto,
     @CurrentUser() user: any
-  ) {
-    return await this.sliderService.createSlider(data, user.id);
+  ): Promise<void> {
+    const slider = await this.sliderService.createSlider(data, user.id);
+    response.status(HttpStatus.CREATED).json(ApiResponseBuilder.success(slider));
   }
 
   @Put(':id')
@@ -112,11 +127,13 @@ export class AdminSliderController {
   @ApiParam({ name: 'id', description: 'Slider ID' })
   @Roles('ADMIN', 'EDITOR')
   async updateSlider(
+    @Res() response: Response,
     @Param('id') id: string,
     @Body() data: UpdateSliderDto,
     @CurrentUser() user: any
-  ) {
-    return await this.sliderService.updateSlider(id, data, user.id);
+  ): Promise<void> {
+    const slider = await this.sliderService.updateSlider(id, data, user.id);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(slider));
   }
 
   @Delete(':id')
@@ -125,9 +142,11 @@ export class AdminSliderController {
   @ApiResponse({ status: 404, description: 'Slider not found' })
   @ApiParam({ name: 'id', description: 'Slider ID' })
   @Roles('ADMIN')
-  async deleteSlider(@Param('id') id: string) {
+  async deleteSlider(@Res() response: Response, @Param('id') id: string): Promise<void> {
     await this.sliderService.deleteSlider(id);
-    return { message: 'Slider deleted successfully' };
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success({ message: 'Slider deleted successfully' }),
+    );
   }
 
   @Post(':id/publish')
@@ -137,10 +156,12 @@ export class AdminSliderController {
   @ApiParam({ name: 'id', description: 'Slider ID' })
   @Roles('ADMIN', 'EDITOR')
   async publishSlider(
+    @Res() response: Response,
     @Param('id') id: string,
     @CurrentUser() user: any
-  ) {
-    return await this.sliderService.publishSlider(id, user.id);
+  ): Promise<void> {
+    const slider = await this.sliderService.publishSlider(id, user.id);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(slider));
   }
 
   @Post(':id/unpublish')
@@ -150,10 +171,12 @@ export class AdminSliderController {
   @ApiParam({ name: 'id', description: 'Slider ID' })
   @Roles('ADMIN', 'EDITOR')
   async unpublishSlider(
+    @Res() response: Response,
     @Param('id') id: string,
     @CurrentUser() user: any
-  ) {
-    return await this.sliderService.unpublishSlider(id, user.id);
+  ): Promise<void> {
+    const slider = await this.sliderService.unpublishSlider(id, user.id);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(slider));
   }
 
   @Put('reorder')
@@ -161,9 +184,11 @@ export class AdminSliderController {
   @ApiResponse({ status: 200, description: 'Sliders reordered successfully' })
   @ApiResponse({ status: 400, description: 'Reorder failed' })
   @Roles('ADMIN', 'EDITOR')
-  async reorderSliders(@Body() orders: { id: string; position: number }[]) {
+  async reorderSliders(@Res() response: Response, @Body() orders: { id: string; position: number }[]): Promise<void> {
     await this.sliderService.reorderSliders(orders);
-    return { message: 'Sliders reordered successfully' };
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success({ message: 'Sliders reordered successfully' }),
+    );
   }
 
   @Get(':id/analytics')
@@ -175,11 +200,13 @@ export class AdminSliderController {
   @ApiQuery({ name: 'dateTo', required: false, type: Date })
   @Roles('ADMIN', 'EDITOR')
   async getSliderAnalytics(
+    @Res() response: Response,
     @Param('id') id: string,
     @Query('dateFrom') dateFrom?: Date,
     @Query('dateTo') dateTo?: Date
-  ) {
-    return await this.sliderService.getSliderAnalytics(id, dateFrom, dateTo);
+  ): Promise<void> {
+    const analytics = await this.sliderService.getSliderAnalytics(id, dateFrom, dateTo);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(analytics));
   }
 
   @Get('export')
@@ -188,10 +215,17 @@ export class AdminSliderController {
   @ApiQuery({ name: 'format', required: false, type: String })
   @Roles('ADMIN', 'EDITOR')
   async exportSliders(
+    @Res() response: Response,
     @Query() query: SliderQueryDto,
     @Query('format') format: 'json' | 'csv' | 'pdf' = 'json'
-  ) {
-    return await this.sliderService.exportSliders(query, format);
+  ): Promise<void> {
+    const data = await this.sliderService.exportSliders(query, format);
+    const contentType = format === 'json' ? 'application/json' : 
+                       format === 'csv' ? 'text/csv' : 'application/pdf';
+    const filename = `sliders-export-${new Date().toISOString().split('T')[0]}.${format}`;
+    response.setHeader('Content-Type', contentType);
+    response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    response.status(HttpStatus.OK).send(data);
   }
 
   @Post('import')
@@ -202,10 +236,12 @@ export class AdminSliderController {
   @UseInterceptors(FileInterceptor('file'))
   @Roles('ADMIN')
   async importSliders(
+    @Res() response: Response,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: any
-  ) {
-    return await this.sliderService.importSliders(file, user.id);
+  ): Promise<void> {
+    const result = await this.sliderService.importSliders(file, user.id);
+    response.status(HttpStatus.CREATED).json(ApiResponseBuilder.success(result));
   }
 
   @Post('bulk-publish')
@@ -213,10 +249,12 @@ export class AdminSliderController {
   @ApiResponse({ status: 200, description: 'Bulk publish completed' })
   @Roles('ADMIN', 'EDITOR')
   async bulkPublish(
+    @Res() response: Response,
     @Body() data: { ids: string[] },
     @CurrentUser() user: any
-  ) {
-    return await this.sliderService.bulkPublish(data.ids, user.id);
+  ): Promise<void> {
+    const result = await this.sliderService.bulkPublish(data.ids, user.id);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(result));
   }
 
   @Post('bulk-unpublish')
@@ -224,18 +262,21 @@ export class AdminSliderController {
   @ApiResponse({ status: 200, description: 'Bulk unpublish completed' })
   @Roles('ADMIN', 'EDITOR')
   async bulkUnpublish(
+    @Res() response: Response,
     @Body() data: { ids: string[] },
     @CurrentUser() user: any
-  ) {
-    return await this.sliderService.bulkUnpublish(data.ids, user.id);
+  ): Promise<void> {
+    const result = await this.sliderService.bulkUnpublish(data.ids, user.id);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(result));
   }
 
   @Post('bulk-delete')
   @ApiOperation({ summary: 'Bulk delete sliders (Admin)' })
   @ApiResponse({ status: 200, description: 'Bulk deletion completed' })
   @Roles('ADMIN')
-  async bulkDelete(@Body() data: { ids: string[] }) {
-    return await this.sliderService.bulkDelete(data.ids);
+  async bulkDelete(@Res() response: Response, @Body() data: { ids: string[] }): Promise<void> {
+    const result = await this.sliderService.bulkDelete(data.ids);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(result));
   }
 
   @Post(':id/image')
@@ -266,10 +307,11 @@ export class AdminSliderController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @Roles('ADMIN', 'EDITOR')
   async uploadSliderImage(
+    @Res() response: Response,
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @Request() req: any,
-  ) {
+  ): Promise<void> {
     try {
       console.log('🔍 DEBUG: Slider Image Upload Request Details');
       console.log('=====================================');
@@ -293,7 +335,8 @@ export class AdminSliderController {
       
       console.log('=====================================');
 
-      return this.sliderService.uploadSliderImage(id, file, req.user.id);
+      const result = await this.sliderService.uploadSliderImage(id, file, req.user.id);
+      response.status(HttpStatus.OK).json(ApiResponseBuilder.success(result));
     } catch (error) {
       console.error('❌ ERROR in uploadSliderImage:', error);
       console.error('  Error message:', error.message);
@@ -308,8 +351,9 @@ export class AdminSliderController {
   @ApiResponse({ status: 404, description: 'Slider not found' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @Roles('ADMIN', 'EDITOR')
-  async removeSliderImage(@Param('id') id: string) {
-    return await this.sliderService.removeSliderImage(id);
+  async removeSliderImage(@Res() response: Response, @Param('id') id: string): Promise<void> {
+    const result = await this.sliderService.removeSliderImage(id);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(result));
   }
 
   @Post('upload-with-slider')
@@ -337,10 +381,11 @@ export class AdminSliderController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @Roles('ADMIN', 'EDITOR')
   async createSliderWithImage(
+    @Res() response: Response,
     @UploadedFile() file: Express.Multer.File,
     @Body() sliderData: any, // Form data will be parsed from multipart
     @Request() req: any,
-  ) {
+  ): Promise<void> {
     try {
       console.log('🔍 DEBUG: Create Slider with Image Upload');
       console.log('=====================================');
@@ -360,7 +405,8 @@ export class AdminSliderController {
       
       console.log('=====================================');
 
-      return this.sliderService.createSliderWithImage(file, sliderData, req.user.id);
+      const result = await this.sliderService.createSliderWithImage(file, sliderData, req.user.id);
+      response.status(HttpStatus.CREATED).json(ApiResponseBuilder.success(result));
     } catch (error) {
       console.error('❌ ERROR in createSliderWithImage:', error);
       throw error;

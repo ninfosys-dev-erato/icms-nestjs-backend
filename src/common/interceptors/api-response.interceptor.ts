@@ -16,7 +16,9 @@ export class ApiResponseInterceptor<T>
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<ApiResponse<T>> {
-    const request = context.switchToHttp().getRequest();
+    const httpContext = context.switchToHttp();
+    const request = httpContext.getRequest();
+    const response = httpContext.getResponse();
     const startTime = Date.now();
 
     return next.handle().pipe(
@@ -27,6 +29,19 @@ export class ApiResponseInterceptor<T>
           requestId: request.id || request.headers['x-request-id'],
           processingTime,
         };
+
+        // If response already sent (e.g., manual file download via @Res), do nothing
+        if (response && response.headersSent) {
+          return data as any;
+        }
+
+        // Bypass wrapping for raw/binary/stream responses
+        const isBuffer = Buffer.isBuffer(data);
+        const isStream = data && typeof (data as any).pipe === 'function';
+        const isStreamableFile = data && data.constructor && data.constructor.name === 'StreamableFile';
+        if (isBuffer || isStream || isStreamableFile) {
+          return data as any;
+        }
 
         // If data is already an ApiResponse (has boolean success property), return it
         if (data && typeof data === 'object' && 'success' in data && typeof data.success === 'boolean') {

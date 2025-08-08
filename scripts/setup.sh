@@ -39,8 +39,8 @@ check_dependencies() {
         exit 1
     fi
     
-    if ! command -v pnpm &> /dev/null; then
-        print_error "pnpm is not installed. Please install it first: npm install -g pnpm"
+    if ! command -v yarn &> /dev/null; then
+        print_error "yarn is not installed. Please install it first: npm install -g yarn"
         exit 1
     fi
     
@@ -93,7 +93,7 @@ setup_test_db() {
 # Install dependencies
 install_dependencies() {
     print_status "Installing dependencies..."
-    pnpm install
+    yarn install
     print_success "Dependencies installed"
 }
 

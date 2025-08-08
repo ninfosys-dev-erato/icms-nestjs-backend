@@ -111,21 +111,21 @@ sudo -u postgres psql
 
 ```sql
 -- Create the development user
-CREATE USER icmsdev WITH PASSWORD 'dev@123';
+CREATE USER cmsadmin WITH PASSWORD 'dev123';
 
 -- Create the development database
-CREATE DATABASE icmslocal OWNER icmsdev;
+CREATE DATABASE cmsdb OWNER cmsadmin;
 
 -- Grant all privileges to the user
-GRANT ALL PRIVILEGES ON DATABASE icmslocal TO icmsdev;
+GRANT ALL PRIVILEGES ON DATABASE cmsdb TO cmsadmin;
 
 -- Connect to the new database
-\c icmslocal
+\c cmsdb
 
 -- Grant schema privileges
-GRANT ALL ON SCHEMA public TO icmsdev;
+GRANT ALL ON SCHEMA public TO cmsadmin;
 
-ALTER USER icmsdev CREATEDB;
+ALTER USER cmsadmin CREATEDB;
 
 -- Exit PostgreSQL
 \q
