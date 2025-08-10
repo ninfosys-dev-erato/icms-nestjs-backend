@@ -32,8 +32,18 @@ export class SliderRepository {
 
     const where: any = {};
 
-    if (query.isActive !== undefined) {
-      where.isActive = query.isActive;
+    // Normalize isActive in case global transform didn't run
+    const rawIsActive: unknown = (query as any)?.isActive;
+    let normalizedIsActive: boolean | undefined;
+    if (typeof rawIsActive === 'boolean') {
+      normalizedIsActive = rawIsActive;
+    } else if (typeof rawIsActive === 'string') {
+      const v = rawIsActive.toLowerCase().trim();
+      if (['true', '1', 'yes', 'on'].includes(v)) normalizedIsActive = true;
+      if (['false', '0', 'no', 'off'].includes(v)) normalizedIsActive = false;
+    }
+    if (normalizedIsActive !== undefined) {
+      where.isActive = normalizedIsActive;
     }
 
     if (query.position !== undefined) {
@@ -57,6 +67,7 @@ export class SliderRepository {
       orderBy.position = 'asc';
     }
 
+    console.log('🧭 SliderRepository.findAll where filter:', where);
     const [data, total] = await Promise.all([
       this.prisma.slider.findMany({
         where,

@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum, IsArray, ValidateNested, IsNotEmpty, IsUrl, IsDateString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // ========================================
@@ -131,8 +131,16 @@ export class SliderQueryDto {
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
-  @Type(() => Boolean)
   @IsBoolean()
+  @Transform(({ value }) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const v = value.toLowerCase().trim();
+      if (['true', '1', 'yes', 'on'].includes(v)) return true;
+      if (['false', '0', 'no', 'off'].includes(v)) return false;
+    }
+    return value;
+  })
   isActive?: boolean;
 
   @ApiPropertyOptional({ example: 1 })

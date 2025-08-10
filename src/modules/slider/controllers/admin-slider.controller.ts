@@ -10,13 +10,14 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  UploadedFiles,
   Request,
   HttpCode,
   Res,
   HttpStatus,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { 
   ApiTags, 
   ApiOperation, 
@@ -59,7 +60,28 @@ export class AdminSliderController {
   @ApiQuery({ name: 'isPublished', required: false, type: Boolean })
   @ApiQuery({ name: 'position', required: false, type: Number })
   @Roles('ADMIN', 'EDITOR')
-  async getAllSliders(@Res() response: Response, @Query() query?: SliderQueryDto): Promise<void> {
+  async getAllSliders(@Res() response: Response, @Query() query: SliderQueryDto, @Request() req: any): Promise<void> {
+    // Temporary debug logs to trace boolean parsing
+    console.log('🔎 AdminSliderController.getAllSliders query:', query);
+    const rawIsActive = req?.query?.isActive;
+    console.log('  raw isActive from req.query:', rawIsActive, 'type:', typeof rawIsActive);
+
+    if (rawIsActive !== undefined) {
+      let normalized: boolean | undefined = undefined;
+      if (typeof rawIsActive === 'boolean') {
+        normalized = rawIsActive;
+      } else if (typeof rawIsActive === 'string') {
+        const v = rawIsActive.toLowerCase().trim();
+        if (['true', '1', 'yes', 'on'].includes(v)) normalized = true;
+        if (['false', '0', 'no', 'off'].includes(v)) normalized = false;
+      }
+      if (normalized !== undefined) {
+        query = { ...query, isActive: normalized } as any;
+      }
+    }
+
+    console.log('  final isActive used:', query?.isActive, 'type:', typeof query?.isActive);
+
     const result = await this.sliderService.getAllSliders(query);
     response
       .status(HttpStatus.OK)
@@ -281,22 +303,28 @@ export class AdminSliderController {
 
   @Post(':id/image')
   @UseInterceptors(
-    FileInterceptor('file', {
-      fileFilter: (req, file, callback) => {
-        console.log('🔍 DEBUG: Slider FileInterceptor fileFilter called');
-        console.log('  File object:', {
-          fieldname: file.fieldname,
-          originalname: file.originalname,
-          encoding: file.encoding,
-          mimetype: file.mimetype,
-          size: file.size
-        });
-        callback(null, true);
-      },
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB for slider images
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'file', maxCount: 1 }
+      ],
+      {
+        fileFilter: (req, file, callback) => {
+          console.log('🔍 DEBUG: Slider FileInterceptor fileFilter called');
+          console.log('  File object:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            encoding: file.encoding,
+            mimetype: file.mimetype,
+            size: file.size
+          });
+          callback(null, true);
+        },
+        limits: {
+          fileSize: 10 * 1024 * 1024, // 10MB for slider images
+        }
       }
-    })
+    )
   )
   @ApiOperation({ summary: 'Upload slider image (Admin)' })
   @ApiConsumes('multipart/form-data')
@@ -309,7 +337,8 @@ export class AdminSliderController {
   async uploadSliderImage(
     @Res() response: Response,
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
     @Request() req: any,
   ): Promise<void> {
     try {
@@ -321,6 +350,7 @@ export class AdminSliderController {
       console.log('  Content-Length:', req.headers['content-length']);
       console.log('  Authorization:', req.headers['authorization'] ? 'Present' : 'Missing');
       
+      const file = files?.image?.[0] || files?.file?.[0];
       console.log('📁 File Information:');
       if (file) {
         console.log('  ✅ File received:');
@@ -358,21 +388,27 @@ export class AdminSliderController {
 
   @Post('upload-with-slider')
   @UseInterceptors(
-    FileInterceptor('file', {
-      fileFilter: (req, file, callback) => {
-        console.log('🔍 DEBUG: Slider Upload with Creation FileInterceptor called');
-        console.log('  File object:', {
-          fieldname: file.fieldname,
-          originalname: file.originalname,
-          mimetype: file.mimetype,
-          size: file.size
-        });
-        callback(null, true);
-      },
-      limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB for slider images
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'file', maxCount: 1 }
+      ],
+      {
+        fileFilter: (req, file, callback) => {
+          console.log('🔍 DEBUG: Slider Upload with Creation FileInterceptor called');
+          console.log('  File object:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          });
+          callback(null, true);
+        },
+        limits: {
+          fileSize: 10 * 1024 * 1024, // 10MB for slider images
+        }
       }
-    })
+    )
   )
   @ApiOperation({ summary: 'Create slider with image upload (Admin)' })
   @ApiConsumes('multipart/form-data')
@@ -382,7 +418,8 @@ export class AdminSliderController {
   @Roles('ADMIN', 'EDITOR')
   async createSliderWithImage(
     @Res() response: Response,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
     @Body() sliderData: any, // Form data will be parsed from multipart
     @Request() req: any,
   ): Promise<void> {
@@ -390,6 +427,7 @@ export class AdminSliderController {
       console.log('🔍 DEBUG: Create Slider with Image Upload');
       console.log('=====================================');
       
+      const file = files?.image?.[0] || files?.file?.[0];
       console.log('📁 File Information:');
       if (file) {
         console.log('  ✅ File received:');
