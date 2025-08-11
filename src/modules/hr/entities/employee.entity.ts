@@ -10,10 +10,12 @@ export class Employee {
   telephone?: string;
   email?: string;
   roomNumber?: string;
+  photoMediaId?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
   
   // Relations (for future implementation)
   department?: any;
+  photo?: any;
 } 

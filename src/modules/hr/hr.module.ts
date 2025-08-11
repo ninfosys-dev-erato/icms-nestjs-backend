@@ -8,8 +8,10 @@ import { DepartmentService } from './services/department.service';
 import { EmployeeService } from './services/employee.service';
 import { DepartmentRepository } from './repositories/department.repository';
 import { EmployeeRepository } from './repositories/employee.repository';
+import { MediaModule } from '../media/media.module';
 
 @Module({
+  imports: [MediaModule],
   controllers: [
     PublicDepartmentController,
     PublicEmployeeController,

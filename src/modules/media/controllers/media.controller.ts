@@ -22,7 +22,7 @@ import {
   Injectable,
   ArgumentMetadata,
 } from '@nestjs/common';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { MediaService } from '../services/media.service';
 import { 
@@ -81,12 +81,17 @@ export class MediaController {
 
   @Post('upload')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Upload a single file' })
+  @ApiOperation({ summary: 'Upload a single file (accepts file or image field)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
+        image: {
+          type: 'string',
+          format: 'binary',
+          description: 'File to upload (alternative field to file)',
+        },
         file: {
           type: 'string',
           format: 'binary',
@@ -97,29 +102,13 @@ export class MediaController {
           enum: Object.values(MediaFolder),
           description: 'Target folder for the file',
         },
-        altText: {
-          type: 'string',
-          description: 'Alt text for accessibility',
-        },
-        title: {
-          type: 'string',
-          description: 'Media title',
-        },
-        description: {
-          type: 'string',
-          description: 'Media description',
-        },
-        tags: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Searchable tags',
-        },
-        isPublic: {
-          type: 'boolean',
-          description: 'Public visibility flag',
-        },
+        altText: { type: 'string', description: 'Alt text for accessibility' },
+        title: { type: 'string', description: 'Media title' },
+        description: { type: 'string', description: 'Media description' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Searchable tags' },
+        isPublic: { type: 'boolean', description: 'Public visibility flag' },
       },
-      required: ['file', 'folder'],
+      required: ['folder'],
     },
   })
   @ApiResponse({ status: 201, description: 'File uploaded successfully' })
@@ -127,32 +116,30 @@ export class MediaController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiBearerAuth()
   @UseInterceptors(
-    FileInterceptor('file', {
-      // Add logging to see what's happening during file upload
-      fileFilter: (req, file, callback) => {
-        console.log('🔍 DEBUG: FileInterceptor fileFilter called');
-        console.log('  File object:', {
-          fieldname: file.fieldname,
-          originalname: file.originalname,
-          encoding: file.encoding,
-          mimetype: file.mimetype,
-          size: file.size
-        });
-        console.log('  Request body before file processing:', req.body);
-        callback(null, true);
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'file', maxCount: 1 },
+      ],
+      {
+        fileFilter: (req, file, callback) => {
+          console.log('🔍 DEBUG: Media FileFieldsInterceptor fileFilter called');
+          console.log('  File object:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            encoding: file.encoding,
+            mimetype: file.mimetype,
+            size: file.size,
+          });
+          console.log('  Request body before file processing:', req.body);
+          callback(null, true);
+        },
       }
-    })
+    )
   )
   async uploadFile(
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 50 * 1024 * 1024 }), // 50MB max
-          new FileTypeValidator({ fileType: '.(jpg|jpeg|png|gif|webp|svg|pdf|doc|docx|mp4|webm|mov|mp3|wav|ogg)' }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
+    @UploadedFiles()
+    files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
     @Body(new FormDataArrayPipe()) metadata: FileUploadValidationDto,
     @Request() req: any,
   ) {
@@ -168,6 +155,7 @@ export class MediaController {
     
     // Log file information
     console.log('📁 File Information:');
+    const file = files?.image?.[0] || files?.file?.[0];
     if (file) {
       console.log('  ✅ File received:');
       console.log('    - originalname:', file.originalname);
@@ -208,6 +196,10 @@ export class MediaController {
 
     if (!metadata.folder) {
       throw new BadRequestException('Folder is required');
+    }
+
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
     }
 
     return this.mediaService.uploadMedia(file, metadata, req.user.id);
@@ -476,6 +468,56 @@ export class MediaController {
     }
 
     return this.mediaService.updateMedia(id, updateDto);
+  }
+
+  @Put(':id/file')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Replace media file (multipart). Also accepts metadata fields' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        image: { type: 'string', format: 'binary', description: 'New file to upload (alternative field to file)' },
+        file: { type: 'string', format: 'binary', description: 'New file to upload' },
+        folder: { type: 'string', enum: Object.values(MediaFolder), description: 'Target folder (defaults to existing)' },
+        altText: { type: 'string' },
+        title: { type: 'string' },
+        description: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' } },
+        isPublic: { type: 'boolean' },
+        isActive: { type: 'boolean' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Media file replaced successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid file or validation error' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Media not found' })
+  @ApiBearerAuth()
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'image', maxCount: 1 },
+      { name: 'file', maxCount: 1 },
+    ])
+  )
+  async replaceMediaFile(
+    @Param('id') id: string,
+    @UploadedFiles() files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
+    @Body(new FormDataArrayPipe()) metadata: FileUploadValidationDto,
+    @Request() req: any,
+  ) {
+    const media = await this.mediaService.getMediaById(id);
+    if (media.uploadedBy !== req.user.id && req.user.role !== UserRole.ADMIN) {
+      throw new BadRequestException('You can only update your own media');
+    }
+
+    const file = files?.image?.[0] || files?.file?.[0];
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    return this.mediaService.replaceMediaFile(id, file, metadata, req.user.id);
   }
 
   @Post(':id/process')

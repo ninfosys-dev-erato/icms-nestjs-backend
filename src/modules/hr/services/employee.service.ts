@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { MediaService } from '../../media/services/media.service';
 import { EmployeeRepository } from '../repositories/employee.repository';
 import { 
   CreateEmployeeDto, 
@@ -13,7 +14,10 @@ import {
 
 @Injectable()
 export class EmployeeService {
-  constructor(private readonly employeeRepository: EmployeeRepository) {}
+  constructor(
+    private readonly employeeRepository: EmployeeRepository,
+    private readonly mediaService: MediaService,
+  ) {}
 
   async getEmployeeById(id: string): Promise<EmployeeResponseDto> {
     const employee = await this.employeeRepository.findById(id);
@@ -21,7 +25,7 @@ export class EmployeeService {
       throw new NotFoundException('Employee not found');
     }
 
-    return this.transformToResponseDto(employee);
+    return await this.transformToResponseDto(employee);
   }
 
   async getAllEmployees(query: EmployeeQueryDto): Promise<{
@@ -31,7 +35,7 @@ export class EmployeeService {
     const result = await this.employeeRepository.findAll(query);
     
     return {
-      data: result.data.map(employee => this.transformToResponseDto(employee)),
+      data: await Promise.all(result.data.map(employee => this.transformToResponseDto(employee))),
       pagination: result.pagination
     };
   }
@@ -43,7 +47,7 @@ export class EmployeeService {
     const result = await this.employeeRepository.findActive(query);
     
     return {
-      data: result.data.map(employee => this.transformToResponseDto(employee)),
+      data: await Promise.all(result.data.map(employee => this.transformToResponseDto(employee))),
       pagination: result.pagination
     };
   }
@@ -55,7 +59,7 @@ export class EmployeeService {
     const result = await this.employeeRepository.search(searchTerm, query);
     
     return {
-      data: result.data.map(employee => this.transformToResponseDto(employee)),
+      data: await Promise.all(result.data.map(employee => this.transformToResponseDto(employee))),
       pagination: result.pagination
     };
   }
@@ -67,7 +71,7 @@ export class EmployeeService {
     }
 
     const employee = await this.employeeRepository.create(data, userId);
-    return this.transformToResponseDto(employee);
+    return await this.transformToResponseDto(employee);
   }
 
   async updateEmployee(id: string, data: UpdateEmployeeDto, userId: string): Promise<EmployeeResponseDto> {
@@ -82,7 +86,7 @@ export class EmployeeService {
     }
 
     const employee = await this.employeeRepository.update(id, data, userId);
-    return this.transformToResponseDto(employee);
+    return await this.transformToResponseDto(employee);
   }
 
   async deleteEmployee(id: string): Promise<void> {
@@ -96,12 +100,12 @@ export class EmployeeService {
 
   async getEmployeesByDepartment(departmentId: string): Promise<EmployeeResponseDto[]> {
     const employees = await this.employeeRepository.findByDepartment(departmentId);
-    return employees.map(employee => this.transformToResponseDto(employee));
+    return Promise.all(employees.map(employee => this.transformToResponseDto(employee)));
   }
 
   async getEmployeesByPosition(position: string): Promise<EmployeeResponseDto[]> {
     const employees = await this.employeeRepository.findByPosition(position);
-    return employees.map(employee => this.transformToResponseDto(employee));
+    return Promise.all(employees.map(employee => this.transformToResponseDto(employee)));
   }
 
   async validateEmployee(data: CreateEmployeeDto | UpdateEmployeeDto): Promise<ValidationResult> {
@@ -256,7 +260,25 @@ export class EmployeeService {
     return result;
   }
 
-  private transformToResponseDto(employee: any): EmployeeResponseDto {
+  private async transformToResponseDto(employee: any): Promise<EmployeeResponseDto> {
+    // Try to append a presigned URL to the photo if available
+    let photoWithPresignedUrl = employee.photo;
+    if (employee.photo && employee.photoMediaId) {
+      try {
+        const presignedUrl = await this.mediaService.generatePresignedUrl(
+          employee.photoMediaId,
+          'get',
+          86400 // 24 hours
+        );
+        photoWithPresignedUrl = {
+          ...employee.photo,
+          presignedUrl,
+        };
+      } catch (_) {
+        // ignore URL generation errors
+      }
+    }
+
     return {
       id: employee.id,
       name: employee.name,
@@ -267,10 +289,185 @@ export class EmployeeService {
       telephone: employee.telephone,
       email: employee.email,
       roomNumber: employee.roomNumber,
+      photoMediaId: employee.photoMediaId,
+      photo: photoWithPresignedUrl,
       isActive: employee.isActive,
       department: employee.department,
       createdAt: employee.createdAt,
       updatedAt: employee.updatedAt
     };
+  }
+
+  async uploadEmployeePhoto(
+    id: string,
+    file: Express.Multer.File,
+    userId: string
+  ): Promise<EmployeeResponseDto> {
+    const existingEmployee = await this.employeeRepository.findById(id);
+    if (!existingEmployee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type. Only JPG, PNG, WebP, and GIF are allowed');
+    }
+
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size too large. Maximum size is 10MB');
+    }
+
+    const metadata = {
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      folder: 'employees',
+      altText: `Employee photo: ${existingEmployee.name?.en || 'Unnamed'}`,
+      title: `Employee Photo`,
+      description: `Photo for employee ${existingEmployee.name?.en || existingEmployee.id}`,
+      tags: ['employee', 'photo', 'profile'],
+      isPublic: true,
+    } as any;
+
+    const mediaResponse = await this.mediaService.uploadMedia(file, metadata, userId);
+    if (!mediaResponse.success || !mediaResponse.data) {
+      throw new BadRequestException('Failed to upload media: ' + (mediaResponse.message || 'Unknown error'));
+    }
+
+    // Delete old photo if exists
+    if (existingEmployee.photoMediaId) {
+      try {
+        await this.mediaService.deleteMedia(existingEmployee.photoMediaId);
+      } catch {
+        // ignore
+      }
+    }
+
+    const updated = await this.employeeRepository.update(
+      id,
+      { photoMediaId: mediaResponse.data.id } as any,
+      userId
+    );
+
+    return await this.transformToResponseDto(updated);
+  }
+
+  async removeEmployeePhoto(id: string, userId: string): Promise<EmployeeResponseDto> {
+    const existingEmployee = await this.employeeRepository.findById(id);
+    if (!existingEmployee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    if (existingEmployee.photoMediaId) {
+      try {
+        await this.mediaService.deleteMedia(existingEmployee.photoMediaId);
+      } catch {
+        // ignore
+      }
+    }
+
+    const updated = await this.employeeRepository.update(
+      id,
+      { photoMediaId: undefined } as any,
+      userId
+    );
+
+    return await this.transformToResponseDto(updated);
+  }
+
+  async createEmployeeWithImage(
+    file: Express.Multer.File,
+    employeeData: any,
+    userId: string
+  ): Promise<EmployeeResponseDto> {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type. Only JPG, PNG, WebP, and GIF are allowed');
+    }
+
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size too large. Maximum size is 10MB');
+    }
+
+    // Helpers to parse fields from multipart form data
+    const parseNumber = (val: any, fallback: number): number => {
+      if (typeof val === 'number' && !isNaN(val)) return val;
+      const parsed = parseInt(val, 10);
+      return isNaN(parsed) ? fallback : parsed;
+    };
+    const parseBoolean = (val: any, fallback = true): boolean => {
+      if (typeof val === 'boolean') return val;
+      if (typeof val === 'string') {
+        const lowered = val.toLowerCase();
+        if (['true', '1', 'yes', 'on'].includes(lowered)) return true;
+        if (['false', '0', 'no', 'off'].includes(lowered)) return false;
+      }
+      return fallback;
+    };
+    const buildTranslatable = (baseKey: string): any | undefined => {
+      try {
+        const raw = employeeData[baseKey];
+        if (raw && typeof raw === 'string') {
+          const s = raw.trim();
+          if ((s.startsWith('{') && s.endsWith('}')) || s.includes('"en"')) {
+            return JSON.parse(s);
+          }
+        }
+      } catch (_) {}
+      const en = employeeData[`${baseKey}[en]`] ?? employeeData[`${baseKey}.en`] ?? employeeData.en;
+      const ne = employeeData[`${baseKey}[ne]`] ?? employeeData[`${baseKey}.ne`] ?? employeeData.ne;
+      if (en || ne) return { en: en ?? '', ne: ne ?? '' };
+      return undefined;
+    };
+
+    const createDto: CreateEmployeeDto = {
+      name: buildTranslatable('name')!,
+      departmentId: employeeData.departmentId,
+      position: buildTranslatable('position')!,
+      order: employeeData.order ? parseNumber(employeeData.order, 0) : 0,
+      mobileNumber: employeeData.mobileNumber,
+      telephone: employeeData.telephone,
+      email: employeeData.email,
+      roomNumber: employeeData.roomNumber,
+      isActive: employeeData.isActive ? parseBoolean(employeeData.isActive, true) : true,
+      photoMediaId: '' // will be set after media upload
+    } as any;
+
+    const validation = await this.validateEmployee(createDto);
+    if (!validation.isValid) {
+      throw new BadRequestException('Employee validation failed', { cause: validation.errors });
+    }
+
+    const metadata = {
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      folder: 'employees',
+      altText: `Employee photo: ${createDto.name?.en || 'Unnamed'}`,
+      title: 'Employee Photo',
+      description: `Photo for employee ${createDto.name?.en || ''}`,
+      tags: ['employee', 'photo', 'profile'],
+      isPublic: true,
+    } as any;
+
+    const mediaResponse = await this.mediaService.uploadMedia(file, metadata, userId);
+    if (!mediaResponse.success || !mediaResponse.data) {
+      throw new BadRequestException('Failed to upload media: ' + (mediaResponse.message || 'Unknown error'));
+    }
+
+    createDto.photoMediaId = mediaResponse.data.id;
+
+    const employee = await this.employeeRepository.create(createDto, userId);
+    return await this.transformToResponseDto(employee);
   }
 } 

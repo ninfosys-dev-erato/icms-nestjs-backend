@@ -234,6 +234,50 @@ export class MediaRepository {
     }
   }
 
+  async updateCoreFileFields(
+    id: string,
+    core: {
+      fileName: string;
+      originalName: string;
+      url: string;
+      fileId: string;
+      size: number;
+      contentType: string;
+      folder: string;
+      category: MediaCategory;
+    },
+    meta: UpdateMediaDto
+  ): Promise<MediaResponseDto> {
+    try {
+      const media = await this.prisma.media.update({
+        where: { id },
+        data: {
+          fileName: core.fileName,
+          originalName: core.originalName,
+          url: core.url,
+          fileId: core.fileId,
+          size: core.size,
+          contentType: core.contentType,
+          folder: core.folder,
+          category: core.category,
+          altText: meta.altText,
+          title: meta.title,
+          description: meta.description,
+          tags: meta.tags,
+          isPublic: meta.isPublic,
+          isActive: meta.isActive,
+          metadata: meta.metadata,
+        },
+      });
+
+      this.logger.debug(`Media core fields updated: ${id}`);
+      return this.transformToResponseDto(media);
+    } catch (error) {
+      this.logger.error(`Failed to update core fields for media ${id}: ${error.message}`);
+      throw error;
+    }
+  }
+
   async delete(id: string): Promise<void> {
     try {
       await this.prisma.media.delete({

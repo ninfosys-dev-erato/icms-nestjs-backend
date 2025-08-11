@@ -162,6 +162,95 @@ export class MediaService {
     }
   }
 
+  async replaceMediaFile(
+    mediaId: string,
+    file: Express.Multer.File,
+    metadata: Partial<FileUploadValidationDto & UpdateMediaDto>,
+    userId: string
+  ): Promise<MediaResponseDto> {
+    try {
+      this.logger.log(`Replacing media file for ${mediaId}`);
+      const existing = await this.mediaRepository.findById(mediaId);
+      if (!existing) {
+        throw new NotFoundException('Media not found');
+      }
+
+      const targetFolder = metadata.folder || existing.folder || MediaFolder.GENERAL;
+
+      // Validate new file against folder
+      const validation = await this.validateFile(file, targetFolder);
+      if (!validation.isValid) {
+        throw new BadRequestException({
+          message: 'File validation failed',
+          errors: validation.errors,
+        });
+      }
+
+      // Upload new file to storage
+      const category = this.determineCategory(file.mimetype);
+      const newFileName = this.generateFileName(file.originalname, targetFolder);
+      const uploadResult = await this.fileStorageService.upload(
+        newFileName,
+        file.buffer,
+        file.mimetype,
+        {
+          originalName: file.originalname,
+          uploadedBy: userId,
+          folder: targetFolder,
+          category,
+          altText: metadata.altText ?? existing.altText,
+          title: metadata.title ?? existing.title,
+          description: metadata.description ?? existing.description,
+          ...(metadata.tags && metadata.tags.length > 0 && { tags: metadata.tags.join('-') }),
+          isPublic: (metadata.isPublic ?? existing.isPublic).toString(),
+        }
+      );
+
+      // Delete old file from storage (best-effort)
+      try {
+        await this.fileStorageService.delete(existing.fileName);
+      } catch (err) {
+        this.logger.warn(`Failed to delete old stored file: ${err.message}`);
+      }
+
+      // Build update payload
+      const updatePayload: UpdateMediaDto = {
+        altText: metadata.altText ?? existing.altText,
+        title: metadata.title ?? existing.title,
+        description: metadata.description ?? existing.description,
+        tags: (metadata.tags as string[] | undefined) ?? existing.tags,
+        isPublic: metadata.isPublic ?? existing.isPublic,
+        isActive: metadata.isActive ?? existing.isActive,
+        metadata: {
+          ...(existing.metadata || {}),
+          replacedAt: new Date().toISOString(),
+          previousFileName: existing.fileName,
+          previousUrl: existing.url,
+          newFileName: uploadResult.key,
+          newUrl: uploadResult.url,
+        },
+      };
+
+      // Directly update base file fields via repository prisma call is not exposed;
+      // we need a dedicated repository method, but we can compose by deleting+creating
+      // or extend repository to update core fields. We'll extend repository to support it.
+
+      return await this.mediaRepository.updateCoreFileFields(mediaId, {
+        fileName: uploadResult.key,
+        originalName: file.originalname,
+        url: uploadResult.url,
+        fileId: uploadResult.etag || existing.fileId,
+        size: file.size,
+        contentType: file.mimetype,
+        folder: targetFolder,
+        category,
+      }, updatePayload);
+    } catch (error) {
+      this.logger.error(`Failed to replace media file for ${mediaId}: ${error.message}`);
+      throw error;
+    }
+  }
+
   async bulkUpload(
     files: Express.Multer.File[],
     metadata: FileUploadValidationDto,

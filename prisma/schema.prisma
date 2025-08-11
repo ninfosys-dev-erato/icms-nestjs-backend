@@ -312,6 +312,8 @@ model Media {
   sliders       Slider[]
   officeSettings OfficeSettings[]
   profilePictures User[] @relation("ProfilePicture")
+  // Employee photos relation
+  employeePhotos  Employee[] @relation("EmployeePhoto")
   // content       Content[] // For future content module - commented out until Content model is updated
 
   @@map("media")
@@ -430,12 +432,14 @@ model Employee {
   telephone    String?
   email        String?
   roomNumber   String?
+  photoMediaId String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   // Relations
   department Department @relation(fields: [departmentId], references: [id])
+  photo      Media?     @relation("EmployeePhoto", fields: [photoMediaId], references: [id])
 
   @@map("employees")
 }

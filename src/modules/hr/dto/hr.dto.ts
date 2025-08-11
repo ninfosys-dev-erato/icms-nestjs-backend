@@ -160,6 +160,11 @@ export class CreateEmployeeDto {
   @IsString()
   roomNumber?: string;
 
+  @ApiPropertyOptional({ example: 'media_id' })
+  @IsOptional()
+  @IsString()
+  photoMediaId?: string;
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
@@ -209,6 +214,11 @@ export class UpdateEmployeeDto {
   @IsString()
   roomNumber?: string;
 
+  @ApiPropertyOptional({ example: 'media_id' })
+  @IsOptional()
+  @IsString()
+  photoMediaId?: string;
+
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
@@ -245,6 +255,12 @@ export class EmployeeResponseDto {
 
   @ApiProperty({ example: true })
   isActive: boolean;
+
+  @ApiPropertyOptional({ example: 'media_id' })
+  photoMediaId?: string;
+
+  @ApiPropertyOptional({ type: 'object', additionalProperties: true })
+  photo?: any;
 
   @ApiPropertyOptional()
   department?: DepartmentResponseDto;

@@ -273,6 +273,103 @@ export class AdminEmployeeController {
     }
   }
 
+  @Post(':id/photo')
+  @ApiOperation({ summary: 'Upload/replace employee photo (Admin)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  @Roles('ADMIN', 'EDITOR')
+  async uploadEmployeePhoto(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any
+  ): Promise<void> {
+    try {
+      const employee = await this.employeeService.uploadEmployeePhoto(id, file, user.id);
+      const apiResponse = ApiResponseBuilder.success(employee);
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.status || 400;
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTO_UPLOAD_ERROR',
+        error.message
+      );
+      response.status(status).json(apiResponse);
+    }
+  }
+
+  @Delete(':id/photo')
+  @ApiOperation({ summary: 'Remove employee photo (Admin)' })
+  @Roles('ADMIN', 'EDITOR')
+  async removeEmployeePhoto(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @CurrentUser() user: any
+  ): Promise<void> {
+    try {
+      const employee = await this.employeeService.removeEmployeePhoto(id, user.id);
+      const apiResponse = ApiResponseBuilder.success(employee);
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.status || 400;
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTO_REMOVE_ERROR',
+        error.message
+      );
+      response.status(status).json(apiResponse);
+    }
+  }
+
+  @Post('upload-with-employee')
+  @ApiOperation({ summary: 'Create employee with image upload (Admin)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  @Roles('ADMIN', 'EDITOR')
+  async createEmployeeWithImage(
+    @Res() response: Response,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() employeeData: any,
+    @CurrentUser() user: any
+  ): Promise<void> {
+    try {
+      const employee = await this.employeeService.createEmployeeWithImage(file, employeeData, user.id);
+      const apiResponse = ApiResponseBuilder.success(employee);
+      response.status(201).json(apiResponse);
+    } catch (error) {
+      const status = error.status || 400;
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_CREATE_WITH_IMAGE_ERROR',
+        error.message
+      );
+      response.status(status).json(apiResponse);
+    }
+  }
+
+  @Put(':id/photo')
+  @ApiOperation({ summary: 'Replace employee photo (Admin)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  @Roles('ADMIN', 'EDITOR')
+  async replaceEmployeePhoto(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any
+  ): Promise<void> {
+    try {
+      const employee = await this.employeeService.uploadEmployeePhoto(id, file, user.id);
+      const apiResponse = ApiResponseBuilder.success(employee);
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.status || 400;
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTO_REPLACE_ERROR',
+        error.message
+      );
+      response.status(status).json(apiResponse);
+    }
+  }
+
   @Get('export')
   @ApiOperation({ summary: 'Export employees (Admin)' })
   @ApiResponse({ status: 200, description: 'Employees exported successfully' })

@@ -16,7 +16,8 @@ export class EmployeeRepository {
     return this.prisma.employee.findUnique({
       where: { id },
       include: {
-        department: true
+        department: true,
+        photo: true
       }
     });
   }
@@ -65,7 +66,8 @@ export class EmployeeRepository {
         take: limit,
         orderBy,
         include: {
-          department: true
+          department: true,
+          photo: true
         }
       }),
       this.prisma.employee.count({ where })
@@ -107,7 +109,8 @@ export class EmployeeRepository {
         take: limit,
         orderBy,
         include: {
-          department: true
+          department: true,
+          photo: true
         }
       }),
       this.prisma.employee.count({ where })
@@ -189,7 +192,8 @@ export class EmployeeRepository {
         take: limit,
         orderBy,
         include: {
-          department: true
+          department: true,
+          photo: true
         }
       }),
       this.prisma.employee.count({ where })
@@ -221,10 +225,12 @@ export class EmployeeRepository {
         telephone: data.telephone,
         email: data.email,
         roomNumber: data.roomNumber,
+        photoMediaId: data.photoMediaId,
         isActive: data.isActive ?? true
       },
       include: {
-        department: true
+        department: true,
+        photo: true
       }
     });
   }
@@ -241,10 +247,12 @@ export class EmployeeRepository {
         telephone: data.telephone,
         email: data.email,
         roomNumber: data.roomNumber,
+        photoMediaId: (data as any).photoMediaId,
         isActive: data.isActive
       },
       include: {
-        department: true
+        department: true,
+        photo: true
       }
     });
   }
@@ -262,7 +270,8 @@ export class EmployeeRepository {
         isActive: true
       },
       include: {
-        department: true
+        department: true,
+        photo: true
       },
       orderBy: { order: 'asc' }
     });
@@ -278,7 +287,8 @@ export class EmployeeRepository {
         isActive: true
       },
       include: {
-        department: true
+        department: true,
+        photo: true
       },
       orderBy: { order: 'asc' }
     });
