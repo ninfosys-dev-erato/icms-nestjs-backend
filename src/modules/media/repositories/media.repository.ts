@@ -466,6 +466,100 @@ export class MediaRepository {
     }
   }
 
+  // Albums listing
+  async findAlbums(query: { page?: number; limit?: number; isActive?: boolean }): Promise<{
+    data: any[];
+    pagination: { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
+  }> {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.isActive !== undefined) where.isActive = query.isActive;
+
+    const [albums, total] = await Promise.all([
+      this.prisma.mediaAlbum.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          media: true,
+        },
+      }),
+      this.prisma.mediaAlbum.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    return {
+      data: albums,
+      pagination: { page, limit, total, totalPages, hasNext: page < totalPages, hasPrev: page > 1 },
+    };
+  }
+
+  async createAlbum(data: { name: any; description?: any; isActive?: boolean }) {
+    return this.prisma.mediaAlbum.create({
+      data: {
+        name: data.name as any,
+        description: data.description as any,
+        isActive: data.isActive ?? true,
+      },
+    });
+  }
+
+  async updateAlbum(id: string, data: { name?: any; description?: any; isActive?: boolean }) {
+    return this.prisma.mediaAlbum.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined ? { name: data.name as any } : {}),
+        ...(data.description !== undefined ? { description: data.description as any } : {}),
+        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+      },
+    });
+  }
+
+  async deleteAlbum(id: string) {
+    return this.prisma.mediaAlbum.delete({ where: { id } });
+  }
+
+  async attachMediaToAlbum(albumId: string, mediaIds: string[]) {
+    const records = mediaIds.map((mediaId) =>
+      this.prisma.mediaAlbumMedia.create({ data: { mediaAlbumId: albumId, mediaId } })
+    );
+    await this.prisma.$transaction(records);
+    return { attached: mediaIds.length };
+  }
+
+  async detachMediaFromAlbum(albumId: string, mediaId: string) {
+    await this.prisma.mediaAlbumMedia.deleteMany({ where: { mediaAlbumId: albumId, mediaId } });
+    return { detached: 1 };
+  }
+
+  async getAlbumMedia(
+    albumId: string,
+    query: { page?: number; limit?: number }
+  ): Promise<{ data: MediaResponseDto[]; pagination: { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean } }> {
+    const page = query.page || 1;
+    const limit = query.limit || 12;
+    const skip = (page - 1) * limit;
+
+    const [links, total] = await Promise.all([
+      this.prisma.mediaAlbumMedia.findMany({
+        where: { mediaAlbumId: albumId },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.mediaAlbumMedia.count({ where: { mediaAlbumId: albumId } }),
+    ]);
+
+    const media = await this.prisma.media.findMany({ where: { id: { in: links.map((l) => l.mediaId) } } });
+    const mapped = media.map((m) => this.transformToResponseDto(m));
+    const totalPages = Math.ceil(total / limit);
+    return { data: mapped, pagination: { page, limit, total, totalPages, hasNext: page < totalPages, hasPrev: page > 1 } };
+  }
+
   async findByTags(tags: string[], query: MediaQueryDto): Promise<{
     data: MediaResponseDto[];
     pagination: {
@@ -584,6 +678,7 @@ export class MediaRepository {
       fileName: media.fileName,
       originalName: media.originalName,
       url: media.url,
+      // presignedUrl added at service layer where duration/operation context exists
       fileId: media.fileId,
       size: media.size,
       contentType: media.contentType,

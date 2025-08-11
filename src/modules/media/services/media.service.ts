@@ -9,6 +9,11 @@ import {
   MediaSearchDto,
   MediaStatisticsDto,
   MediaLibraryDto,
+  MediaAlbumQueryDto,
+  MediaAlbumResponseDto,
+  CreateMediaAlbumDto,
+  UpdateMediaAlbumDto,
+  AlbumMediaQueryDto,
   MediaCategory,
   MediaFolder,
   FILE_TYPE_CONFIG,
@@ -17,6 +22,7 @@ import {
   BulkOperationResultDto,
   UploadResponseDto,
   BulkUploadResponseDto,
+  BulkUploadMetadataDto,
   MediaProcessingOptionsDto,
   MediaUrlDto,
   MediaImportDto,
@@ -253,7 +259,7 @@ export class MediaService {
 
   async bulkUpload(
     files: Express.Multer.File[],
-    metadata: FileUploadValidationDto,
+    metadata: BulkUploadMetadataDto,
     userId: string
   ): Promise<BulkUploadResponseDto> {
     const uploaded: MediaResponseDto[] = [];
@@ -261,7 +267,19 @@ export class MediaService {
 
     for (const file of files) {
       try {
-        const result = await this.uploadMedia(file, metadata, userId);
+        const perFileMetadata: FileUploadValidationDto = {
+          originalName: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype,
+          folder: metadata.folder,
+          altText: metadata.altText,
+          title: metadata.title,
+          description: metadata.description,
+          tags: metadata.tags,
+          isPublic: metadata.isPublic,
+        };
+
+        const result = await this.uploadMedia(file, perFileMetadata, userId);
         uploaded.push(result.data);
       } catch (error) {
         failed.push({
@@ -288,7 +306,12 @@ export class MediaService {
       throw new NotFoundException('Media not found');
     }
 
-    return media;
+    try {
+      const presignedUrl = await this.fileStorageService.generatePresignedUrl(media.fileName, 'get', 86400);
+      return { ...media, presignedUrl };
+    } catch {
+      return media;
+    }
   }
 
   async getAllMedia(query?: MediaQueryDto): Promise<{
@@ -302,7 +325,19 @@ export class MediaService {
       hasPrev: boolean;
     };
   }> {
-    return this.mediaRepository.findAll(query || {});
+    const result = this.mediaRepository.findAll(query || {});
+    const { data, pagination } = await result;
+    const enriched = await Promise.all(
+      data.map(async (item) => {
+        try {
+          const presignedUrl = await this.fileStorageService.generatePresignedUrl(item.fileName, 'get', 86400);
+          return { ...item, presignedUrl };
+        } catch {
+          return item;
+        }
+      })
+    );
+    return { data: enriched, pagination };
   }
 
   async getMediaByCategory(category: MediaCategory, query?: MediaQueryDto): Promise<{
@@ -316,7 +351,18 @@ export class MediaService {
       hasPrev: boolean;
     };
   }> {
-    return this.mediaRepository.findByCategory(category, query || {});
+    const result = await this.mediaRepository.findByCategory(category, query || {});
+    const enriched = await Promise.all(
+      result.data.map(async (item) => {
+        try {
+          const presignedUrl = await this.fileStorageService.generatePresignedUrl(item.fileName, 'get', 86400);
+          return { ...item, presignedUrl };
+        } catch {
+          return item;
+        }
+      })
+    );
+    return { data: enriched, pagination: result.pagination };
   }
 
   async getMediaByFolder(folder: string, query?: MediaQueryDto): Promise<{
@@ -330,7 +376,18 @@ export class MediaService {
       hasPrev: boolean;
     };
   }> {
-    return this.mediaRepository.findByFolder(folder, query || {});
+    const result = await this.mediaRepository.findByFolder(folder, query || {});
+    const enriched = await Promise.all(
+      result.data.map(async (item) => {
+        try {
+          const presignedUrl = await this.fileStorageService.generatePresignedUrl(item.fileName, 'get', 86400);
+          return { ...item, presignedUrl };
+        } catch {
+          return item;
+        }
+      })
+    );
+    return { data: enriched, pagination: result.pagination };
   }
 
   async getMediaByUser(userId: string, query?: MediaQueryDto): Promise<{
@@ -344,7 +401,18 @@ export class MediaService {
       hasPrev: boolean;
     };
   }> {
-    return this.mediaRepository.findByUser(userId, query || {});
+    const result = await this.mediaRepository.findByUser(userId, query || {});
+    const enriched = await Promise.all(
+      result.data.map(async (item) => {
+        try {
+          const presignedUrl = await this.fileStorageService.generatePresignedUrl(item.fileName, 'get', 86400);
+          return { ...item, presignedUrl };
+        } catch {
+          return item;
+        }
+      })
+    );
+    return { data: enriched, pagination: result.pagination };
   }
 
   async searchMedia(searchDto: MediaSearchDto): Promise<{
@@ -358,7 +426,18 @@ export class MediaService {
       hasPrev: boolean;
     };
   }> {
-    return this.mediaRepository.search(searchDto);
+    const result = await this.mediaRepository.search(searchDto);
+    const enriched = await Promise.all(
+      result.data.map(async (item) => {
+        try {
+          const presignedUrl = await this.fileStorageService.generatePresignedUrl(item.fileName, 'get', 86400);
+          return { ...item, presignedUrl };
+        } catch {
+          return item;
+        }
+      })
+    );
+    return { data: enriched, pagination: result.pagination };
   }
 
   async updateMedia(id: string, data: UpdateMediaDto): Promise<MediaResponseDto> {
@@ -452,7 +531,96 @@ export class MediaService {
   }
 
   async getMediaLibrary(): Promise<MediaLibraryDto> {
-    return this.mediaRepository.getLibrary();
+    const lib = await this.mediaRepository.getLibrary();
+    // Enrich recent and popular with presigned URLs for immediate display
+    const enrich = async (items: MediaResponseDto[]) => Promise.all(items.map(async (item) => {
+      try {
+        const presignedUrl = await this.fileStorageService.generatePresignedUrl(item.fileName, 'get', 86400);
+        return { ...item, presignedUrl };
+      } catch {
+        return item;
+      }
+    }));
+
+    const [recent, popular] = await Promise.all([
+      enrich(lib.recent),
+      enrich(lib.popular),
+    ]);
+
+    return { ...lib, recent, popular };
+  }
+
+  async getAlbums(query: MediaAlbumQueryDto): Promise<{
+    data: MediaAlbumResponseDto[];
+    pagination: { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean };
+  }> {
+    const result = await this.mediaRepository.findAlbums(query);
+    // Map album to response with mediaCount and coverMedia (first media relation if any)
+    const data: MediaAlbumResponseDto[] = await Promise.all(result.data.map(async (album: any) => {
+      const mediaCount = Array.isArray(album.media) ? album.media.length : 0;
+      let coverMedia: MediaResponseDto & { presignedUrl?: string } | undefined;
+      if (mediaCount > 0) {
+        // find first media detail via Media table
+        try {
+          const mam = album.media[0];
+          const media = await this.mediaRepository.findById(mam.mediaId);
+          if (media) {
+            try {
+              const presignedUrl = await this.fileStorageService.generatePresignedUrl(media.fileName, 'get', 86400);
+              coverMedia = { ...media, presignedUrl };
+            } catch {
+              coverMedia = media;
+            }
+          }
+        } catch {}
+      }
+      return {
+        id: album.id,
+        name: album.name,
+        description: album.description,
+        isActive: album.isActive,
+        createdAt: album.createdAt,
+        updatedAt: album.updatedAt,
+        mediaCount,
+        coverMedia,
+      };
+    }));
+
+    return { data, pagination: result.pagination };
+  }
+
+  async createAlbum(dto: CreateMediaAlbumDto) {
+    return this.mediaRepository.createAlbum({ name: dto.name, description: dto.description, isActive: dto.isActive });
+  }
+
+  async updateAlbum(id: string, dto: UpdateMediaAlbumDto) {
+    return this.mediaRepository.updateAlbum(id, dto);
+  }
+
+  async deleteAlbum(id: string) {
+    await this.mediaRepository.deleteAlbum(id);
+    return { message: 'Album deleted successfully' };
+  }
+
+  async attachMediaToAlbum(albumId: string, mediaIds: string[]) {
+    return this.mediaRepository.attachMediaToAlbum(albumId, mediaIds);
+  }
+
+  async detachMediaFromAlbum(albumId: string, mediaId: string) {
+    return this.mediaRepository.detachMediaFromAlbum(albumId, mediaId);
+  }
+
+  async getAlbumMedia(albumId: string, query: AlbumMediaQueryDto) {
+    const result = await this.mediaRepository.getAlbumMedia(albumId, query);
+    const enriched = await Promise.all(result.data.map(async (item) => {
+      try {
+        const presignedUrl = await this.fileStorageService.generatePresignedUrl(item.fileName, 'get', 86400);
+        return { ...item, presignedUrl };
+      } catch {
+        return item;
+      }
+    }));
+    return { data: enriched, pagination: result.pagination };
   }
 
   async getMediaUrl(mediaUrlDto: MediaUrlDto): Promise<string> {
@@ -470,7 +638,12 @@ export class MediaService {
       );
     }
 
-    return media.url;
+    // If no explicit expiration requested, provide a default presigned URL for convenience
+    return this.fileStorageService.generatePresignedUrl(
+      media.fileName,
+      'get',
+      86400
+    );
   }
 
   async generatePresignedUrl(
@@ -754,10 +927,24 @@ export class MediaService {
   }
 
   private getFileTypeConfig(mimeType: string): any {
-    for (const [key, config] of Object.entries(FILE_TYPE_CONFIG)) {
-      if (config.types.includes(mimeType)) {
+    const normalized = (mimeType || '').toLowerCase();
+    for (const [, config] of Object.entries(FILE_TYPE_CONFIG)) {
+      if (config.types.some((t) => t.toLowerCase() === normalized)) {
         return config;
       }
+    }
+    // Fallback by MIME family to reduce false negatives
+    if (normalized.startsWith('image/')) {
+      return FILE_TYPE_CONFIG.images;
+    }
+    if (normalized.startsWith('video/')) {
+      return FILE_TYPE_CONFIG.videos;
+    }
+    if (normalized.startsWith('audio/')) {
+      return FILE_TYPE_CONFIG.audio;
+    }
+    if (normalized === 'application/pdf' || normalized.includes('word')) {
+      return FILE_TYPE_CONFIG.documents;
     }
     return null;
   }

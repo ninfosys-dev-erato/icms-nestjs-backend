@@ -29,9 +29,9 @@ export interface FileTypeConfig {
 
 export const FILE_TYPE_CONFIG: Record<string, FileTypeConfig> = {
   images: {
-    types: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'],
-    maxSize: 5 * 1024 * 1024, // 5MB
-    folders: ['sliders', 'office-settings', 'users', 'content', 'general']
+    types: ['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp', 'image/gif', 'image/svg+xml', 'image/heic', 'image/heif'],
+    maxSize: 50 * 1024 * 1024, // 50MB (align with controller validator)
+    folders: Object.values(MediaFolder)
   },
   documents: {
     types: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
@@ -163,6 +163,7 @@ export class MediaResponseDto {
   fileName: string;
   originalName: string;
   url: string;
+  presignedUrl?: string;
   fileId: string;
   size: number;
   contentType: string;
@@ -326,6 +327,7 @@ export class FileUploadValidationDto {
   @IsNotEmpty()
   originalName: string;
 
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   size: number;
@@ -334,6 +336,38 @@ export class FileUploadValidationDto {
   @IsNotEmpty()
   mimetype: string;
 
+  @IsString()
+  @IsNotEmpty()
+  folder: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  altText?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+}
+
+// Bulk Upload Metadata DTO (does not require per-file fields like originalName/size/mimetype)
+export class BulkUploadMetadataDto {
   @IsString()
   @IsNotEmpty()
   folder: string;
@@ -456,6 +490,82 @@ export class MediaFolderStructureDto {
     type: string;
     lastModified: Date;
   }>;
+}
+
+// Media Album DTOs
+export class MediaAlbumQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  limit?: number = 10;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class MediaAlbumResponseDto {
+  id: string;
+  name: any; // translatable
+  description?: any;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  mediaCount: number;
+  coverMedia?: MediaResponseDto & { presignedUrl?: string };
+}
+
+export class CreateMediaAlbumDto {
+  @IsNotEmpty()
+  name: any; // translatable object { en, ne }
+
+  @IsOptional()
+  description?: any;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UpdateMediaAlbumDto {
+  @IsOptional()
+  name?: any;
+
+  @IsOptional()
+  description?: any;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class AttachMediaToAlbumDto {
+  @IsArray()
+  @IsString({ each: true })
+  mediaIds: string[];
+}
+
+export class AlbumMediaQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  limit?: number = 12;
 }
 
 // Media Import DTO
