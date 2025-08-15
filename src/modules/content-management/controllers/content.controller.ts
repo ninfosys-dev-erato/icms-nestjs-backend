@@ -14,7 +14,7 @@ import { ContentQueryDto, ContentStatus } from '../dto/content-management.dto';
 import { ApiResponseBuilder } from '../../../common/types/api-response';
 
 @ApiTags('Content')
-@Controller('content')
+@Controller(['content', 'contents'])
 export class ContentController {
   constructor(
     private readonly contentService: ContentService,

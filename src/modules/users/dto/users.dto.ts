@@ -1,4 +1,4 @@
-import { IsEmail, IsString, IsOptional, IsBoolean, IsEnum, IsArray } from 'class-validator';
+import { IsEmail, IsString, IsOptional, IsBoolean, IsEnum, IsArray, IsNotEmpty } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 type UserRole = 'ADMIN' | 'EDITOR' | 'VIEWER';
@@ -278,4 +278,17 @@ export class UpdateUserProfileDto {
   @IsOptional()
   @IsString()
   avatarUrl?: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ example: 'newPassword123' })
+  @IsString()
+  @IsNotEmpty()
+  newPassword: string;
+}
+
+export class EmailVerificationDto {
+  @ApiProperty({ example: true })
+  @IsBoolean()
+  isEmailVerified: boolean;
 } 

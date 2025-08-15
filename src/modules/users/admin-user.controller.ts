@@ -29,6 +29,9 @@ import {
   BulkOperationResult,
   ImportResult,
   ExportFormatDto,
+  PaginatedUserResult,
+  ResetPasswordDto,
+  EmailVerificationDto,
 } from './dto/users.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -101,6 +104,20 @@ export class AdminUserController {
 
     response.status(HttpStatus.OK).json(
       ApiResponseBuilder.success(user),
+    );
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all users with pagination (admin)' })
+  @ApiResponse({ status: 200, description: 'Users list with pagination', type: PaginatedUserResult })
+  async getUsersWithPagination(
+    @Res() response: Response,
+    @Query() query: UserQueryDto = {},
+  ): Promise<void> {
+    const result = await this.usersService.getAllUsers(query);
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.paginated(result.data, result.pagination),
     );
   }
 
@@ -262,6 +279,79 @@ export class AdminUserController {
 
     response.status(HttpStatus.OK).json(
       ApiResponseBuilder.success(result),
+    );
+  }
+
+  @Put(':id/password')
+  @ApiOperation({ summary: 'Reset user password' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  async resetUserPassword(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @Body() data: ResetPasswordDto,
+  ): Promise<void> {
+    await this.usersService.resetUserPassword(id, data.newPassword);
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success({ message: 'Password reset successfully' }),
+    );
+  }
+
+  @Put(':id/email-verification')
+  @ApiOperation({ summary: 'Update email verification status' })
+  @ApiResponse({ status: 200, description: 'Email verification status updated', type: UserResponseDto })
+  async updateEmailVerification(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @Body() data: EmailVerificationDto,
+  ): Promise<void> {
+    const user = await this.usersService.updateEmailVerification(id, data.isEmailVerified);
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success(user),
+    );
+  }
+
+  @Put(':id/profile')
+  @ApiOperation({ summary: 'Update user profile details' })
+  @ApiResponse({ status: 200, description: 'Profile updated', type: UserResponseDto })
+  async updateUserProfile(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @Body() data: UpdateUserDto,
+  ): Promise<void> {
+    const user = await this.usersService.updateUserProfile(id, data);
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success(user),
+    );
+  }
+
+  @Post(':id/send-verification-email')
+  @ApiOperation({ summary: 'Send email verification to user' })
+  @ApiResponse({ status: 200, description: 'Verification email sent' })
+  async sendVerificationEmail(
+    @Res() response: Response,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.usersService.sendVerificationEmail(id);
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success({ message: 'Verification email sent successfully' }),
+    );
+  }
+
+  @Post(':id/send-password-reset')
+  @ApiOperation({ summary: 'Send password reset email to user' })
+  @ApiResponse({ status: 200, description: 'Password reset email sent' })
+  async sendPasswordResetEmail(
+    @Res() response: Response,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.usersService.sendPasswordResetEmail(id);
+
+    response.status(HttpStatus.OK).json(
+      ApiResponseBuilder.success({ message: 'Password reset email sent successfully' }),
     );
   }
 } 

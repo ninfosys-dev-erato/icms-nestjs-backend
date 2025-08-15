@@ -53,7 +53,7 @@ class DownloadInterceptor implements NestInterceptor {
 }
 
 @ApiTags('Content Attachments')
-@Controller('attachments')
+@Controller(['attachments', 'content/attachments'])
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'EDITOR')
 @ApiBearerAuth()

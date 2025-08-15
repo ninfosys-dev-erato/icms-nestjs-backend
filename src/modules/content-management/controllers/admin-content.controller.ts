@@ -27,7 +27,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { ApiResponseBuilder } from '../../../common/types/api-response';
 
 @ApiTags('Admin Content')
-@Controller('admin/content')
+@Controller(['admin/content', 'admin/contents'])
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'EDITOR')
 @ApiBearerAuth()

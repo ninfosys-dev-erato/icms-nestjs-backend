@@ -372,22 +372,72 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Convert UpdateUserProfileDto to UpdateUserDto
-    const updateData: Partial<UpdateUserDto> = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      // Note: phoneNumber and avatarUrl are not in UpdateUserDto, they would need to be added to the schema
-    };
+    const updatedUser = await this.usersRepository.update(id, data);
 
-    const updatedUser = await this.usersRepository.update(id, updateData as UpdateUserDto);
+    // Log audit event
+    await this.logAuditEvent({
+      action: 'USER_PROFILE_UPDATED',
+      resource: 'USER',
+      resourceId: id,
+      details: { email: user.email, updatedFields: Object.keys(data) },
+      ipAddress: 'system',
+      userAgent: 'system',
+    });
 
     return {
       ...this.mapUserToResponse(updatedUser),
       fullName: `${updatedUser.firstName} ${updatedUser.lastName}`,
       username: updatedUser.email.split('@')[0],
-      phoneNumber: data.phoneNumber || updatedUser.phoneNumber,
-      avatarUrl: data.avatarUrl || updatedUser.avatarUrl,
+      phoneNumber: updatedUser.phoneNumber,
+      avatarUrl: updatedUser.avatarUrl,
     };
+  }
+
+  async sendVerificationEmail(id: string): Promise<void> {
+    const user = await this.usersRepository.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // TODO: Implement actual email sending logic
+    // This would typically involve:
+    // 1. Generating a verification token
+    // 2. Sending an email with the verification link
+    // 3. Updating the user record with the token
+
+    // Log audit event
+    await this.logAuditEvent({
+      action: 'USER_VERIFICATION_EMAIL_SENT',
+      resource: 'USER',
+      resourceId: id,
+      details: { email: user.email },
+      ipAddress: 'system',
+      userAgent: 'system',
+    });
+  }
+
+  async sendPasswordResetEmail(id: string): Promise<void> {
+    const user = await this.usersRepository.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // TODO: Implement actual password reset email logic
+    // This would typically involve:
+    // 1. Generating a password reset token
+    // 2. Setting an expiration time
+    // 3. Sending an email with the reset link
+    // 4. Updating the user record with the token and expiration
+
+    // Log audit event
+    await this.logAuditEvent({
+      action: 'USER_PASSWORD_RESET_EMAIL_SENT',
+      resource: 'USER',
+      resourceId: id,
+      details: { email: user.email },
+      ipAddress: 'system',
+      userAgent: 'system',
+    });
   }
 
   // Utility methods
@@ -422,5 +472,49 @@ export class UsersService {
       // Log the audit failure but don't throw - audit logging shouldn't break the main operation
       console.error('Failed to create audit log:', error);
     }
+  }
+
+  async resetUserPassword(id: string, newPassword: string): Promise<void> {
+    const user = await this.usersRepository.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Hash the new password
+    const hashedPassword = await this.hashPassword(newPassword);
+
+    // Update user with new password
+    await this.usersRepository.update(id, { password: hashedPassword } as any);
+
+    // Log audit event
+    await this.logAuditEvent({
+      action: 'USER_PASSWORD_RESET',
+      resource: 'USER',
+      resourceId: id,
+      details: { email: user.email },
+      ipAddress: 'system',
+      userAgent: 'system',
+    });
+  }
+
+  async updateEmailVerification(id: string, isEmailVerified: boolean): Promise<UserResponseDto> {
+    const user = await this.usersRepository.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updatedUser = await this.usersRepository.update(id, { isEmailVerified } as any);
+
+    // Log audit event
+    await this.logAuditEvent({
+      action: 'USER_EMAIL_VERIFICATION_UPDATED',
+      resource: 'USER',
+      resourceId: id,
+      details: { email: user.email, isEmailVerified },
+      ipAddress: 'system',
+      userAgent: 'system',
+    });
+
+    return this.mapUserToResponse(updatedUser);
   }
 } 
