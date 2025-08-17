@@ -159,6 +159,9 @@ export class ContentAttachmentResponseDto {
 
   @ApiProperty({ example: 'https://example.com/download/attachment-id' })
   downloadUrl: string;
+
+  @ApiPropertyOptional({ example: 'https://backblaze-b2-url-with-auth' })
+  presignedUrl?: string;
 }
 
 // ========================================

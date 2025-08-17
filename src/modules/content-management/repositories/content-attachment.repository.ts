@@ -125,4 +125,14 @@ export class ContentAttachmentRepository {
       downloadUrl: `/api/v1/attachments/${attachment.id}/download`,
     }));
   }
+
+  async getAttachmentsWithPresignedUrls(contentId: string, expiresIn?: number): Promise<ContentAttachmentResponseDto[]> {
+    const attachments = await this.findByContent(contentId);
+    
+    return attachments.map(attachment => ({
+      ...attachment,
+      downloadUrl: `/api/v1/attachments/${attachment.id}/download`,
+      presignedUrl: `/api/v1/attachments/${attachment.id}/presigned-url?expiresIn=${expiresIn || 86400}`,
+    }));
+  }
 } 

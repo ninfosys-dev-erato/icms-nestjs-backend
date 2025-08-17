@@ -40,6 +40,16 @@ export class ContentAttachmentService {
     return this.attachmentRepository.getAttachmentsWithDownloadUrls(contentId);
   }
 
+  async getAttachmentsWithPresignedUrls(contentId: string, expiresIn?: number): Promise<ContentAttachmentResponseDto[]> {
+    // Validate content exists
+    const content = await this.contentRepository.findById(contentId);
+    if (!content) {
+      throw new NotFoundException('Content not found');
+    }
+    
+    return this.attachmentRepository.getAttachmentsWithPresignedUrls(contentId, expiresIn);
+  }
+
   async uploadAttachment(contentId: string, file: Express.Multer.File): Promise<ContentAttachmentResponseDto> {
     // Validate file
     const validation = await this.validateFile(file);
@@ -192,5 +202,27 @@ export class ContentAttachmentService {
     }
   }
 
+  async generatePresignedUrl(
+    attachmentId: string,
+    operation: 'get' | 'put',
+    expiresIn?: number
+  ): Promise<string> {
+    const attachment = await this.attachmentRepository.findById(attachmentId);
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found');
+    }
 
+    try {
+      // Generate presigned URL using the file storage service
+      const presignedUrl = await this.fileStorageService.generatePresignedUrl(
+        attachment.filePath,
+        operation,
+        expiresIn
+      );
+
+      return presignedUrl;
+    } catch (error) {
+      throw new Error(`Failed to generate presigned URL: ${error.message}`);
+    }
+  }
 } 

@@ -18,6 +18,7 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -69,6 +70,34 @@ export class ContentAttachmentController {
   ): Promise<void> {
     try {
       const attachments = await this.attachmentService.getAttachmentsByContent(contentId);
+      
+      const apiResponse = ApiResponseBuilder.success(attachments);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'ATTACHMENT_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
+  }
+
+  @Get('content/:contentId/attachments/with-presigned-urls')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Get attachments by content ID with presigned URLs' })
+  @ApiResponse({ status: 200, description: 'Attachments with presigned URLs retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBearerAuth()
+  async getAttachmentsWithPresignedUrls(
+    @Param('contentId') contentId: string,
+    @Res() response: Response,
+    @Query('expiresIn') expiresIn?: number,
+  ): Promise<void> {
+    try {
+      const attachments = await this.attachmentService.getAttachmentsWithPresignedUrls(contentId, expiresIn);
       
       const apiResponse = ApiResponseBuilder.success(attachments);
 
@@ -297,6 +326,50 @@ export class ContentAttachmentController {
       );
 
       response.status(status).json(apiResponse);
+    }
+  }
+
+  @Get(':id/presigned-url')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Get presigned URL for attachment viewing/preview' })
+  @ApiResponse({ status: 200, description: 'Presigned URL generated successfully' })
+  @ApiResponse({ status: 404, description: 'Attachment not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBearerAuth()
+  async getPresignedUrl(
+    @Param('id') id: string,
+    @Query('expiresIn') expiresIn?: number,
+    @Query('operation') operation: 'get' | 'put' = 'get'
+  ): Promise<any> {
+    try {
+      const attachment = await this.attachmentService.getAttachmentById(id);
+      
+      // Generate presigned URL using the file storage service
+      const presignedUrl = await this.attachmentService.generatePresignedUrl(
+        id, 
+        operation, 
+        expiresIn
+      );
+
+      const apiResponse = ApiResponseBuilder.success({
+        presignedUrl,
+        expiresIn: expiresIn || 86400, // 24 hours default
+        operation,
+        attachmentId: id,
+        fileName: attachment.fileName,
+        contentType: attachment.mimeType,
+        fileSize: attachment.fileSize
+      });
+
+      return apiResponse;
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'PRESIGNED_URL_ERROR',
+        error.message
+      );
+
+      throw new BadRequestException(apiResponse);
     }
   }
 }
