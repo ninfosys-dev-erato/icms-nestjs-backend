@@ -61,6 +61,18 @@ class DownloadInterceptor implements NestInterceptor {
 export class ContentAttachmentController {
   constructor(private readonly attachmentService: ContentAttachmentService) {}
 
+  @Get('health')
+  @ApiOperation({ summary: 'Health check for content attachments' })
+  @ApiResponse({ status: 200, description: 'Service is healthy' })
+  async healthCheck(): Promise<any> {
+    return {
+      success: true,
+      message: 'Content Attachment Service is healthy',
+      timestamp: new Date().toISOString(),
+      service: 'ContentAttachmentController'
+    };
+  }
+
   @Get('content/:contentId/attachments')
   @ApiOperation({ summary: 'Get attachments by content ID' })
   @ApiResponse({ status: 200, description: 'Attachments retrieved successfully' })
@@ -96,13 +108,40 @@ export class ContentAttachmentController {
     @Res() response: Response,
     @Query('expiresIn') expiresIn?: number,
   ): Promise<void> {
+    console.log('🔍 ContentAttachmentController: getAttachmentsWithPresignedUrls called');
+    console.log('  Content ID:', contentId);
+    console.log('  Expires In:', expiresIn);
+    console.log('  User:', response.locals?.user || 'No user info');
+    
     try {
       const attachments = await this.attachmentService.getAttachmentsWithPresignedUrls(contentId, expiresIn);
       
+      console.log('✅ Attachments retrieved successfully:', attachments.length);
+      
+      // Log each attachment's presigned URL
+      attachments.forEach((attachment, index) => {
+        console.log(`📎 Attachment ${index + 1}:`, {
+          id: attachment.id,
+          fileName: attachment.fileName,
+          presignedUrl: attachment.presignedUrl ? 'Generated' : 'Failed/Null',
+          presignedUrlLength: attachment.presignedUrl?.length || 0
+        });
+      });
+      
       const apiResponse = ApiResponseBuilder.success(attachments);
+      
+      console.log('📤 Sending API response structure:', {
+        success: apiResponse.success,
+        dataLength: Array.isArray(apiResponse.data) ? apiResponse.data.length : 'Not array',
+        hasData: !!apiResponse.data
+      });
 
       response.status(200).json(apiResponse);
     } catch (error) {
+      console.error('❌ Error in getAttachmentsWithPresignedUrls:', error);
+      console.error('  Error message:', error.message);
+      console.error('  Error stack:', error.stack);
+      
       const status = error.message.includes('not found') ? 404 : 500;
       const apiResponse = ApiResponseBuilder.error(
         'ATTACHMENT_RETRIEVAL_ERROR',
@@ -199,7 +238,7 @@ export class ContentAttachmentController {
     @Res() response: Response,
   ): Promise<void> {
     try {
-      const attachment = await this.attachmentService.getAttachmentById(id);
+      const attachment = await this.attachmentService.getAttachmentWithPresignedUrl(id);
       
       const apiResponse = ApiResponseBuilder.success(attachment);
 
@@ -338,21 +377,15 @@ export class ContentAttachmentController {
   @ApiBearerAuth()
   async getPresignedUrl(
     @Param('id') id: string,
+    @Res() response: Response,
     @Query('expiresIn') expiresIn?: number,
     @Query('operation') operation: 'get' | 'put' = 'get'
-  ): Promise<any> {
+  ): Promise<void> {
     try {
-      const attachment = await this.attachmentService.getAttachmentById(id);
+      const attachment = await this.attachmentService.getAttachmentWithPresignedUrl(id, expiresIn);
       
-      // Generate presigned URL using the file storage service
-      const presignedUrl = await this.attachmentService.generatePresignedUrl(
-        id, 
-        operation, 
-        expiresIn
-      );
-
       const apiResponse = ApiResponseBuilder.success({
-        presignedUrl,
+        presignedUrl: attachment.presignedUrl,
         expiresIn: expiresIn || 86400, // 24 hours default
         operation,
         attachmentId: id,
@@ -361,7 +394,7 @@ export class ContentAttachmentController {
         fileSize: attachment.fileSize
       });
 
-      return apiResponse;
+      response.status(200).json(apiResponse);
     } catch (error) {
       const status = error.message.includes('not found') ? 404 : 500;
       const apiResponse = ApiResponseBuilder.error(
@@ -369,7 +402,7 @@ export class ContentAttachmentController {
         error.message
       );
 
-      throw new BadRequestException(apiResponse);
+      response.status(status).json(apiResponse);
     }
   }
 }

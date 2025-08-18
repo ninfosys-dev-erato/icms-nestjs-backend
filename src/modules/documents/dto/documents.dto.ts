@@ -289,6 +289,9 @@ export class DocumentResponseDto {
   @ApiProperty({ example: 'https://cdn.example.com/uploads/documents/document_123.pdf' })
   downloadUrl: string;
 
+  @ApiProperty({ example: 'https://cdn.example.com/presigned/document_123.pdf?expires=...' })
+  presignedDownloadUrl: string;
+
   @ApiProperty()
   createdAt: Date;
 

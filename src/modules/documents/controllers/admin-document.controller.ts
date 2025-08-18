@@ -17,7 +17,8 @@ import {
   ValidationPipe,
   PipeTransform,
   Injectable,
-  ArgumentMetadata
+  ArgumentMetadata,
+  HttpStatus
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response, Request } from 'express';
@@ -28,7 +29,8 @@ import {
   ApiBearerAuth, 
   ApiQuery, 
   ApiParam,
-  ApiConsumes
+  ApiConsumes,
+  ApiBody
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -554,6 +556,78 @@ export class AdminDocumentController {
 
       response.status(500).json(apiResponse);
     }
+  }
+
+  @Get(':id/download-url')
+  @ApiOperation({ summary: 'Get presigned download URL for document (Admin)' })
+  @ApiResponse({ status: 200, description: 'Download URL generated successfully' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiQuery({ name: 'expires', required: false, type: Number, description: 'Expiration time in seconds (default: 86400)' })
+  @Roles('ADMIN', 'EDITOR')
+  async getDocumentDownloadUrl(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @Query('expires') expires?: number
+  ): Promise<void> {
+    const downloadUrl = await this.documentService.generateAdminDownloadUrl(id, expires);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success({ downloadUrl }));
+  }
+
+  @Post('bulk-download-urls')
+  @ApiOperation({ summary: 'Generate presigned download URLs for multiple documents (Admin)' })
+  @ApiResponse({ status: 200, description: 'Download URLs generated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request' })
+  @ApiBody({ type: BulkOperationDto })
+  @ApiQuery({ name: 'expires', required: false, type: Number, description: 'Expiration time in seconds (default: 86400)' })
+  @Roles('ADMIN', 'EDITOR')
+  async generateBulkDownloadUrls(
+    @Res() response: Response,
+    @Body() data: BulkOperationDto,
+    @Query('expires') expires?: number
+  ): Promise<void> {
+    const downloadUrls = await this.documentService.generateBulkDownloadUrls(data.ids, expires);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(downloadUrls));
+  }
+
+  @Get(':id/preview-url')
+  @ApiOperation({ summary: 'Get preview URL for document (Admin - for browser viewing)' })
+  @ApiResponse({ status: 200, description: 'Preview URL generated successfully' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiQuery({ name: 'expires', required: false, type: Number, description: 'Expiration time in seconds (default: 3600)' })
+  @Roles('ADMIN', 'EDITOR')
+  async getDocumentPreviewUrl(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @Query('expires') expires?: number
+  ): Promise<void> {
+    const previewUrl = await this.documentService.generateAdminPreviewUrl(id, expires);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success({ previewUrl }));
+  }
+
+  @Post('upload-url')
+  @ApiOperation({ summary: 'Generate presigned upload URL for document creation (Admin)' })
+  @ApiResponse({ status: 200, description: 'Upload URL generated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid request' })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        fileName: { type: 'string', example: 'document.pdf' },
+        contentType: { type: 'string', example: 'application/pdf' },
+        expires: { type: 'number', example: 3600, description: 'Expiration time in seconds (default: 3600)' }
+      },
+      required: ['fileName', 'contentType']
+    }
+  })
+  @Roles('ADMIN', 'EDITOR')
+  async generateUploadUrl(
+    @Res() response: Response,
+    @Body() data: { fileName: string; contentType: string; expires?: number }
+  ): Promise<void> {
+    const uploadUrl = await this.documentService.generateUploadUrl(data.fileName, data.contentType, data.expires);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success(uploadUrl));
   }
 
 

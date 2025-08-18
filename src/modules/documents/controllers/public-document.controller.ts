@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param, Res, Req } from '@nestjs/common';
+import { Controller, Get, Query, Param, Res, Req, HttpStatus } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { DocumentService } from '../services/document.service';
@@ -319,5 +319,34 @@ export class PublicDocumentController {
 
       response.status(status).json(apiResponse);
     }
+  }
+
+  @Get(':id/download-url')
+  @ApiOperation({ summary: 'Get presigned download URL for document' })
+  @ApiResponse({ status: 200, description: 'Download URL generated successfully' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  async getDocumentDownloadUrl(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @Query('expires') expires?: number
+  ): Promise<void> {
+    const downloadUrl = await this.documentService.generateDownloadUrl(id, expires);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success({ downloadUrl }));
+  }
+
+  @Get(':id/preview-url')
+  @ApiOperation({ summary: 'Get preview URL for document (for browser viewing)' })
+  @ApiResponse({ status: 200, description: 'Preview URL generated successfully' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  @ApiParam({ name: 'id', description: 'Document ID' })
+  @ApiQuery({ name: 'expires', required: false, type: Number, description: 'Expiration time in seconds (default: 3600)' })
+  async getDocumentPreviewUrl(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @Query('expires') expires?: number
+  ): Promise<void> {
+    const previewUrl = await this.documentService.generatePreviewUrl(id, expires);
+    response.status(HttpStatus.OK).json(ApiResponseBuilder.success({ previewUrl }));
   }
 } 

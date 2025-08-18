@@ -22,12 +22,12 @@ export class ContentAttachmentService {
   ) {}
 
   async getAttachmentById(id: string): Promise<ContentAttachmentResponseDto> {
-    const attachment = await this.attachmentRepository.getAttachmentWithDownloadUrl(id);
+    const attachment = await this.attachmentRepository.findById(id);
     if (!attachment) {
       throw new NotFoundException('Attachment not found');
     }
 
-    return attachment;
+    return this.transformToResponseDto(attachment);
   }
 
   async getAttachmentsByContent(contentId: string): Promise<ContentAttachmentResponseDto[]> {
@@ -37,17 +37,85 @@ export class ContentAttachmentService {
       throw new NotFoundException('Content not found');
     }
     
-    return this.attachmentRepository.getAttachmentsWithDownloadUrls(contentId);
+    const attachments = await this.attachmentRepository.getAttachmentsWithDownloadUrls(contentId);
+    
+    // Transform attachments to response DTOs
+    const transformedAttachments = await Promise.all(
+      attachments.map(attachment => this.transformToResponseDto(attachment))
+    );
+    
+    return transformedAttachments;
   }
 
   async getAttachmentsWithPresignedUrls(contentId: string, expiresIn?: number): Promise<ContentAttachmentResponseDto[]> {
+    console.log('🔍 ContentAttachmentService: Getting attachments with presigned URLs');
+    console.log('  Content ID:', contentId);
+    console.log('  Expires In:', expiresIn);
+    
     // Validate content exists
     const content = await this.contentRepository.findById(contentId);
     if (!content) {
+      console.log('❌ Content not found:', contentId);
       throw new NotFoundException('Content not found');
     }
     
-    return this.attachmentRepository.getAttachmentsWithPresignedUrls(contentId, expiresIn);
+    console.log('✅ Content found:', content.id);
+    
+    const attachments = await this.attachmentRepository.getAttachmentsWithPresignedUrls(contentId, expiresIn);
+    
+    console.log('📎 Attachments retrieved:', attachments.length);
+    console.log('  Attachments:', attachments);
+    
+    // Transform attachments to response DTOs with presigned URLs
+    const attachmentsWithPresignedUrls = await Promise.all(
+      attachments.map(attachment => this.transformToResponseDto(attachment, expiresIn))
+    );
+    
+    console.log('✅ Final attachments with presigned URLs:', attachmentsWithPresignedUrls.length);
+    
+    // Ensure we always return an array, even if empty
+    return attachmentsWithPresignedUrls || [];
+  }
+
+  async getAttachmentWithPresignedUrl(id: string, expiresIn?: number): Promise<ContentAttachmentResponseDto> {
+    const attachment = await this.attachmentRepository.findById(id);
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found');
+    }
+
+    return this.transformToResponseDto(attachment, expiresIn);
+  }
+
+  private async transformToResponseDto(attachment: any, expiresIn?: number): Promise<ContentAttachmentResponseDto> {
+    // Generate presigned URL for the attachment file
+    let presignedUrl: string | null = null;
+    try {
+      presignedUrl = await this.fileStorageService.generatePresignedUrl(
+        attachment.filePath,
+        'get',
+        expiresIn
+      );
+      
+      console.log('🔗 Generated presigned URL for attachment:', attachment.id);
+      console.log('  File path:', attachment.filePath);
+      console.log('  Presigned URL length:', presignedUrl?.length || 0);
+    } catch (error) {
+      console.error('❌ Failed to generate presigned URL for attachment:', attachment.id, error.message);
+      presignedUrl = null;
+    }
+
+    return {
+      id: attachment.id,
+      contentId: attachment.contentId,
+      fileName: attachment.fileName,
+      filePath: attachment.filePath,
+      fileSize: attachment.fileSize,
+      mimeType: attachment.mimeType,
+      order: attachment.order,
+      createdAt: attachment.createdAt,
+      downloadUrl: `/api/v1/attachments/${attachment.id}/download`,
+      presignedUrl,
+    };
   }
 
   async uploadAttachment(contentId: string, file: Express.Multer.File): Promise<ContentAttachmentResponseDto> {
@@ -89,7 +157,7 @@ export class ContentAttachmentService {
       mimeType: file.mimetype,
     });
 
-    return this.attachmentRepository.getAttachmentWithDownloadUrl(attachment.id);
+    return this.transformToResponseDto(attachment);
   }
 
   async updateAttachment(id: string, data: UpdateAttachmentDto): Promise<ContentAttachmentResponseDto> {
@@ -99,7 +167,7 @@ export class ContentAttachmentService {
     }
 
     const updatedAttachment = await this.attachmentRepository.update(id, data);
-    return this.attachmentRepository.getAttachmentWithDownloadUrl(updatedAttachment.id);
+    return this.transformToResponseDto(updatedAttachment);
   }
 
   async deleteAttachment(id: string): Promise<void> {
@@ -199,30 +267,6 @@ export class ContentAttachmentService {
       };
     } catch (error) {
       throw new NotFoundException('File not found in storage');
-    }
-  }
-
-  async generatePresignedUrl(
-    attachmentId: string,
-    operation: 'get' | 'put',
-    expiresIn?: number
-  ): Promise<string> {
-    const attachment = await this.attachmentRepository.findById(attachmentId);
-    if (!attachment) {
-      throw new NotFoundException('Attachment not found');
-    }
-
-    try {
-      // Generate presigned URL using the file storage service
-      const presignedUrl = await this.fileStorageService.generatePresignedUrl(
-        attachment.filePath,
-        operation,
-        expiresIn
-      );
-
-      return presignedUrl;
-    } catch (error) {
-      throw new Error(`Failed to generate presigned URL: ${error.message}`);
     }
   }
 } 

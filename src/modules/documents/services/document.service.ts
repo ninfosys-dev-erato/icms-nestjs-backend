@@ -489,6 +489,156 @@ export class DocumentService {
     return result;
   }
 
+  async generateDownloadUrl(id: string, expiresInSeconds?: number): Promise<string> {
+    const document = await this.documentRepository.findById(id);
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    if (!document.isPublic) {
+      throw new BadRequestException('Document is not publicly accessible');
+    }
+
+    const expirationTime = expiresInSeconds || 86400; // Default 24 hours
+    
+    try {
+      return await this.fileStorageService.generatePresignedUrl(
+        document.filePath,
+        'get',
+        expirationTime
+      );
+    } catch (error) {
+      console.error('Failed to generate presigned URL for document:', id, error);
+      // Fallback to regular URL if presigned URL generation fails
+      return await this.fileStorageService.getUrl(document.filePath);
+    }
+  }
+
+  async generateAdminDownloadUrl(id: string, expiresInSeconds?: number): Promise<string> {
+    const document = await this.documentRepository.findById(id);
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const expirationTime = expiresInSeconds || 86400; // Default 24 hours
+    
+    try {
+      return await this.fileStorageService.generatePresignedUrl(
+        document.filePath,
+        'get',
+        expirationTime
+      );
+    } catch (error) {
+      console.error('Failed to generate presigned URL for document:', id, error);
+      // Fallback to regular URL if presigned URL generation fails
+      return await this.fileStorageService.getUrl(document.filePath);
+    }
+  }
+
+  async generateBulkDownloadUrls(ids: string[], expiresInSeconds?: number): Promise<Record<string, string>> {
+    const documents = await this.documentRepository.findByIds(ids);
+    const downloadUrls: Record<string, string> = {};
+    const expirationTime = expiresInSeconds || 86400; // Default 24 hours
+
+    for (const document of documents) {
+      try {
+        const presignedUrl = await this.fileStorageService.generatePresignedUrl(
+          document.filePath,
+          'get',
+          expirationTime
+        );
+        downloadUrls[document.id] = presignedUrl;
+      } catch (error) {
+        console.error('Failed to generate presigned URL for document:', document.id, error);
+        // Fallback to regular URL if presigned URL generation fails
+        try {
+          const regularUrl = await this.fileStorageService.getUrl(document.filePath);
+          downloadUrls[document.id] = regularUrl;
+        } catch (fallbackError) {
+          console.error('Failed to get fallback URL for document:', document.id, fallbackError);
+          downloadUrls[document.id] = 'URL generation failed';
+        }
+      }
+    }
+
+    return downloadUrls;
+  }
+
+  async generatePreviewUrl(id: string, expiresInSeconds?: number): Promise<string> {
+    const document = await this.documentRepository.findById(id);
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    if (!document.isPublic) {
+      throw new BadRequestException('Document is not publicly accessible');
+    }
+
+    const expirationTime = expiresInSeconds || 3600; // Default 1 hour for preview
+    
+    try {
+      return await this.fileStorageService.generatePresignedUrl(
+        document.filePath,
+        'get',
+        expirationTime
+      );
+    } catch (error) {
+      console.error('Failed to generate preview URL for document:', id, error);
+      // Fallback to regular URL if presigned URL generation fails
+      return await this.fileStorageService.getUrl(document.filePath);
+    }
+  }
+
+  async generateAdminPreviewUrl(id: string, expiresInSeconds?: number): Promise<string> {
+    const document = await this.documentRepository.findById(id);
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const expirationTime = expiresInSeconds || 3600; // Default 1 hour for preview
+    
+    try {
+      return await this.fileStorageService.generatePresignedUrl(
+        document.filePath,
+        'get',
+        expirationTime
+      );
+    } catch (error) {
+      console.error('Failed to generate preview URL for document:', id, error);
+      // Fallback to regular URL if presigned URL generation fails
+      return await this.fileStorageService.getUrl(document.filePath);
+    }
+  }
+
+  async generateUploadUrl(fileName: string, contentType: string, expiresInSeconds?: number): Promise<{
+    uploadUrl: string;
+    key: string;
+    expiresAt: Date;
+  }> {
+    // Generate a unique key for the document
+    const key = this.fileStorageService.generateKey('documents', fileName);
+    const expirationTime = expiresInSeconds || 3600; // Default 1 hour for upload
+    
+    try {
+      const uploadUrl = await this.fileStorageService.generatePresignedUrl(
+        key,
+        'put',
+        expirationTime
+      );
+
+      const expiresAt = new Date(Date.now() + expirationTime * 1000);
+
+      return {
+        uploadUrl,
+        key,
+        expiresAt
+      };
+    } catch (error) {
+      console.error('Failed to generate upload URL for document:', fileName, error);
+      throw new BadRequestException('Failed to generate upload URL: ' + error.message);
+    }
+  }
+
   private determineDocumentType(mimeType: string): DocumentType {
     switch (mimeType) {
       case 'application/pdf':
@@ -521,6 +671,20 @@ export class DocumentService {
   }
 
   private async transformToResponseDto(document: any): Promise<DocumentResponseDto> {
+    // Generate presigned URL for the document
+    let presignedDownloadUrl = '';
+    try {
+      presignedDownloadUrl = await this.fileStorageService.generatePresignedUrl(
+        document.filePath,
+        'get',
+        86400 // 24 hours expiration
+      );
+    } catch (error) {
+      console.warn('Failed to generate presigned URL for document:', document.id, error.message);
+      // Fallback to regular URL if presigned URL generation fails
+      presignedDownloadUrl = await this.fileStorageService.getUrl(document.filePath);
+    }
+
     return {
       id: document.id,
       title: document.title,
@@ -529,7 +693,7 @@ export class DocumentService {
       originalName: document.originalName,
       filePath: document.filePath,
       fileSize: document.fileSize,
-      mimeType: document.mimeType,
+      mimeType: document.mimetype,
       documentType: document.documentType,
       category: document.category,
       status: document.status,
@@ -544,6 +708,7 @@ export class DocumentService {
       isActive: document.isActive,
       downloadCount: document.downloadCount,
       downloadUrl: await this.fileStorageService.getUrl(document.filePath),
+      presignedDownloadUrl,
       createdAt: document.createdAt,
       updatedAt: document.updatedAt,
     };

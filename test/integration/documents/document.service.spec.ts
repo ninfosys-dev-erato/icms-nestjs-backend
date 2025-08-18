@@ -42,10 +42,11 @@ describe('DocumentService', () => {
 
   const mockDocuments = [mockDocument];
 
-  // Mock response DTO with downloadUrl
+  // Mock response DTO with downloadUrl and presignedDownloadUrl
   const mockResponseDto = {
     ...mockDocument,
-    downloadUrl: 'https://cdn.example.com/uploads/documents/test_document.pdf'
+    downloadUrl: 'https://cdn.example.com/uploads/documents/test_document.pdf',
+    presignedDownloadUrl: 'https://cdn.example.com/presigned/test_document.pdf?expires=...'
   };
 
   const mockDocumentsResponse = [mockResponseDto];
