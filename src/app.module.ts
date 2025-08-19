@@ -21,6 +21,7 @@ import { HRModule } from '@/modules/hr';
 import { NavigationModule } from '@/modules/navigation';
 import { SliderModule } from '@/modules/slider';
 import { BootstrapModule } from '@/modules/bootstrap/bootstrap.module';
+import { DashboardModule } from '@/modules/dashboard';
 import { RequestIdMiddleware } from '@/common/middleware/request-id.middleware';
 import configuration from '@/config/configuration';
 
@@ -97,6 +98,9 @@ import configuration from '@/config/configuration';
     
     // Bootstrap Module
     BootstrapModule,
+    
+    // Dashboard Module
+    DashboardModule,
   ],
   controllers: [],
   providers: [],
