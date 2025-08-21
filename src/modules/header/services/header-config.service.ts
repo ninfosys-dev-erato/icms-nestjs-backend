@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { HeaderConfigRepository } from '../repositories/header-config.repository';
-import { MediaService } from '../../media/services/media.service';
 import { 
   CreateHeaderConfigDto, 
   UpdateHeaderConfigDto, 
@@ -14,12 +13,14 @@ import {
   HeaderPreview,
   PaginationInfo
 } from '../dto/header.dto';
+import { MediaService } from '../../media/services/media.service';
 
 @Injectable()
 export class HeaderConfigService {
   constructor(
+    
     private readonly headerConfigRepository: HeaderConfigRepository,
-    private readonly mediaService: MediaService,
+    private readonly mediaService: MediaService
   ) {}
 
   async getHeaderConfigById(id: string): Promise<HeaderConfigResponseDto> {
@@ -218,6 +219,122 @@ export class HeaderConfigService {
     return this.transformToResponseDto(headerConfig);
   }
 
+  async uploadLogo(
+    id: string, 
+    logoType: 'left' | 'right', 
+    file: Express.Multer.File, 
+    logoData: any, 
+    userId: string
+  ): Promise<HeaderConfigResponseDto> {
+    const existingConfig = await this.headerConfigRepository.findById(id);
+    if (!existingConfig) {
+      throw new NotFoundException('Header configuration not found');
+    }
+
+    // Validate file
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    // Validate file type - only images allowed for logos
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type. Only JPG, PNG, WebP, and SVG are allowed for logos');
+    }
+
+    // Validate file size (5MB for logos)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size too large. Maximum size is 5MB');
+    }
+
+    console.log('🔄 Header: Starting logo upload process');
+    console.log('  File details:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      bufferLength: file.buffer?.length
+    });
+
+    // Upload to media service (which uses Backblaze)
+    const metadata = {
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      folder: 'logos', // This will create the logos folder in Backblaze
+      altText: logoData.altText?.en || `Logo for ${logoType} side`,
+      title: `Header Logo - ${logoType}`,
+      description: `Logo uploaded for header configuration`,
+      tags: ['logo', 'header', logoType],
+      isPublic: true,
+    };
+
+    console.log('📤 Header: Calling media service with metadata:', metadata);
+
+    const mediaResponse = await this.mediaService.uploadMedia(file, metadata, userId);
+
+    console.log('📥 Header: Media service response received');
+    console.log('  Media response success:', mediaResponse.success);
+    console.log('  Media response data exists:', !!mediaResponse.data);
+
+    if (!mediaResponse.success || !mediaResponse.data) {
+      throw new BadRequestException('Failed to upload logo: ' + (mediaResponse.message || 'Unknown error'));
+    }
+
+    console.log('💾 Header: Updating header config with media ID');
+    console.log('  Media ID to store:', mediaResponse.data.id);
+
+    // Delete old logo if it exists
+    const currentLogo = existingConfig.logo || {};
+    const currentLogoData = logoType === 'left' ? currentLogo.leftLogo : currentLogo.rightLogo;
+    
+    if (currentLogoData?.mediaId) {
+      try {
+        console.log('🗑️ Header: Removing old logo');
+        console.log('  Old mediaId:', currentLogoData.mediaId);
+        await this.mediaService.deleteMedia(currentLogoData.mediaId);
+        console.log('✅ Header: Old logo deleted from media service');
+      } catch (error) {
+        console.warn('⚠️ Header: Failed to delete old logo from media service:', error.message);
+        // Continue with the update even if old logo deletion fails
+      }
+    }
+
+    // Update header configuration with the new logo
+    const updatedLogo = {
+      ...currentLogo,
+      [logoType === 'left' ? 'leftLogo' : 'rightLogo']: {
+        mediaId: mediaResponse.data.id,
+        altText: logoData.altText || { en: 'Logo', ne: 'लोगो' },
+        width: logoData.width || 150,
+        height: logoData.height || 50
+      },
+      logoAlignment: currentLogo.logoAlignment || 'left',
+      logoSpacing: currentLogo.logoSpacing || 0
+    };
+
+    const updateData: UpdateHeaderConfigDto = {
+      logo: updatedLogo as any
+    };
+
+    console.log('🔧 Header: Update data being passed to repository:', updateData);
+
+    let headerConfig;
+    try {
+      headerConfig = await this.headerConfigRepository.update(id, updateData, userId);
+      console.log('✅ Header: Repository update successful');
+    } catch (error) {
+      console.error('❌ Header: Repository update failed:', error);
+      throw new BadRequestException('Failed to update header configuration: ' + error.message);
+    }
+
+    console.log('✅ Header: Logo uploaded successfully');
+    console.log('  Media ID:', mediaResponse.data.id);
+    console.log('  Media URL:', mediaResponse.data.url);
+
+    return this.transformToResponseDto(headerConfig);
+  }
+
   async updateLogo(id: string, logoType: 'left' | 'right', logoData: any, userId: string): Promise<HeaderConfigResponseDto> {
     const existingConfig = await this.headerConfigRepository.findById(id);
     if (!existingConfig) {
@@ -240,80 +357,7 @@ export class HeaderConfigService {
     return await this.transformToResponseDto(headerConfig);
   }
 
-  async uploadLogo(id: string, logoType: 'left' | 'right', file: Express.Multer.File, logoData: any, userId: string): Promise<HeaderConfigResponseDto> {
-    const existingConfig = await this.headerConfigRepository.findById(id);
-    if (!existingConfig) {
-      throw new NotFoundException('Header configuration not found');
-    }
 
-    // Validate file
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
-
-    // Validate file type - only images allowed for logos
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Invalid file type. Only JPG, PNG, WebP, GIF, and SVG are allowed for logos');
-    }
-
-    // Validate file size (5MB for logos)
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      throw new BadRequestException('File size too large. Maximum size is 5MB');
-    }
-
-    // Delete old logo media if it exists
-    const currentLogo = existingConfig.logo || {};
-    const currentLogoData = logoType === 'left' ? currentLogo.leftLogo : currentLogo.rightLogo;
-    
-    if (currentLogoData?.mediaId) {
-      try {
-        await this.mediaService.deleteMedia(currentLogoData.mediaId);
-      } catch (error) {
-        console.warn('Failed to delete old logo from media service:', error.message);
-      }
-    }
-
-    // Upload new logo to media service (Backblaze)
-    const metadata = {
-      originalName: file.originalname,
-      size: file.size,
-      mimetype: file.mimetype,
-      folder: 'header-logos', // This will create the header-logos folder in Backblaze
-      altText: logoData.altText || `Header ${logoType} logo`,
-      title: `Header ${logoType.charAt(0).toUpperCase() + logoType.slice(1)} Logo`,
-      description: `Logo for header configuration ${id}`,
-      tags: ['header', 'logo', logoType],
-      isPublic: true,
-    };
-
-    const mediaResponse = await this.mediaService.uploadMedia(file, metadata, userId);
-
-    if (!mediaResponse.success || !mediaResponse.data) {
-      throw new BadRequestException('Failed to upload logo: ' + (mediaResponse.message || 'Unknown error'));
-    }
-
-    // Update logo configuration with new media data
-    const updatedLogo = {
-      ...currentLogo,
-      [logoType === 'left' ? 'leftLogo' : 'rightLogo']: {
-        mediaId: mediaResponse.data.id,
-        altText: logoData.altText || { en: '', ne: '' },
-        width: logoData.width || 150,
-        height: logoData.height || 50
-      },
-      logoAlignment: currentLogo.logoAlignment || 'left',
-      logoSpacing: currentLogo.logoSpacing || 0
-    };
-
-    const updateData: UpdateHeaderConfigDto = {
-      logo: updatedLogo as any
-    };
-
-    const headerConfig = await this.headerConfigRepository.update(id, updateData, userId);
-    return await this.transformToResponseDto(headerConfig);
-  }
 
   async removeLogo(id: string, logoType: 'left' | 'right', userId: string): Promise<HeaderConfigResponseDto> {
     const existingConfig = await this.headerConfigRepository.findById(id);
@@ -450,41 +494,45 @@ export class HeaderConfigService {
     
     let css = `
 .header-config-${id} {
-  height: ${layout.headerHeight}px;
-  background-color: ${layout.backgroundColor};
-  padding: ${layout.padding.top}px ${layout.padding.right}px ${layout.padding.bottom}px ${layout.padding.left}px;
-  margin: ${layout.margin.top}px ${layout.margin.right}px ${layout.margin.bottom}px ${layout.margin.left}px;
+  height: ${layout?.headerHeight || 80}px;
+  background-color: ${layout?.backgroundColor || '#ffffff'};
+  padding: ${layout?.padding?.top || 10}px ${layout?.padding?.right || 20}px ${layout?.padding?.bottom || 10}px ${layout?.padding?.left || 20}px;
+  margin: ${layout?.margin?.top || 0}px ${layout?.margin?.right || 0}px ${layout?.margin?.bottom || 0}px ${layout?.margin?.left || 0}px;
 `;
 
-    if (layout.borderColor && layout.borderWidth) {
+    if (layout?.borderColor && layout?.borderWidth) {
       css += `  border: ${layout.borderWidth}px solid ${layout.borderColor};\n`;
     }
 
-    css += `  text-align: ${headerConfig.alignment.toLowerCase()};\n`;
-    css += `  font-family: ${typography.fontFamily};\n`;
-    css += `  font-size: ${typography.fontSize}px;\n`;
-    css += `  font-weight: ${typography.fontWeight};\n`;
-    css += `  color: ${typography.color};\n`;
-    css += `  line-height: ${typography.lineHeight};\n`;
-    css += `  letter-spacing: ${typography.letterSpacing}px;\n`;
+    css += `  text-align: ${(headerConfig.alignment || 'LEFT').toLowerCase()};\n`;
+    
+    if (typography) {
+      css += `  font-family: ${typography.fontFamily || 'Arial, sans-serif'};\n`;
+      css += `  font-size: ${typography.fontSize || 16}px;\n`;
+      css += `  font-weight: ${typography.fontWeight || 'normal'};\n`;
+      css += `  color: ${typography.color || '#333333'};\n`;
+      css += `  line-height: ${typography.lineHeight || 1.5};\n`;
+      css += `  letter-spacing: ${typography.letterSpacing || 0}px;\n`;
+    }
+    
     css += `}\n`;
 
-    // Logo styles
-    if (logo.leftLogo) {
+    // Logo styles - only add if logos exist
+    if (logo?.leftLogo?.width && logo?.leftLogo?.height) {
       css += `
 .header-config-${id} .logo-left {
   width: ${logo.leftLogo.width}px;
   height: ${logo.leftLogo.height}px;
-  margin-right: ${logo.logoSpacing}px;
+  margin-right: ${logo.logoSpacing || 0}px;
 }\n`;
     }
 
-    if (logo.rightLogo) {
+    if (logo?.rightLogo?.width && logo?.rightLogo?.height) {
       css += `
 .header-config-${id} .logo-right {
   width: ${logo.rightLogo.width}px;
   height: ${logo.rightLogo.height}px;
-  margin-left: ${logo.logoSpacing}px;
+  margin-left: ${logo.logoSpacing || 0}px;
 }\n`;
     }
 
@@ -517,41 +565,45 @@ export class HeaderConfigService {
     
     let css = `
 .header-config-${id} {
-  height: ${layout.headerHeight}px;
-  background-color: ${layout.backgroundColor};
-  padding: ${layout.padding.top}px ${layout.padding.right}px ${layout.padding.bottom}px ${layout.padding.left}px;
-  margin: ${layout.margin.top}px ${layout.margin.right}px ${layout.margin.bottom}px ${layout.margin.left}px;
+  height: ${layout?.headerHeight || 80}px;
+  background-color: ${layout?.backgroundColor || '#ffffff'};
+  padding: ${layout?.padding?.top || 10}px ${layout?.padding?.right || 20}px ${layout?.padding?.bottom || 10}px ${layout?.padding?.left || 20}px;
+  margin: ${layout?.margin?.top || 0}px ${layout?.margin?.right || 0}px ${layout?.margin?.bottom || 0}px ${layout?.margin?.left || 0}px;
 `;
 
-    if (layout.borderColor && layout.borderWidth) {
+    if (layout?.borderColor && layout?.borderWidth) {
       css += `  border: ${layout.borderWidth}px solid ${layout.borderColor};\n`;
     }
 
-    css += `  text-align: ${data.alignment.toLowerCase()};\n`;
-    css += `  font-family: ${typography.fontFamily};\n`;
-    css += `  font-size: ${typography.fontSize}px;\n`;
-    css += `  font-weight: ${typography.fontWeight};\n`;
-    css += `  color: ${typography.color};\n`;
-    css += `  line-height: ${typography.lineHeight};\n`;
-    css += `  letter-spacing: ${typography.letterSpacing}px;\n`;
+    css += `  text-align: ${(data.alignment || 'LEFT').toLowerCase()};\n`;
+    
+    if (typography) {
+      css += `  font-family: ${typography.fontFamily || 'Arial, sans-serif'};\n`;
+      css += `  font-size: ${typography.fontSize || 16}px;\n`;
+      css += `  font-weight: ${typography.fontWeight || 'normal'};\n`;
+      css += `  color: ${typography.color || '#333333'};\n`;
+      css += `  line-height: ${typography.lineHeight || 1.5};\n`;
+      css += `  letter-spacing: ${typography.letterSpacing || 0}px;\n`;
+    }
+    
     css += `}\n`;
 
-    // Logo styles
-    if (logo?.leftLogo) {
+    // Logo styles - only add if logos exist
+    if (logo?.leftLogo?.width && logo?.leftLogo?.height) {
       css += `
 .header-config-${id} .logo-left {
   width: ${logo.leftLogo.width}px;
   height: ${logo.leftLogo.height}px;
-  margin-right: ${logo.logoSpacing}px;
+  margin-right: ${logo.logoSpacing || 0}px;
 }\n`;
     }
 
-    if (logo?.rightLogo) {
+    if (logo?.rightLogo?.width && logo?.rightLogo?.height) {
       css += `
 .header-config-${id} .logo-right {
   width: ${logo.rightLogo.width}px;
   height: ${logo.rightLogo.height}px;
-  margin-left: ${logo.logoSpacing}px;
+  margin-left: ${logo.logoSpacing || 0}px;
 }\n`;
     }
 
@@ -616,4 +668,4 @@ export class HeaderConfigService {
       updatedBy: headerConfig.updatedBy
     };
   }
-} 
+}

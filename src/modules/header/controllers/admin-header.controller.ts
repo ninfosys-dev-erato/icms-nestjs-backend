@@ -11,9 +11,11 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
-  BadRequestException
+  BadRequestException,
+  UploadedFiles,
+  Request
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { 
   ApiTags, 
@@ -22,7 +24,8 @@ import {
   ApiBearerAuth, 
   ApiQuery, 
   ApiParam,
-  ApiConsumes
+  ApiConsumes,
+  ApiBody
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -33,7 +36,9 @@ import {
   CreateHeaderConfigDto, 
   UpdateHeaderConfigDto, 
   HeaderConfigQueryDto, 
-  HeaderConfigSearchDto
+  HeaderConfigSearchDto,
+  HeaderConfigResponseDto,
+  LogoUploadDto
 } from '../dto/header.dto';
 import { ApiResponseBuilder } from '../../../common/types/api-response';
 
@@ -116,7 +121,7 @@ export class AdminHeaderController {
     @CurrentUser() user: any
   ) {
     const headerConfig = await this.headerConfigService.createHeaderConfig(data, user.id);
-    return headerConfig;
+    return ApiResponseBuilder.success(headerConfig);
   }
 
   @Put(':id')
@@ -188,18 +193,20 @@ export class AdminHeaderController {
     return { message: 'Header configs reordered successfully' };
   }
 
-  @Put(':id/logo/:logoType')
+  @Post(':id/logo/:logoType/upload')
   @UseInterceptors(
-    FileInterceptor('logo', {
+    FileFieldsInterceptor([
+      { name: 'image', maxCount: 1 },
+      { name: 'file', maxCount: 1 },
+      { name: 'logo', maxCount: 1 }  // Add support for 'logo' field
+    ], {
       fileFilter: (req, file, callback) => {
-        console.log('🔍 DEBUG: Header Logo FileInterceptor fileFilter called');
-        console.log('  File object:', {
-          fieldname: file.fieldname,
-          originalname: file.originalname,
-          encoding: file.encoding,
-          mimetype: file.mimetype,
-          size: file.size,
-        });
+        // Validate image files only
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+        if (!allowedTypes.includes(file.mimetype)) {
+          callback(new BadRequestException('Only JPG, PNG, WebP, and SVG files are allowed for logos'), false);
+          return;
+        }
         callback(null, true);
       },
       limits: {
@@ -207,32 +214,74 @@ export class AdminHeaderController {
       }
     })
   )
-  @ApiOperation({ summary: 'Upload header logo (Admin)' })
+  @ApiOperation({ summary: 'Upload logo file for header config (Admin)' })
   @ApiConsumes('multipart/form-data')
+  @ApiParam({ name: 'id', description: 'Header config ID' })
+  @ApiParam({ name: 'logoType', description: 'Logo type (left or right)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'string',
+          format: 'binary',
+          description: 'Logo image file (alternative field to file)',
+        },
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Logo image file',
+        },
+        logo: {
+          type: 'string',
+          format: 'binary',
+          description: 'Logo image file (alternative field name)',
+        },
+        altText: {
+          type: 'object',
+          properties: {
+            en: { type: 'string', example: 'Company Logo' },
+            ne: { type: 'string', example: 'कम्पनी लोगो' }
+          },
+          description: 'Alt text for accessibility (English and Nepali)'
+        },
+        width: { 
+          type: 'number', 
+          example: 150, 
+          description: 'Logo width in pixels (optional, default: 150)' 
+        },
+        height: { 
+          type: 'number', 
+          example: 50, 
+          description: 'Logo height in pixels (optional, default: 50)' 
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 200, description: 'Logo uploaded successfully' })
   @ApiResponse({ status: 400, description: 'File validation error' })
   @ApiResponse({ status: 404, description: 'Header config not found' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  @ApiParam({ name: 'id', description: 'Header config ID' })
-  @ApiParam({ name: 'logoType', description: 'Logo type (left or right)' })
   @Roles('ADMIN', 'EDITOR')
   async uploadLogo(
     @Param('id') id: string,
     @Param('logoType') logoType: 'left' | 'right',
-    @UploadedFile() file: Express.Multer.File,
-    @Body() logoData: any,
-    @CurrentUser() user: any,
-    @Res() response: Response
-  ): Promise<void> {
+    @UploadedFiles() files: { image?: Express.Multer.File[]; file?: Express.Multer.File[]; logo?: Express.Multer.File[] },
+    @Body() logoData: LogoUploadDto,
+    @Request() req: any,
+    @CurrentUser() user: any
+  ) {
     try {
       console.log('🔍 DEBUG: Header Logo Upload Request Details');
       console.log('=====================================');
       
       console.log('📋 Request Headers:');
-      console.log('  Content-Type:', response.req.headers['content-type']);
-      console.log('  Content-Length:', response.req.headers['content-length']);
-      console.log('  Authorization:', response.req.headers['authorization'] ? 'Present' : 'Missing');
+      console.log('  Content-Type:', req.headers['content-type']);
+      console.log('  Content-Length:', req.headers['content-length']);
+      console.log('  Authorization:', req.headers['authorization'] ? 'Present' : 'Missing');
       
+      // Check for file in any of the accepted fields
+      const file = files?.image?.[0] || files?.file?.[0] || files?.logo?.[0];
       console.log('📁 File Information:');
       if (file) {
         console.log('  ✅ File received:');
@@ -247,51 +296,21 @@ export class AdminHeaderController {
       
       console.log('📝 Logo Data:');
       console.log('  Data received:', logoData);
+      console.log('  All form fields:', req.body);
       
       console.log('=====================================');
 
-      if (!file) {
-        throw new BadRequestException('No logo file uploaded');
-      }
-
-      // Parse logo data from form data
-      const parseTranslatableEntity = (prefix: string): any => {
-        const en = logoData[`${prefix}[en]`] || logoData[`${prefix}.en`] || logoData[`${prefix}_en`];
-        const ne = logoData[`${prefix}[ne]`] || logoData[`${prefix}.ne`] || logoData[`${prefix}_ne`];
-        
-        if (en || ne) {
-          return { en: en || '', ne: ne || '' };
-        }
-        return undefined;
-      };
-
-      const parsedLogoData = {
-        altText: parseTranslatableEntity('altText'),
-        width: parseInt(logoData.width) || 150,
-        height: parseInt(logoData.height) || 50
-      };
-
-      const result = await this.headerConfigService.uploadLogo(id, logoType, file, parsedLogoData, user.id);
-      
-      response.status(200).json(
-        ApiResponseBuilder.success(result)
-      );
+      const result = await this.headerConfigService.uploadLogo(id, logoType, file, logoData, user.id);
+      return result;
     } catch (error) {
       console.error('❌ ERROR in uploadLogo:', error);
       console.error('  Error message:', error.message);
       console.error('  Error stack:', error.stack);
-      
-      const status = error.message.includes('not found') ? 404 : 
-                    error.message.includes('validation') ? 400 : 500;
-      
-      const apiResponse = ApiResponseBuilder.error(
-        'LOGO_UPLOAD_ERROR',
-        error.message
-      );
-
-      response.status(status).json(apiResponse);
+      throw error;
     }
   }
+
+
 
   @Delete(':id/logo/:logoType')
   @ApiOperation({ summary: 'Remove header logo (Admin)' })

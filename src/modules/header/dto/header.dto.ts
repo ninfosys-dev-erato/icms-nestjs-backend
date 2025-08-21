@@ -60,14 +60,8 @@ export class LogoConfigurationResponseDto {
 
   @ApiPropertyOptional()
   rightLogo?: {
-    mediaId: string;
-    media?: {
-      presignedUrl: string;
-      url?: string;
-      originalName?: string;
-      mimetype?: string;
-      size?: number;
-    };
+    media: any;
+    mediaId?: string; // Include mediaId for logo operations
     altText: TranslatableEntityDto;
     width: number;
     height: number;
@@ -90,6 +84,18 @@ export class TranslatableEntityDto {
   @IsString()
   @IsNotEmpty()
   ne: string;
+}
+
+export class OptionalTranslatableEntityDto {
+  @ApiPropertyOptional({ example: 'English text' })
+  @IsOptional()
+  @IsString()
+  en?: string;
+
+  @ApiPropertyOptional({ example: 'नेपाली पाठ' })
+  @IsOptional()
+  @IsString()
+  ne?: string;
 }
 
 export enum HeaderAlignment {
@@ -147,26 +153,148 @@ export class LogoItemDto {
   height: number;
 }
 
+export class LogoItemOptionalDto {
+  @ApiPropertyOptional({ example: 'media_id' })
+  @IsOptional()
+  @IsString()
+  mediaId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => OptionalTranslatableEntityDto)
+  altText?: OptionalTranslatableEntityDto;
+
+  @ApiPropertyOptional({ example: 150 })
+  @IsOptional()
+  @IsNumber()
+  width?: number;
+
+  @ApiPropertyOptional({ example: 50 })
+  @IsOptional()
+  @IsNumber()
+  height?: number;
+}
+
+// For cases where logo items might be completely null
+export class LogoItemNullableDto {
+  @ApiPropertyOptional({ example: 'media_id' })
+  @IsOptional()
+  @IsString()
+  mediaId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => OptionalTranslatableEntityDto)
+  altText?: OptionalTranslatableEntityDto;
+
+  @ApiPropertyOptional({ example: 150 })
+  @IsOptional()
+  @IsNumber()
+  width?: number;
+
+  @ApiPropertyOptional({ example: 50 })
+  @IsOptional()
+  @IsNumber()
+  height?: number;
+}
+
+// Custom validator for logo configuration that allows null/undefined values
+export class LogoConfigurationFlexibleDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LogoItemNullableDto)
+  leftLogo?: LogoItemNullableDto | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LogoItemNullableDto)
+  rightLogo?: LogoItemNullableDto | null;
+
+  @ApiPropertyOptional({ example: 'left' })
+  @IsOptional()
+  @IsString()
+  logoAlignment?: 'left' | 'center' | 'right';
+
+  @ApiPropertyOptional({ example: 20 })
+  @IsOptional()
+  @IsNumber()
+  logoSpacing?: number;
+}
+
+// Most permissive logo configuration - allows any structure
+export class LogoConfigurationPermissiveDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  leftLogo?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  rightLogo?: any;
+
+  @ApiPropertyOptional({ example: 'left' })
+  @IsOptional()
+  @IsString()
+  logoAlignment?: 'left' | 'center' | 'right';
+
+  @ApiPropertyOptional({ example: 20 })
+  @IsOptional()
+  @IsNumber()
+  logoSpacing?: number;
+}
+
+
+
 export class LogoConfigurationDto {
   @ApiPropertyOptional()
   @IsOptional()
   @ValidateNested()
-  @Type(() => LogoItemDto)
-  leftLogo?: LogoItemDto;
+  @Type(() => LogoItemOptionalDto)
+  leftLogo?: LogoItemOptionalDto;
 
   @ApiPropertyOptional()
   @IsOptional()
   @ValidateNested()
-  @Type(() => LogoItemDto)
-  rightLogo?: LogoItemDto;
+  @Type(() => LogoItemOptionalDto)
+  rightLogo?: LogoItemOptionalDto;
 
-  @ApiProperty({ example: 'left' })
+  @ApiPropertyOptional({ example: 'left' })
+  @IsOptional()
   @IsString()
-  logoAlignment: 'left' | 'center' | 'right';
+  logoAlignment?: 'left' | 'center' | 'right';
 
-  @ApiProperty({ example: 20 })
+  @ApiPropertyOptional({ example: 20 })
+  @IsOptional()
   @IsNumber()
-  logoSpacing: number;
+  logoSpacing?: number;
+}
+
+// For cases where logos might be null or undefined
+export class LogoConfigurationOptionalDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LogoItemNullableDto)
+  leftLogo?: LogoItemNullableDto | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LogoItemNullableDto)
+  rightLogo?: LogoItemNullableDto | null;
+
+  @ApiPropertyOptional({ example: 'left' })
+  @IsOptional()
+  @IsString()
+  logoAlignment?: 'left' | 'center' | 'right';
+
+  @ApiPropertyOptional({ example: 20 })
+  @IsOptional()
+  @IsNumber()
+  logoSpacing?: number;
 }
 
 export class LayoutConfigurationDto {
@@ -233,24 +361,26 @@ export class CreateHeaderConfigDto {
   @IsBoolean()
   isPublished?: boolean;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @ValidateNested()
   @Type(() => TypographySettingsDto)
-  typography: TypographySettingsDto;
+  typography?: TypographySettingsDto;
 
-  @ApiProperty({ enum: HeaderAlignment })
+  @ApiPropertyOptional({ enum: HeaderAlignment })
+  @IsOptional()
   @IsEnum(HeaderAlignment)
-  alignment: HeaderAlignment;
+  alignment?: HeaderAlignment;
 
-  @ApiProperty()
-  @ValidateNested()
-  @Type(() => LogoConfigurationDto)
-  logo: LogoConfigurationDto;
+  @ApiPropertyOptional()
+  @IsOptional()
+  logo?: LogoConfigurationPermissiveDto;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @ValidateNested()
   @Type(() => LayoutConfigurationDto)
-  layout: LayoutConfigurationDto;
+  layout?: LayoutConfigurationDto;
 }
 
 export class UpdateHeaderConfigDto {
@@ -288,9 +418,7 @@ export class UpdateHeaderConfigDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @ValidateNested()
-  @Type(() => LogoConfigurationDto)
-  logo?: LogoConfigurationDto;
+  logo?: LogoConfigurationPermissiveDto;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -542,7 +670,7 @@ export class HeaderPreview {
 }
 
 export class LogoUploadDto {
-  @ApiProperty({ example: 'Header Logo' })
+  @ApiPropertyOptional({ example: 'Header Logo' })
   @IsOptional()
   @IsString()
   'altText[en]'?: string;
@@ -552,7 +680,7 @@ export class LogoUploadDto {
   @IsString()
   'altText[ne]'?: string;
 
-  @ApiProperty({ example: 150 })
+  @ApiPropertyOptional({ example: 150 })
   @IsOptional()
   @IsNumber()
   width?: number;

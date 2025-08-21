@@ -11,6 +11,7 @@ export enum MediaCategory {
 
 export enum MediaFolder {
   SLIDERS = 'sliders',
+  LOGOS = 'logos',
   OFFICE_SETTINGS = 'office-settings',
   USERS = 'users',
   CONTENT = 'content',
