@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { HeaderConfigRepository } from '../repositories/header-config.repository';
+import { MediaService } from '../../media/services/media.service';
 import { 
   CreateHeaderConfigDto, 
   UpdateHeaderConfigDto, 
@@ -16,7 +17,10 @@ import {
 
 @Injectable()
 export class HeaderConfigService {
-  constructor(private readonly headerConfigRepository: HeaderConfigRepository) {}
+  constructor(
+    private readonly headerConfigRepository: HeaderConfigRepository,
+    private readonly mediaService: MediaService,
+  ) {}
 
   async getHeaderConfigById(id: string): Promise<HeaderConfigResponseDto> {
     const headerConfig = await this.headerConfigRepository.findById(id);
@@ -32,7 +36,7 @@ export class HeaderConfigService {
   }> {
     const result = await this.headerConfigRepository.findAll(query);
     return {
-      data: result.data.map(config => this.transformToResponseDto(config)),
+      data: await Promise.all(result.data.map(config => this.transformToResponseDto(config))),
       pagination: result.pagination
     };
   }
@@ -43,7 +47,7 @@ export class HeaderConfigService {
   }> {
     const result = await this.headerConfigRepository.findActive(query);
     return {
-      data: result.data.map(config => this.transformToResponseDto(config)),
+      data: await Promise.all(result.data.map(config => this.transformToResponseDto(config))),
       pagination: result.pagination
     };
   }
@@ -54,7 +58,7 @@ export class HeaderConfigService {
   }> {
     const result = await this.headerConfigRepository.findPublished(query);
     return {
-      data: result.data.map(config => this.transformToResponseDto(config)),
+      data: await Promise.all(result.data.map(config => this.transformToResponseDto(config))),
       pagination: result.pagination
     };
   }
@@ -64,7 +68,7 @@ export class HeaderConfigService {
     if (!headerConfig) {
       throw new NotFoundException('Header configuration not found');
     }
-    return this.transformToResponseDto(headerConfig);
+    return await this.transformToResponseDto(headerConfig);
   }
 
   async searchHeaderConfigs(searchTerm: string, query: HeaderConfigQueryDto): Promise<{
@@ -73,7 +77,7 @@ export class HeaderConfigService {
   }> {
     const result = await this.headerConfigRepository.search(searchTerm, query);
     return {
-      data: result.data.map(config => this.transformToResponseDto(config)),
+      data: await Promise.all(result.data.map(config => this.transformToResponseDto(config))),
       pagination: result.pagination
     };
   }
@@ -85,7 +89,7 @@ export class HeaderConfigService {
     }
 
     const headerConfig = await this.headerConfigRepository.create(data, userId);
-    return this.transformToResponseDto(headerConfig);
+    return await this.transformToResponseDto(headerConfig);
   }
 
   async updateHeaderConfig(id: string, data: UpdateHeaderConfigDto, userId: string): Promise<HeaderConfigResponseDto> {
@@ -100,7 +104,7 @@ export class HeaderConfigService {
     }
 
     const headerConfig = await this.headerConfigRepository.update(id, data, userId);
-    return this.transformToResponseDto(headerConfig);
+    return await this.transformToResponseDto(headerConfig);
   }
 
   async deleteHeaderConfig(id: string): Promise<void> {
@@ -119,7 +123,7 @@ export class HeaderConfigService {
     }
 
     const headerConfig = await this.headerConfigRepository.publish(id, userId);
-    return this.transformToResponseDto(headerConfig);
+    return await this.transformToResponseDto(headerConfig);
   }
 
   async unpublishHeaderConfig(id: string, userId: string): Promise<HeaderConfigResponseDto> {
@@ -129,7 +133,7 @@ export class HeaderConfigService {
     }
 
     const headerConfig = await this.headerConfigRepository.unpublish(id, userId);
-    return this.transformToResponseDto(headerConfig);
+    return await this.transformToResponseDto(headerConfig);
   }
 
   async reorderHeaderConfigs(orders: { id: string; order: number }[]): Promise<void> {
@@ -233,7 +237,82 @@ export class HeaderConfigService {
     };
 
     const headerConfig = await this.headerConfigRepository.update(id, updateData, userId);
-    return this.transformToResponseDto(headerConfig);
+    return await this.transformToResponseDto(headerConfig);
+  }
+
+  async uploadLogo(id: string, logoType: 'left' | 'right', file: Express.Multer.File, logoData: any, userId: string): Promise<HeaderConfigResponseDto> {
+    const existingConfig = await this.headerConfigRepository.findById(id);
+    if (!existingConfig) {
+      throw new NotFoundException('Header configuration not found');
+    }
+
+    // Validate file
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    // Validate file type - only images allowed for logos
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type. Only JPG, PNG, WebP, GIF, and SVG are allowed for logos');
+    }
+
+    // Validate file size (5MB for logos)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size too large. Maximum size is 5MB');
+    }
+
+    // Delete old logo media if it exists
+    const currentLogo = existingConfig.logo || {};
+    const currentLogoData = logoType === 'left' ? currentLogo.leftLogo : currentLogo.rightLogo;
+    
+    if (currentLogoData?.mediaId) {
+      try {
+        await this.mediaService.deleteMedia(currentLogoData.mediaId);
+      } catch (error) {
+        console.warn('Failed to delete old logo from media service:', error.message);
+      }
+    }
+
+    // Upload new logo to media service (Backblaze)
+    const metadata = {
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      folder: 'header-logos', // This will create the header-logos folder in Backblaze
+      altText: logoData.altText || `Header ${logoType} logo`,
+      title: `Header ${logoType.charAt(0).toUpperCase() + logoType.slice(1)} Logo`,
+      description: `Logo for header configuration ${id}`,
+      tags: ['header', 'logo', logoType],
+      isPublic: true,
+    };
+
+    const mediaResponse = await this.mediaService.uploadMedia(file, metadata, userId);
+
+    if (!mediaResponse.success || !mediaResponse.data) {
+      throw new BadRequestException('Failed to upload logo: ' + (mediaResponse.message || 'Unknown error'));
+    }
+
+    // Update logo configuration with new media data
+    const updatedLogo = {
+      ...currentLogo,
+      [logoType === 'left' ? 'leftLogo' : 'rightLogo']: {
+        mediaId: mediaResponse.data.id,
+        altText: logoData.altText || { en: '', ne: '' },
+        width: logoData.width || 150,
+        height: logoData.height || 50
+      },
+      logoAlignment: currentLogo.logoAlignment || 'left',
+      logoSpacing: currentLogo.logoSpacing || 0
+    };
+
+    const updateData: UpdateHeaderConfigDto = {
+      logo: updatedLogo as any
+    };
+
+    const headerConfig = await this.headerConfigRepository.update(id, updateData, userId);
+    return await this.transformToResponseDto(headerConfig);
   }
 
   async removeLogo(id: string, logoType: 'left' | 'right', userId: string): Promise<HeaderConfigResponseDto> {
@@ -243,6 +322,17 @@ export class HeaderConfigService {
     }
 
     const currentLogo = existingConfig.logo || {};
+    const currentLogoData = logoType === 'left' ? currentLogo.leftLogo : currentLogo.rightLogo;
+    
+    // Delete logo media if it exists
+    if (currentLogoData?.mediaId) {
+      try {
+        await this.mediaService.deleteMedia(currentLogoData.mediaId);
+      } catch (error) {
+        console.warn('Failed to delete logo from media service:', error.message);
+      }
+    }
+
     const { [logoType === 'left' ? 'leftLogo' : 'rightLogo']: removed, ...updatedLogo } = currentLogo;
 
     const updateData: UpdateHeaderConfigDto = {
@@ -250,7 +340,7 @@ export class HeaderConfigService {
     };
 
     const headerConfig = await this.headerConfigRepository.update(id, updateData, userId);
-    return this.transformToResponseDto(headerConfig);
+    return await this.transformToResponseDto(headerConfig);
   }
 
   async exportHeaderConfigs(query: HeaderConfigQueryDto, format: 'json' | 'csv' | 'pdf'): Promise<Buffer> {
@@ -418,7 +508,7 @@ export class HeaderConfigService {
     return {
       css,
       html,
-      config: this.transformToResponseDto(data as any)
+      config: await this.transformToResponseDto(data as any)
     };
   }
 
@@ -468,7 +558,48 @@ export class HeaderConfigService {
     return css;
   }
 
-  private transformToResponseDto(headerConfig: any): HeaderConfigResponseDto {
+  private async transformToResponseDto(headerConfig: any): Promise<HeaderConfigResponseDto> {
+    // Generate presigned URLs for logos if they exist
+    let logoWithMedia = headerConfig.logo;
+    
+    if (headerConfig.logo?.leftLogo?.mediaId) {
+      try {
+        const presignedUrl = await this.mediaService.generatePresignedUrl(
+          headerConfig.logo.leftLogo.mediaId,
+          'get',
+          86400 // 24 hours expiration
+        );
+        logoWithMedia = {
+          ...logoWithMedia,
+          leftLogo: {
+            ...logoWithMedia.leftLogo,
+            media: { presignedUrl }
+          }
+        };
+      } catch (error) {
+        console.warn('Failed to generate presigned URL for left logo:', error.message);
+      }
+    }
+
+    if (headerConfig.logo?.rightLogo?.mediaId) {
+      try {
+        const presignedUrl = await this.mediaService.generatePresignedUrl(
+          headerConfig.logo.rightLogo.mediaId,
+          'get',
+          86400 // 24 hours expiration
+        );
+        logoWithMedia = {
+          ...logoWithMedia,
+          rightLogo: {
+            ...logoWithMedia.rightLogo,
+            media: { presignedUrl }
+          }
+        };
+      } catch (error) {
+        console.warn('Failed to generate presigned URL for right logo:', error.message);
+      }
+    }
+
     return {
       id: headerConfig.id,
       name: headerConfig.name,
@@ -477,22 +608,7 @@ export class HeaderConfigService {
       isPublished: headerConfig.isPublished,
       typography: headerConfig.typography,
       alignment: headerConfig.alignment,
-      logo: {
-        leftLogo: headerConfig.logo?.leftLogo ? {
-          media: null, // Would need to fetch from media service
-          altText: headerConfig.logo.leftLogo.altText,
-          width: headerConfig.logo.leftLogo.width,
-          height: headerConfig.logo.leftLogo.height
-        } : undefined,
-        rightLogo: headerConfig.logo?.rightLogo ? {
-          media: null, // Would need to fetch from media service
-          altText: headerConfig.logo.rightLogo.altText,
-          width: headerConfig.logo.rightLogo.width,
-          height: headerConfig.logo.rightLogo.height
-        } : undefined,
-        logoAlignment: headerConfig.logo?.logoAlignment || 'left',
-        logoSpacing: headerConfig.logo?.logoSpacing || 0
-      },
+      logo: logoWithMedia,
       layout: headerConfig.layout,
       createdAt: headerConfig.createdAt,
       updatedAt: headerConfig.updatedAt,

@@ -45,7 +45,14 @@ export class MarginDto {
 export class LogoConfigurationResponseDto {
   @ApiPropertyOptional()
   leftLogo?: {
-    media: any;
+    mediaId: string;
+    media?: {
+      presignedUrl: string;
+      url?: string;
+      originalName?: string;
+      mimetype?: string;
+      size?: number;
+    };
     altText: TranslatableEntityDto;
     width: number;
     height: number;
@@ -53,7 +60,14 @@ export class LogoConfigurationResponseDto {
 
   @ApiPropertyOptional()
   rightLogo?: {
-    media: any;
+    mediaId: string;
+    media?: {
+      presignedUrl: string;
+      url?: string;
+      originalName?: string;
+      mimetype?: string;
+      size?: number;
+    };
     altText: TranslatableEntityDto;
     width: number;
     height: number;
@@ -525,4 +539,31 @@ export class HeaderPreview {
 
   @ApiProperty()
   config: HeaderConfigResponseDto;
+}
+
+export class LogoUploadDto {
+  @ApiProperty({ example: 'Header Logo' })
+  @IsOptional()
+  @IsString()
+  'altText[en]'?: string;
+
+  @ApiProperty({ example: 'हेडर लोगो' })
+  @IsOptional()
+  @IsString()
+  'altText[ne]'?: string;
+
+  @ApiProperty({ example: 150 })
+  @IsOptional()
+  @IsNumber()
+  width?: number;
+
+  @ApiProperty({ example: 50 })
+  @IsOptional()
+  @IsNumber()
+  height?: number;
+}
+
+export class LogoUploadResponseDto extends HeaderConfigResponseDto {
+  @ApiProperty({ example: 'https://f003.backblazeb2.com/file/iCMS-bucket/header-logos/...' })
+  logoUrl?: string;
 } 

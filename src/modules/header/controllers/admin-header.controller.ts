@@ -189,36 +189,140 @@ export class AdminHeaderController {
   }
 
   @Put(':id/logo/:logoType')
-  @ApiOperation({ summary: 'Update header config logo (Admin)' })
-  @ApiResponse({ status: 200, description: 'Logo updated successfully' })
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      fileFilter: (req, file, callback) => {
+        console.log('🔍 DEBUG: Header Logo FileInterceptor fileFilter called');
+        console.log('  File object:', {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          encoding: file.encoding,
+          mimetype: file.mimetype,
+          size: file.size,
+        });
+        callback(null, true);
+      },
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB for logos
+      }
+    })
+  )
+  @ApiOperation({ summary: 'Upload header logo (Admin)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Logo uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'File validation error' })
   @ApiResponse({ status: 404, description: 'Header config not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiParam({ name: 'id', description: 'Header config ID' })
   @ApiParam({ name: 'logoType', description: 'Logo type (left or right)' })
   @Roles('ADMIN', 'EDITOR')
-  async updateLogo(
+  async uploadLogo(
     @Param('id') id: string,
     @Param('logoType') logoType: 'left' | 'right',
+    @UploadedFile() file: Express.Multer.File,
     @Body() logoData: any,
-    @CurrentUser() user: any
-  ) {
-    const headerConfig = await this.headerConfigService.updateLogo(id, logoType, logoData, user.id);
-    return headerConfig;
+    @CurrentUser() user: any,
+    @Res() response: Response
+  ): Promise<void> {
+    try {
+      console.log('🔍 DEBUG: Header Logo Upload Request Details');
+      console.log('=====================================');
+      
+      console.log('📋 Request Headers:');
+      console.log('  Content-Type:', response.req.headers['content-type']);
+      console.log('  Content-Length:', response.req.headers['content-length']);
+      console.log('  Authorization:', response.req.headers['authorization'] ? 'Present' : 'Missing');
+      
+      console.log('📁 File Information:');
+      if (file) {
+        console.log('  ✅ File received:');
+        console.log('    - originalname:', file.originalname);
+        console.log('    - mimetype:', file.mimetype);
+        console.log('    - size:', file.size);
+        console.log('    - fieldname:', file.fieldname);
+        console.log('    - buffer length:', file.buffer?.length);
+      } else {
+        console.log('  ❌ No file received');
+      }
+      
+      console.log('📝 Logo Data:');
+      console.log('  Data received:', logoData);
+      
+      console.log('=====================================');
+
+      if (!file) {
+        throw new BadRequestException('No logo file uploaded');
+      }
+
+      // Parse logo data from form data
+      const parseTranslatableEntity = (prefix: string): any => {
+        const en = logoData[`${prefix}[en]`] || logoData[`${prefix}.en`] || logoData[`${prefix}_en`];
+        const ne = logoData[`${prefix}[ne]`] || logoData[`${prefix}.ne`] || logoData[`${prefix}_ne`];
+        
+        if (en || ne) {
+          return { en: en || '', ne: ne || '' };
+        }
+        return undefined;
+      };
+
+      const parsedLogoData = {
+        altText: parseTranslatableEntity('altText'),
+        width: parseInt(logoData.width) || 150,
+        height: parseInt(logoData.height) || 50
+      };
+
+      const result = await this.headerConfigService.uploadLogo(id, logoType, file, parsedLogoData, user.id);
+      
+      response.status(200).json(
+        ApiResponseBuilder.success(result)
+      );
+    } catch (error) {
+      console.error('❌ ERROR in uploadLogo:', error);
+      console.error('  Error message:', error.message);
+      console.error('  Error stack:', error.stack);
+      
+      const status = error.message.includes('not found') ? 404 : 
+                    error.message.includes('validation') ? 400 : 500;
+      
+      const apiResponse = ApiResponseBuilder.error(
+        'LOGO_UPLOAD_ERROR',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
   }
 
   @Delete(':id/logo/:logoType')
-  @ApiOperation({ summary: 'Remove header config logo (Admin)' })
+  @ApiOperation({ summary: 'Remove header logo (Admin)' })
   @ApiResponse({ status: 200, description: 'Logo removed successfully' })
   @ApiResponse({ status: 404, description: 'Header config not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiParam({ name: 'id', description: 'Header config ID' })
   @ApiParam({ name: 'logoType', description: 'Logo type (left or right)' })
   @Roles('ADMIN', 'EDITOR')
   async removeLogo(
     @Param('id') id: string,
     @Param('logoType') logoType: 'left' | 'right',
-    @CurrentUser() user: any
-  ) {
-    const headerConfig = await this.headerConfigService.removeLogo(id, logoType, user.id);
-    return headerConfig;
+    @CurrentUser() user: any,
+    @Res() response: Response
+  ): Promise<void> {
+    try {
+      const result = await this.headerConfigService.removeLogo(id, logoType, user.id);
+      
+      response.status(200).json(
+        ApiResponseBuilder.success(result)
+      );
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      
+      const apiResponse = ApiResponseBuilder.error(
+        'LOGO_REMOVAL_ERROR',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
   }
 
   @Get('export')
