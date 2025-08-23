@@ -43,9 +43,27 @@ export class AdminNavigationController {
     private readonly menuItemService: MenuItemService,
   ) {}
 
-  // Menu Management Endpoints - Specific routes first
+  // Test endpoint for debugging
+  @Get('test')
+  @ApiOperation({ summary: 'Test endpoint' })
+  @ApiResponse({ status: 200, description: 'Test successful' })
+  async test(): Promise<any> {
+    return { message: 'Admin navigation controller is working', timestamp: new Date() };
+  }
 
-  @Get('menus/statistics')
+  // Menu Management Endpoints - Basic CRUD first
+
+  @Get('menus')
+  @ApiOperation({ summary: 'Get all menus (admin)' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved menus' })
+  @Roles('ADMIN', 'EDITOR')
+  async getAllMenus(
+    @Query() query: MenuQueryDto,
+  ): Promise<any> {
+    return await this.menuService.getAllMenus(query);
+  }
+
+  // Menu Management Endpoints - Specific routes
   @ApiOperation({ summary: 'Get menu statistics' })
   @ApiResponse({ status: 200, description: 'Successfully retrieved statistics' })
   @Roles('ADMIN', 'EDITOR')
@@ -194,9 +212,19 @@ export class AdminNavigationController {
     return await this.menuService.unpublishMenu(id, user.id);
   }
 
-  // Menu Item Management Endpoints - Specific routes first
+  // Menu Item Management Endpoints - Basic CRUD first
 
-  @Get('menu-items/statistics')
+  @Get('menu-items')
+  @ApiOperation({ summary: 'Get all menu items (admin)' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved menu items' })
+  @Roles('ADMIN', 'EDITOR')
+  async getAllMenuItems(
+    @Query() query: MenuItemQueryDto,
+  ): Promise<any> {
+    return await this.menuItemService.getAllMenuItems(query);
+  }
+
+  // Menu Item Management Endpoints - Specific routes
   @ApiOperation({ summary: 'Get menu item statistics' })
   @ApiResponse({ status: 200, description: 'Successfully retrieved statistics' })
   @Roles('ADMIN', 'EDITOR')

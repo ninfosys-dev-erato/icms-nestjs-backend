@@ -49,9 +49,11 @@ export class LogoConfigurationResponseDto {
     media?: {
       presignedUrl: string;
       url?: string;
+      id?: string;
       originalName?: string;
       mimetype?: string;
       size?: number;
+      error?: string;
     };
     altText: TranslatableEntityDto;
     width: number;
@@ -60,8 +62,16 @@ export class LogoConfigurationResponseDto {
 
   @ApiPropertyOptional()
   rightLogo?: {
-    media: any;
-    mediaId?: string; // Include mediaId for logo operations
+    mediaId: string;
+    media?: {
+      presignedUrl: string;
+      url?: string;
+      id?: string;
+      originalName?: string;
+      mimetype?: string;
+      size?: number;
+      error?: string;
+    };
     altText: TranslatableEntityDto;
     width: number;
     height: number;

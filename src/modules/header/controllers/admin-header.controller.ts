@@ -301,7 +301,9 @@ export class AdminHeaderController {
       console.log('=====================================');
 
       const result = await this.headerConfigService.uploadLogo(id, logoType, file, logoData, user.id);
-      return result;
+      
+      // Ensure the response includes presigned URLs for logos
+      return ApiResponseBuilder.success(result);
     } catch (error) {
       console.error('❌ ERROR in uploadLogo:', error);
       console.error('  Error message:', error.message);
@@ -329,6 +331,7 @@ export class AdminHeaderController {
     try {
       const result = await this.headerConfigService.removeLogo(id, logoType, user.id);
       
+      // Ensure the response includes presigned URLs for any remaining logos
       response.status(200).json(
         ApiResponseBuilder.success(result)
       );

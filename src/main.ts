@@ -35,9 +35,35 @@ async function bootstrap() {
   // CORS
   if (configService.get<boolean>('app.features.enableCors', true)) {
     const corsConfig = configService.get('app.cors');
+    console.log('🌐 CORS Configuration:', corsConfig);
+    
+    // For development, allow all localhost origins and be very permissive
+    let allowedOrigins;
+    if (process.env.NODE_ENV === 'development') {
+      // In development, allow all localhost ports and be very permissive
+      allowedOrigins = true; // This allows all origins in development
+      console.log('🌐 Development Mode: Allowing ALL origins for development');
+    } else {
+      // In production, use the configured origins
+      allowedOrigins = corsConfig.origin;
+      console.log('🌐 Production Mode: Using configured origins:', allowedOrigins);
+    }
+    
     app.enableCors({
-      origin: corsConfig.origin,
-      credentials: corsConfig.credentials,
+      origin: allowedOrigins,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'X-Request-Id'],
+      exposedHeaders: ['Content-Length', 'X-Request-Id'],
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
+    });
+    
+    console.log('🌐 CORS enabled with configuration:', {
+      origin: allowedOrigins,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'X-Request-Id']
     });
   }
 

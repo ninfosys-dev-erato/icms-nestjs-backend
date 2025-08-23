@@ -30,12 +30,30 @@ export interface TypographySettings {
 export interface LogoConfiguration {
   leftLogo?: {
     mediaId: string;
+    media?: {
+      presignedUrl?: string;
+      url?: string;
+      id?: string;
+      originalName?: string;
+      mimetype?: string;
+      size?: number;
+      error?: string;
+    };
     altText: TranslatableEntity;
     width: number;
     height: number;
   };
   rightLogo?: {
     mediaId: string;
+    media?: {
+      presignedUrl?: string;
+      url?: string;
+      id?: string;
+      originalName?: string;
+      mimetype?: string;
+      size?: number;
+      error?: string;
+    };
     altText: TranslatableEntity;
     width: number;
     height: number;

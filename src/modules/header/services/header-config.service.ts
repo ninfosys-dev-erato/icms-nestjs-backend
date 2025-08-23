@@ -261,7 +261,7 @@ export class HeaderConfigService {
       originalName: file.originalname,
       size: file.size,
       mimetype: file.mimetype,
-      folder: 'logos', // This will create the logos folder in Backblaze
+      folder: 'header-logos', // This will create the header-logos folder in Backblaze
       altText: logoData.altText?.en || `Logo for ${logoType} side`,
       title: `Header Logo - ${logoType}`,
       description: `Logo uploaded for header configuration`,
@@ -332,7 +332,12 @@ export class HeaderConfigService {
     console.log('  Media ID:', mediaResponse.data.id);
     console.log('  Media URL:', mediaResponse.data.url);
 
-    return this.transformToResponseDto(headerConfig);
+    // Transform to response DTO to include presigned URLs
+    console.log('🔄 Header: Transforming to response DTO with presigned URLs...');
+    const responseDto = await this.transformToResponseDto(headerConfig);
+    console.log('✅ Header: Response DTO created with presigned URLs');
+
+    return responseDto;
   }
 
   async updateLogo(id: string, logoType: 'left' | 'right', logoData: any, userId: string): Promise<HeaderConfigResponseDto> {
@@ -371,9 +376,13 @@ export class HeaderConfigService {
     // Delete logo media if it exists
     if (currentLogoData?.mediaId) {
       try {
+        console.log('🗑️ Header: Removing logo from media service');
+        console.log('  Media ID to remove:', currentLogoData.mediaId);
         await this.mediaService.deleteMedia(currentLogoData.mediaId);
+        console.log('✅ Header: Logo removed from media service');
       } catch (error) {
-        console.warn('Failed to delete logo from media service:', error.message);
+        console.warn('⚠️ Header: Failed to delete logo from media service:', error.message);
+        // Continue with the removal even if media deletion fails
       }
     }
 
@@ -383,7 +392,13 @@ export class HeaderConfigService {
       logo: updatedLogo as any
     };
 
+    console.log('🔧 Header: Updating header config after logo removal');
     const headerConfig = await this.headerConfigRepository.update(id, updateData, userId);
+    
+    console.log('✅ Header: Logo removed successfully');
+    console.log('  Remaining logos:', Object.keys(updatedLogo).filter(key => key !== 'logoAlignment' && key !== 'logoSpacing'));
+
+    // Transform to response DTO to include presigned URLs for any remaining logos
     return await this.transformToResponseDto(headerConfig);
   }
 
@@ -625,11 +640,27 @@ export class HeaderConfigService {
           ...logoWithMedia,
           leftLogo: {
             ...logoWithMedia.leftLogo,
-            media: { presignedUrl }
+            media: { 
+              presignedUrl,
+              id: headerConfig.logo.leftLogo.mediaId,
+              url: presignedUrl // Include both presignedUrl and url for compatibility
+            }
           }
         };
+        console.log('🖼️ Header: Generated presigned URL for left logo');
       } catch (error) {
-        console.warn('Failed to generate presigned URL for left logo:', error.message);
+        console.warn('⚠️ Header: Failed to generate presigned URL for left logo:', error.message);
+        // Fallback to include logo without presigned URL
+        logoWithMedia = {
+          ...logoWithMedia,
+          leftLogo: {
+            ...logoWithMedia.leftLogo,
+            media: { 
+              id: headerConfig.logo.leftLogo.mediaId,
+              error: 'Failed to generate presigned URL'
+            }
+          }
+        };
       }
     }
 
@@ -644,11 +675,27 @@ export class HeaderConfigService {
           ...logoWithMedia,
           rightLogo: {
             ...logoWithMedia.rightLogo,
-            media: { presignedUrl }
+            media: { 
+              presignedUrl,
+              id: headerConfig.logo.rightLogo.mediaId,
+              url: presignedUrl // Include both presignedUrl and url for compatibility
+            }
           }
         };
+        console.log('🖼️ Header: Generated presigned URL for right logo');
       } catch (error) {
-        console.warn('Failed to generate presigned URL for right logo:', error.message);
+        console.warn('⚠️ Header: Failed to generate presigned URL for right logo:', error.message);
+        // Fallback to include logo without presigned URL
+        logoWithMedia = {
+          ...logoWithMedia,
+          rightLogo: {
+            ...logoWithMedia.rightLogo,
+            media: { 
+              id: headerConfig.logo.rightLogo.mediaId,
+              error: 'Failed to generate presigned URL'
+            }
+          }
+        };
       }
     }
 

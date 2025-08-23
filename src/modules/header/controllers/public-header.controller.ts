@@ -85,6 +85,7 @@ export class PublicHeaderController {
     try {
       const headerConfig = await this.headerConfigService.getActiveHeaderConfigForDisplay();
       
+      // Ensure presigned URLs are generated for logos
       const apiResponse = ApiResponseBuilder.success(headerConfig);
 
       response.status(200).json(apiResponse);

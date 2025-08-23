@@ -12,7 +12,16 @@ export class MenuRepository {
     return this.prisma.menu.findUnique({
       where: { id },
       include: {
-        menuItems: true,
+        menuItems: {
+          where: { isActive: true, isPublished: true },
+          orderBy: { order: 'asc' },
+          include: {
+            children: {
+              where: { isActive: true, isPublished: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
         createdBy: true,
         updatedBy: true,
       },
@@ -43,7 +52,16 @@ export class MenuRepository {
         take: limit,
         orderBy: sort ? { [sort]: order || 'asc' } : { createdAt: 'desc' },
         include: {
-          menuItems: true,
+          menuItems: {
+            where: { isActive: true, isPublished: true },
+            orderBy: { order: 'asc' },
+            include: {
+              children: {
+                where: { isActive: true, isPublished: true },
+                orderBy: { order: 'asc' },
+              },
+            },
+          },
           createdBy: true,
           updatedBy: true,
         },
@@ -110,7 +128,16 @@ export class MenuRepository {
     return this.prisma.menu.create({
       data: prismaData,
       include: {
-        menuItems: true,
+        menuItems: {
+          where: { isActive: true, isPublished: true },
+          orderBy: { order: 'asc' },
+          include: {
+            children: {
+              where: { isActive: true, isPublished: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
         createdBy: true,
         updatedBy: true,
       },
@@ -127,7 +154,16 @@ export class MenuRepository {
         updatedById: userId,
       },
       include: {
-        menuItems: true,
+        menuItems: {
+          where: { isActive: true, isPublished: true },
+          orderBy: { order: 'asc' },
+          include: {
+            children: {
+              where: { isActive: true, isPublished: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
         createdBy: true,
         updatedBy: true,
       },
@@ -143,7 +179,16 @@ export class MenuRepository {
       where: { id },
       data: { isPublished: true, updatedById: userId },
       include: {
-        menuItems: true,
+        menuItems: {
+          where: { isActive: true, isPublished: true },
+          orderBy: { order: 'asc' },
+          include: {
+            children: {
+              where: { isActive: true, isPublished: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
         createdBy: true,
         updatedBy: true,
       },
@@ -155,7 +200,16 @@ export class MenuRepository {
       where: { id },
       data: { isPublished: false, updatedById: userId },
       include: {
-        menuItems: true,
+        menuItems: {
+          where: { isActive: true, isPublished: true },
+          orderBy: { order: 'asc' },
+          include: {
+            children: {
+              where: { isActive: true, isPublished: true },
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
         createdBy: true,
         updatedBy: true,
       },
@@ -167,9 +221,11 @@ export class MenuRepository {
       where: { id },
       include: {
         menuItems: {
+          where: { isActive: true, isPublished: true },
           orderBy: { order: 'asc' },
           include: {
             children: {
+              where: { isActive: true, isPublished: true },
               orderBy: { order: 'asc' },
             },
           },
