@@ -10,9 +10,11 @@ import {
   Res,
   UseGuards,
   UseInterceptors,
-  UploadedFile
+  UploadedFile,
+  UploadedFiles,
+  BadRequestException
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { 
   ApiTags, 
@@ -326,14 +328,43 @@ export class AdminDepartmentController {
   @ApiResponse({ status: 201, description: 'Departments imported successfully' })
   @ApiResponse({ status: 400, description: 'Import failed' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'file', maxCount: 1 }
+      ],
+      {
+        fileFilter: (req, file, callback) => {
+          console.log('🔍 DEBUG: HR Department Import FileInterceptor called');
+          console.log('  File object:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          });
+          callback(null, true);
+        },
+        limits: {
+          fileSize: 10 * 1024 * 1024, // 10MB for department import files
+        }
+      }
+    )
+  )
   @Roles('ADMIN')
   async importDepartments(
     @Res() response: Response,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
     @CurrentUser() user: any
   ): Promise<void> {
     try {
+      // Check for file in any of the accepted fields
+      const file = files?.image?.[0] || files?.file?.[0];
+      
+      if (!file) {
+        throw new BadRequestException('No file uploaded');
+      }
+
       const result = await this.departmentService.importDepartments(file, user.id);
       
       const apiResponse = ApiResponseBuilder.success(result);

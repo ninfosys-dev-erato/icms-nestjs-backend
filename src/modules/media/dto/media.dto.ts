@@ -14,6 +14,7 @@ export enum MediaFolder {
   LOGOS = 'logos',
   OFFICE_SETTINGS = 'office-settings',
   USERS = 'users',
+  EMPLOYEES = 'employees',
   CONTENT = 'content',
   DOCUMENTS = 'documents',
   REPORTS = 'reports',

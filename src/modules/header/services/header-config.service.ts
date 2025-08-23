@@ -237,9 +237,9 @@ export class HeaderConfigService {
     }
 
     // Validate file type - only images allowed for logos
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
     if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Invalid file type. Only JPG, PNG, WebP, and SVG are allowed for logos');
+      throw new BadRequestException('Invalid file type. Only JPG, PNG, WebP, SVG, and GIF are allowed for logos');
     }
 
     // Validate file size (5MB for logos)
@@ -261,7 +261,7 @@ export class HeaderConfigService {
       originalName: file.originalname,
       size: file.size,
       mimetype: file.mimetype,
-      folder: 'header-logos', // This will create the header-logos folder in Backblaze
+      folder: 'logos', // Use the LOGOS folder from MediaFolder enum
       altText: logoData.altText?.en || `Logo for ${logoType} side`,
       title: `Header Logo - ${logoType}`,
       description: `Logo uploaded for header configuration`,

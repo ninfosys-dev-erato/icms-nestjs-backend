@@ -10,9 +10,11 @@ import {
   Res,
   UseGuards,
   UseInterceptors,
-  UploadedFile
+  UploadedFile,
+  UploadedFiles,
+  BadRequestException
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { 
   ApiTags, 
@@ -190,6 +192,204 @@ export class AdminEmployeeController {
     }
   }
 
+  @Get(':id/photo')
+  @ApiOperation({ summary: 'Get employee photo (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employee photo retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Employee or photo not found' })
+  @ApiParam({ name: 'id', description: 'Employee ID' })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeePhoto(
+    @Res() response: Response,
+    @Param('id') id: string
+  ): Promise<void> {
+    try {
+      const photoData = await this.employeeService.getEmployeePhoto(id);
+      
+      const apiResponse = ApiResponseBuilder.success(photoData);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTO_NOT_FOUND',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
+  }
+
+  @Get('photos')
+  @ApiOperation({ summary: 'Get all employee photos (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employee photos retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  @Roles('ADMIN', 'EDITOR')
+  async getAllEmployeePhotos(
+    @Res() response: Response,
+    @Query() query?: EmployeeQueryDto
+  ): Promise<void> {
+    try {
+      const result = await this.employeeService.getAllEmployeePhotos(query);
+      
+      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTOS_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('photos/search')
+  @ApiOperation({ summary: 'Search employee photos (Admin)' })
+  @ApiResponse({ status: 200, description: 'Search completed successfully' })
+  @ApiQuery({ name: 'q', required: true, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  @Roles('ADMIN', 'EDITOR')
+  async searchEmployeePhotos(
+    @Res() response: Response,
+    @Query('q') q: string,
+    @Query() query: any
+  ): Promise<void> {
+    try {
+      if (!q) {
+        const apiResponse = ApiResponseBuilder.error(
+          'EMPLOYEE_PHOTO_SEARCH_ERROR',
+          'Search term is required'
+        );
+        response.status(400).json(apiResponse);
+        return;
+      }
+      // Remove 'q' from query before passing to DTO
+      const { q: _q, ...rest } = query;
+      // Sanitize pagination
+      rest.page = rest.page && rest.page > 0 ? Number(rest.page) : 1;
+      rest.limit = rest.limit && rest.limit > 0 ? Number(rest.limit) : 10;
+      const result = await this.employeeService.searchEmployeePhotos(q, rest);
+      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTO_SEARCH_ERROR',
+        error.message
+      );
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('photos/statistics')
+  @ApiOperation({ summary: 'Get employee photo statistics (Admin)' })
+  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeePhotoStatistics(
+    @Res() response: Response
+  ): Promise<void> {
+    try {
+      const statistics = await this.employeeService.getEmployeePhotoStatistics();
+      
+      const apiResponse = ApiResponseBuilder.success(statistics);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTO_STATISTICS_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('department/:departmentId/photos')
+  @ApiOperation({ summary: 'Get employee photos by department (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employee photos retrieved successfully' })
+  @ApiParam({ name: 'departmentId', description: 'Department ID' })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeePhotosByDepartment(
+    @Res() response: Response,
+    @Param('departmentId') departmentId: string
+  ): Promise<void> {
+    try {
+      const photos = await this.employeeService.getEmployeePhotosByDepartment(departmentId);
+      
+      const apiResponse = ApiResponseBuilder.success(photos);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTOS_DEPARTMENT_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('position/:position/photos')
+  @ApiOperation({ summary: 'Get employee photos by position (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employee photos retrieved successfully' })
+  @ApiParam({ name: 'position', description: 'Position name' })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeePhotosByPosition(
+    @Res() response: Response,
+    @Param('position') position: string
+  ): Promise<void> {
+    try {
+      const photos = await this.employeeService.getEmployeePhotosByPosition(position);
+      
+      const apiResponse = ApiResponseBuilder.success(photos);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTOS_POSITION_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('photos/export')
+  @ApiOperation({ summary: 'Export employee photos (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employee photos exported successfully' })
+  @ApiQuery({ name: 'format', required: false, type: String })
+  @Roles('ADMIN', 'EDITOR')
+  async exportEmployeePhotos(
+    @Res() response: Response,
+    @Query() query: EmployeeQueryDto,
+    @Query('format') format: 'json' | 'csv' | 'pdf' = 'json'
+  ): Promise<void> {
+    try {
+      const buffer = await this.employeeService.exportEmployeePhotos(query, format);
+      
+      const contentType = format === 'json' ? 'application/json' : 'application/octet-stream';
+      const filename = `employee-photos-export.${format}`;
+      
+      response.setHeader('Content-Type', contentType);
+      response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      response.send(buffer);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTO_EXPORT_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create employee (Admin)' })
   @ApiResponse({ status: 201, description: 'Employee created successfully' })
@@ -276,15 +476,47 @@ export class AdminEmployeeController {
   @Post(':id/photo')
   @ApiOperation({ summary: 'Upload/replace employee photo (Admin)' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'file', maxCount: 1 }
+      ],
+      {
+        fileFilter: (req, file, callback) => {
+          console.log('🔍 DEBUG: HR Employee Photo Upload FileInterceptor called');
+          console.log('  File object:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          });
+          callback(null, true);
+        },
+        limits: {
+          fileSize: 10 * 1024 * 1024, // 10MB for employee photos
+        }
+      }
+    )
+  )
+  @ApiResponse({ status: 200, description: 'Employee photo uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'Validation or file error' })
+  @ApiResponse({ status: 404, description: 'Employee not found' })
   @Roles('ADMIN', 'EDITOR')
   async uploadEmployeePhoto(
     @Res() response: Response,
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
     @CurrentUser() user: any
   ): Promise<void> {
     try {
+      // Check for file in any of the accepted fields
+      const file = files?.image?.[0] || files?.file?.[0];
+      
+      if (!file) {
+        throw new BadRequestException('No file uploaded');
+      }
+
       const employee = await this.employeeService.uploadEmployeePhoto(id, file, user.id);
       const apiResponse = ApiResponseBuilder.success(employee);
       response.status(200).json(apiResponse);
@@ -320,22 +552,146 @@ export class AdminEmployeeController {
     }
   }
 
+  @Post('debug-form-data')
+  @ApiOperation({ summary: 'Debug form data (Admin - temporary)' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'file', maxCount: 1 }
+      ],
+      {
+        fileFilter: (req, file, callback) => {
+          console.log('🔍 DEBUG: Form Data Debug FileInterceptor called');
+          console.log('  File object:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          });
+          callback(null, true);
+        },
+        limits: {
+          fileSize: 10 * 1024 * 1024,
+        }
+      }
+    )
+  )
+  @Roles('ADMIN', 'EDITOR')
+  async debugFormData(
+    @Res() response: Response,
+    @UploadedFiles() files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
+    @Body() formData: any,
+    @CurrentUser() user: any
+  ): Promise<void> {
+    try {
+      const debugInfo = {
+        user: user.id,
+        files: files ? Object.keys(files).map(key => ({
+          field: key,
+          count: files[key]?.length || 0,
+          files: files[key]?.map(f => ({
+            originalname: f.originalname,
+            mimetype: f.mimetype,
+            size: f.size,
+            fieldname: f.fieldname
+          }))
+        })) : [],
+        formData: formData,
+        formDataKeys: Object.keys(formData || {}),
+        formDataEntries: formData ? Object.entries(formData).map(([key, value]) => ({
+          key,
+          value,
+          type: typeof value
+        })) : []
+      };
+      
+      console.log('🔍 DEBUG: Complete form data debug info:', JSON.stringify(debugInfo, null, 2));
+      
+      const apiResponse = ApiResponseBuilder.success(debugInfo);
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      console.error('❌ ERROR in debugFormData:', error);
+      const apiResponse = ApiResponseBuilder.error(
+        'DEBUG_ERROR',
+        error.message
+      );
+      response.status(500).json(apiResponse);
+    }
+  }
+
   @Post('upload-with-employee')
   @ApiOperation({ summary: 'Create employee with image upload (Admin)' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'file', maxCount: 1 }
+      ],
+      {
+        fileFilter: (req, file, callback) => {
+          console.log('🔍 DEBUG: HR Employee Upload with Creation FileInterceptor called');
+          console.log('  File object:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          });
+          callback(null, true);
+        },
+        limits: {
+          fileSize: 10 * 1024 * 1024, // 10MB for employee photos
+        }
+      }
+    )
+  )
+  @ApiResponse({ status: 201, description: 'Employee created with image successfully' })
+  @ApiResponse({ status: 400, description: 'Validation or file error' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @Roles('ADMIN', 'EDITOR')
   async createEmployeeWithImage(
     @Res() response: Response,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
     @Body() employeeData: any,
     @CurrentUser() user: any
   ): Promise<void> {
     try {
+      console.log('🔍 DEBUG: HR Employee Upload with Creation Controller');
+      console.log('=====================================');
+      
+      console.log('📋 Request Details:');
+      console.log('  User ID:', user.id);
+      console.log('  Files received:', files);
+      console.log('  Employee data received:', employeeData);
+      console.log('  Employee data type:', typeof employeeData);
+      console.log('  Employee data keys:', Object.keys(employeeData || {}));
+      
+      // Log each field individually to debug parsing issues
+      if (employeeData) {
+        Object.entries(employeeData).forEach(([key, value]) => {
+          console.log(`  ${key}:`, value, `(type: ${typeof value})`);
+        });
+      }
+      
+      console.log('=====================================');
+      
+      // Check for file in any of the accepted fields
+      const file = files?.image?.[0] || files?.file?.[0];
+      
+      if (!file) {
+        throw new BadRequestException('No file uploaded');
+      }
+
       const employee = await this.employeeService.createEmployeeWithImage(file, employeeData, user.id);
       const apiResponse = ApiResponseBuilder.success(employee);
       response.status(201).json(apiResponse);
     } catch (error) {
+      console.error('❌ ERROR in createEmployeeWithImage:', error);
+      console.error('  Error message:', error.message);
+      console.error('  Error stack:', error.stack);
+      
       const status = error.status || 400;
       const apiResponse = ApiResponseBuilder.error(
         'EMPLOYEE_CREATE_WITH_IMAGE_ERROR',
@@ -348,15 +704,47 @@ export class AdminEmployeeController {
   @Put(':id/photo')
   @ApiOperation({ summary: 'Replace employee photo (Admin)' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'file', maxCount: 1 }
+      ],
+      {
+        fileFilter: (req, file, callback) => {
+          console.log('🔍 DEBUG: HR Employee Photo Replace FileInterceptor called');
+          console.log('  File object:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          });
+          callback(null, true);
+        },
+        limits: {
+          fileSize: 10 * 1024 * 1024, // 10MB for employee photos
+        }
+      }
+    )
+  )
+  @ApiResponse({ status: 200, description: 'Employee photo replaced successfully' })
+  @ApiResponse({ status: 400, description: 'Validation or file error' })
+  @ApiResponse({ status: 404, description: 'Employee not found' })
   @Roles('ADMIN', 'EDITOR')
   async replaceEmployeePhoto(
     @Res() response: Response,
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
     @CurrentUser() user: any
   ): Promise<void> {
     try {
+      // Check for file in any of the accepted fields
+      const file = files?.image?.[0] || files?.file?.[0];
+      
+      if (!file) {
+        throw new BadRequestException('No file uploaded');
+      }
+
       const employee = await this.employeeService.uploadEmployeePhoto(id, file, user.id);
       const apiResponse = ApiResponseBuilder.success(employee);
       response.status(200).json(apiResponse);
@@ -404,14 +792,43 @@ export class AdminEmployeeController {
   @ApiResponse({ status: 201, description: 'Employees imported successfully' })
   @ApiResponse({ status: 400, description: 'Import failed' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'file', maxCount: 1 }
+      ],
+      {
+        fileFilter: (req, file, callback) => {
+          console.log('🔍 DEBUG: HR Employee Import FileInterceptor called');
+          console.log('  File object:', {
+            fieldname: file.fieldname,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          });
+          callback(null, true);
+        },
+        limits: {
+          fileSize: 10 * 1024 * 1024, // 10MB for employee import files
+        }
+      }
+    )
+  )
   @Roles('ADMIN')
   async importEmployees(
     @Res() response: Response,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: { image?: Express.Multer.File[]; file?: Express.Multer.File[] },
     @CurrentUser() user: any
   ): Promise<void> {
     try {
+      // Check for file in any of the accepted fields
+      const file = files?.image?.[0] || files?.file?.[0];
+      
+      if (!file) {
+        throw new BadRequestException('No file uploaded');
+      }
+
       const result = await this.employeeService.importEmployees(file, user.id);
       
       const apiResponse = ApiResponseBuilder.success(result);
@@ -498,6 +915,62 @@ export class AdminEmployeeController {
       );
 
       response.status(500).json(apiResponse);
+    }
+  }
+
+  @Post('bulk-remove-photos')
+  @ApiOperation({ summary: 'Bulk remove employee photos (Admin)' })
+  @ApiResponse({ status: 200, description: 'Bulk photo removal completed' })
+  @Roles('ADMIN', 'EDITOR')
+  async bulkRemovePhotos(
+    @Res() response: Response,
+    @Body() data: { ids: string[] },
+    @CurrentUser() user: any
+  ): Promise<void> {
+    try {
+      const result = await this.employeeService.bulkRemovePhotos(data.ids, user.id);
+      
+      const apiResponse = ApiResponseBuilder.success(result);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_BULK_PHOTO_REMOVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get(':id/photo/analytics')
+  @ApiOperation({ summary: 'Get employee photo analytics (Admin)' })
+  @ApiResponse({ status: 200, description: 'Analytics retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Employee not found' })
+  @ApiParam({ name: 'id', description: 'Employee ID' })
+  @ApiQuery({ name: 'dateFrom', required: false, type: Date })
+  @ApiQuery({ name: 'dateTo', required: false, type: Date })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeePhotoAnalytics(
+    @Res() response: Response,
+    @Param('id') id: string,
+    @Query('dateFrom') dateFrom?: Date,
+    @Query('dateTo') dateTo?: Date
+  ): Promise<void> {
+    try {
+      const analytics = await this.employeeService.getEmployeePhotoAnalytics(id, dateFrom, dateTo);
+      
+      const apiResponse = ApiResponseBuilder.success(analytics);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_PHOTO_ANALYTICS_ERROR',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
     }
   }
 } 

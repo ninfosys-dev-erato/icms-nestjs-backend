@@ -702,6 +702,6 @@ export class LogoUploadDto {
 }
 
 export class LogoUploadResponseDto extends HeaderConfigResponseDto {
-  @ApiProperty({ example: 'https://f003.backblazeb2.com/file/iCMS-bucket/header-logos/...' })
+  @ApiProperty({ example: 'https://f003.backblazeb2.com/file/iCMS-bucket/logos/...' })
   logoUrl?: string;
 } 

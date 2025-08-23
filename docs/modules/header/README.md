@@ -702,6 +702,23 @@ interface AdminHeaderController {
 **Description:** Reorder header configs
 **Access:** Admin, Editor
 
+#### POST /api/v1/admin/header-configs/{id}/logo/{logoType}/upload
+**Description:** Upload logo file (Supports JPG, PNG, WebP, SVG, and GIF)
+**Access:** Admin, Editor
+
+**Request Body (multipart/form-data):**
+```json
+{
+  "image": "file", // or "file" or "logo" field
+  "altText": {
+    "en": "Company Logo",
+    "ne": "कम्पनी लोगो"
+  },
+  "width": 150,
+  "height": 50
+}
+```
+
 #### PUT /api/v1/admin/header-configs/{id}/logo/{logoType}
 **Description:** Update logo
 **Access:** Admin, Editor
@@ -736,6 +753,7 @@ interface AdminHeaderController {
 
 ### 2. Logo Management
 - **Left and right logo support** for branding
+- **Multiple file format support** (JPG, PNG, WebP, SVG, GIF)
 - **Media integration** with media management system
 - **Size control** for responsive design
 - **Alt text support** for accessibility

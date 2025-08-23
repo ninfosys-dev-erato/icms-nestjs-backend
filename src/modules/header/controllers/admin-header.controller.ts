@@ -202,11 +202,13 @@ export class AdminHeaderController {
     ], {
       fileFilter: (req, file, callback) => {
         // Validate image files only
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
         if (!allowedTypes.includes(file.mimetype)) {
-          callback(new BadRequestException('Only JPG, PNG, WebP, and SVG files are allowed for logos'), false);
+          console.log(`❌ File type rejected: ${file.mimetype} for file: ${file.originalname}`);
+          callback(new Error('Only JPG, PNG, WebP, SVG, and GIF files are allowed for logos'), false);
           return;
         }
+        console.log(`✅ File type accepted: ${file.mimetype} for file: ${file.originalname}`);
         callback(null, true);
       },
       limits: {
@@ -214,7 +216,7 @@ export class AdminHeaderController {
       }
     })
   )
-  @ApiOperation({ summary: 'Upload logo file for header config (Admin)' })
+  @ApiOperation({ summary: 'Upload logo file for header config (Admin) - Supports JPG, PNG, WebP, SVG, and GIF' })
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', description: 'Header config ID' })
   @ApiParam({ name: 'logoType', description: 'Logo type (left or right)' })
@@ -259,7 +261,7 @@ export class AdminHeaderController {
     }
   })
   @ApiResponse({ status: 200, description: 'Logo uploaded successfully' })
-  @ApiResponse({ status: 400, description: 'File validation error' })
+  @ApiResponse({ status: 400, description: 'File validation error - Only JPG, PNG, WebP, SVG, and GIF files are allowed' })
   @ApiResponse({ status: 404, description: 'Header config not found' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @Roles('ADMIN', 'EDITOR')

@@ -492,4 +492,45 @@ export class PaginationInfo {
 
   @ApiProperty({ example: false })
   hasPrev: boolean;
+}
+
+// ========================================
+// PHOTO UPLOAD DTOs
+// ========================================
+
+export class EmployeePhotoUploadDto {
+  @ApiProperty({ example: 'employee_id' })
+  @IsString()
+  @IsNotEmpty()
+  employeeId: string;
+}
+
+export class EmployeePhotoUploadResponseDto extends EmployeeResponseDto {
+  @ApiProperty({ example: 'https://f003.backblazeb2.com/file/iCMS-bucket/employees/...' })
+  photoUrl: string;
+}
+
+export class CreateEmployeeWithPhotoDto extends CreateEmployeeDto {
+  @ApiPropertyOptional({ type: 'string', format: 'binary' })
+  @IsOptional()
+  photo?: Express.Multer.File;
+}
+
+export class BulkPhotoOperationDto {
+  @ApiProperty({ type: [String], example: ['emp1', 'emp2', 'emp3'] })
+  @IsArray()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  employeeIds: string[];
+}
+
+export class PhotoValidationResult {
+  @ApiProperty({ example: true })
+  isValid: boolean;
+
+  @ApiProperty({ example: 'File type not supported' })
+  message?: string;
+
+  @ApiProperty({ example: 'INVALID_FILE_TYPE' })
+  code?: string;
 } 
