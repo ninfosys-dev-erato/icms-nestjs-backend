@@ -222,24 +222,28 @@ describe('MenuService', () => {
   });
 
   describe('getMenuByLocation', () => {
-    it('should get menu by location', async () => {
-      const mockMenu = {
-        id: 'test-id',
-        name: { en: 'Test Menu', ne: 'परीक्षण मेनु' },
-        location: MenuLocation.HEADER,
-        isActive: true,
-        isPublished: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        menuItems: []
-      };
+    it('should get menus by location', async () => {
+      const mockMenus = [
+        {
+          id: 'test-id',
+          name: { en: 'Test Menu', ne: 'परीक्षण मेनु' },
+          location: MenuLocation.HEADER,
+          isActive: true,
+          isPublished: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          menuItems: []
+        }
+      ];
 
       const expectedResult = {
-        ...mockMenu,
-        menuItemCount: 0
+        data: mockMenus.map(menu => ({
+          ...menu,
+          menuItemCount: 0
+        }))
       };
 
-      (menuRepository.findByLocation as jest.Mock).mockResolvedValue(mockMenu);
+      (menuRepository.findByLocation as jest.Mock).mockResolvedValue(mockMenus);
 
       const result = await service.getMenuByLocation(MenuLocation.HEADER);
 
@@ -247,10 +251,10 @@ describe('MenuService', () => {
       expect(menuRepository.findByLocation).toHaveBeenCalledWith(MenuLocation.HEADER);
     });
 
-    it('should throw error when menu not found for location', async () => {
-      (menuRepository.findByLocation as jest.Mock).mockResolvedValue(null);
+    it('should throw error when no menus found for location', async () => {
+      (menuRepository.findByLocation as jest.Mock).mockResolvedValue([]);
 
-      await expect(service.getMenuByLocation(MenuLocation.SIDEBAR)).rejects.toThrow('Menu not found for location');
+      await expect(service.getMenuByLocation(MenuLocation.SIDEBAR)).rejects.toThrow('No menus found for location');
     });
   });
 

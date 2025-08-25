@@ -90,8 +90,8 @@ export class MenuRepository {
     return this.findAll({ ...query, isPublished: true });
   }
 
-  async findByLocation(location: MenuLocation): Promise<Menu | null> {
-    return this.prisma.menu.findFirst({
+  async findByLocation(location: MenuLocation): Promise<Menu[]> {
+    return this.prisma.menu.findMany({
       where: { location, isActive: true, isPublished: true },
       include: {
         menuItems: {
@@ -107,6 +107,7 @@ export class MenuRepository {
         createdBy: true,
         updatedBy: true,
       },
+      orderBy: { createdAt: 'asc' },
     });
   }
 

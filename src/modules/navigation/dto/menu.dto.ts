@@ -157,6 +157,10 @@ export class PaginatedMenuResponse {
   @ApiProperty() pagination: any;
 }
 
+export class MenuArrayResponse {
+  @ApiProperty({ type: [MenuResponseDto] }) data: MenuResponseDto[];
+}
+
 export class ValidationError {
   @ApiProperty() field: string;
   @ApiProperty() message: string;

@@ -54,7 +54,7 @@ class DownloadInterceptor implements NestInterceptor {
 }
 
 @ApiTags('Content Attachments')
-@Controller(['attachments', 'content/attachments'])
+@Controller(['attachments', 'content/attachments', 'admin/contents'])
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'EDITOR')
 @ApiBearerAuth()
@@ -73,7 +73,7 @@ export class ContentAttachmentController {
     };
   }
 
-  @Get('content/:contentId/attachments')
+  @Get(['content/:contentId/attachments', ':contentId/attachments'])
   @ApiOperation({ summary: 'Get attachments by content ID' })
   @ApiResponse({ status: 200, description: 'Attachments retrieved successfully' })
   async getAttachmentsByContent(
@@ -84,7 +84,7 @@ export class ContentAttachmentController {
       const attachments = await this.attachmentService.getAttachmentsByContent(contentId);
       
       const apiResponse = ApiResponseBuilder.success(attachments);
-
+      
       response.status(200).json(apiResponse);
     } catch (error) {
       const status = error.message.includes('not found') ? 404 : 500;
@@ -97,8 +97,8 @@ export class ContentAttachmentController {
     }
   }
 
-  @Get('content/:contentId/attachments/with-presigned-urls')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Get(['content/:contentId/attachments/with-presigned-urls', ':contentId/attachments/with-presigned-urls'])
+  @UseGuards(JwtAuthGuard, RolesGuard) 
   @ApiOperation({ summary: 'Get attachments by content ID with presigned URLs' })
   @ApiResponse({ status: 200, description: 'Attachments with presigned URLs retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -282,6 +282,34 @@ export class ContentAttachmentController {
     }
   }
 
+  @Post(':contentId/attachments')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload attachment for specific content (Admin route)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 201, description: 'Attachment uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  async uploadAttachmentForContent(
+    @Param('contentId') contentId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Res() response: Response,
+  ): Promise<void> {
+    try {
+      const attachment = await this.attachmentService.uploadAttachment(contentId, file);
+      
+      const apiResponse = ApiResponseBuilder.success(attachment);
+
+      response.status(201).json(apiResponse);
+    } catch (error) {
+      const status = error.status || 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'ATTACHMENT_UPLOAD_ERROR',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
+  }
+
   @Put(':id')
   @ApiOperation({ summary: 'Update attachment' })
   @ApiResponse({ status: 200, description: 'Attachment updated successfully' })
@@ -313,6 +341,59 @@ export class ContentAttachmentController {
   @ApiResponse({ status: 200, description: 'Attachment deleted successfully' })
   @ApiResponse({ status: 404, description: 'Attachment not found' })
   async deleteAttachment(
+    @Param('id') id: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    try {
+      await this.attachmentService.deleteAttachment(id);
+      
+      const apiResponse = ApiResponseBuilder.success({ message: 'Attachment deleted successfully' });
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'ATTACHMENT_DELETE_ERROR',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
+  }
+
+  @Put(':contentId/attachments/:id')
+  @ApiOperation({ summary: 'Update attachment for specific content (Admin route)' })
+  @ApiResponse({ status: 200, description: 'Attachment updated successfully' })
+  @ApiResponse({ status: 404, description: 'Attachment not found' })
+  async updateAttachmentForContent(
+    @Param('contentId') contentId: string,
+    @Param('id') id: string,
+    @Body() updateAttachmentDto: UpdateAttachmentDto,
+    @Res() response: Response,
+  ): Promise<void> {
+    try {
+      const attachment = await this.attachmentService.updateAttachment(id, updateAttachmentDto);
+      
+      const apiResponse = ApiResponseBuilder.success(attachment);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'ATTACHMENT_UPDATE_ERROR',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
+  }
+
+  @Delete(':contentId/attachments/:id')
+  @ApiOperation({ summary: 'Delete attachment for specific content (Admin route)' })
+  @ApiResponse({ status: 200, description: 'Attachment deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Attachment not found' })
+  async deleteAttachmentForContent(
+    @Param('contentId') contentId: string,
     @Param('id') id: string,
     @Res() response: Response,
   ): Promise<void> {

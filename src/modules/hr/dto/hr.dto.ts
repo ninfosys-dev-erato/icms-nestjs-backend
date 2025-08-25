@@ -355,6 +355,11 @@ export class EmployeeQueryDto {
   @IsString()
   departmentId?: string;
 
+  @ApiPropertyOptional({ example: 'en' })
+  @IsOptional()
+  @IsString()
+  locale?: 'en' | 'ne';
+
   @ApiPropertyOptional({ example: 'createdAt' })
   @IsOptional()
   @IsString()

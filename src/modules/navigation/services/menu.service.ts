@@ -6,6 +6,7 @@ import {
   MenuQueryDto,
   MenuResponseDto,
   PaginatedMenuResponse,
+  MenuArrayResponse,
   ValidationResult,
   ValidationError,
   ImportResult,
@@ -52,12 +53,14 @@ export class MenuService {
     };
   }
 
-  async getMenuByLocation(location: MenuLocation): Promise<MenuResponseDto> {
-    const menu = await this.menuRepository.findByLocation(location);
-    if (!menu) {
-      throw new NotFoundException(`Menu not found for location: ${location}`);
+  async getMenuByLocation(location: MenuLocation): Promise<MenuArrayResponse> {
+    const menus = await this.menuRepository.findByLocation(location);
+    if (!menus || menus.length === 0) {
+      throw new NotFoundException(`No menus found for location: ${location}`);
     }
-    return this.transformToResponseDto(menu);
+    return {
+      data: menus.map(menu => this.transformToResponseDto(menu))
+    };
   }
 
   async searchMenus(searchTerm: string, query: MenuQueryDto): Promise<PaginatedMenuResponse> {

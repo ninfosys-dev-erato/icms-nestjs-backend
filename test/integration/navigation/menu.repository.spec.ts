@@ -205,24 +205,26 @@ describe('MenuRepository', () => {
   });
 
   describe('findByLocation', () => {
-    it('should find menu by location', async () => {
-      const mockMenu = {
-        id: 'test-id',
-        name: { en: 'Test Menu', ne: 'परीक्षण मेनु' },
-        location: MenuLocation.HEADER,
-        isActive: true,
-        isPublished: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        menuItems: []
-      };
+    it('should find menus by location', async () => {
+      const mockMenus = [
+        {
+          id: 'test-id',
+          name: { en: 'Test Menu', ne: 'परीक्षण मेनु' },
+          location: MenuLocation.HEADER,
+          isActive: true,
+          isPublished: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          menuItems: []
+        }
+      ];
 
-      (prisma.menu.findFirst as jest.Mock).mockResolvedValue(mockMenu);
+      (prisma.menu.findMany as jest.Mock).mockResolvedValue(mockMenus);
 
       const result = await repository.findByLocation(MenuLocation.HEADER);
 
-      expect(result).toEqual(mockMenu);
-      expect(prisma.menu.findFirst).toHaveBeenCalledWith({
+      expect(result).toEqual(mockMenus);
+      expect(prisma.menu.findMany).toHaveBeenCalledWith({
         where: { 
           location: MenuLocation.HEADER,
           isActive: true,
@@ -231,20 +233,27 @@ describe('MenuRepository', () => {
         include: {
           menuItems: {
             where: { isActive: true, isPublished: true },
-            orderBy: { order: 'asc' }
+            orderBy: { order: 'asc' },
+            include: {
+              children: {
+                where: { isActive: true, isPublished: true },
+                orderBy: { order: 'asc' },
+              },
+            },
           },
           createdBy: true,
           updatedBy: true
-        }
+        },
+        orderBy: { createdAt: 'asc' }
       });
     });
 
-    it('should return null when menu not found for location', async () => {
-      (prisma.menu.findFirst as jest.Mock).mockResolvedValue(null);
+    it('should return empty array when no menus found for location', async () => {
+      (prisma.menu.findMany as jest.Mock).mockResolvedValue([]);
 
       const result = await repository.findByLocation(MenuLocation.SIDEBAR);
 
-      expect(result).toBeNull();
+      expect(result).toEqual([]);
     });
   });
 

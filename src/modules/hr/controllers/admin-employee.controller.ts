@@ -165,6 +165,64 @@ export class AdminEmployeeController {
     }
   }
 
+  @Get('with-position')
+  @ApiOperation({ summary: 'Get all employees with position information (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employees with position retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeesWithPosition(
+    @Res() response: Response,
+    @Query() query?: EmployeeQueryDto
+  ): Promise<void> {
+    try {
+      const result = await this.employeeService.getEmployeesWithPosition(query);
+      
+      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEES_WITH_POSITION_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('position/:position/with-details')
+  @ApiOperation({ summary: 'Get employees by position with detailed information (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employees by position retrieved successfully' })
+  @ApiParam({ name: 'position', description: 'Position name' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeesByPositionDetailed(
+    @Res() response: Response,
+    @Param('position') position: string,
+    @Query() query?: EmployeeQueryDto
+  ): Promise<void> {
+    try {
+      // Use the new method that includes photos and detailed information
+      const result = await this.employeeService.getEmployeesByPositionWithDetailsAndPhotos(position, query);
+      
+      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEES_BY_POSITION_DETAILED_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get employee by ID (Admin)' })
   @ApiResponse({ status: 200, description: 'Employee retrieved successfully' })
@@ -967,6 +1025,141 @@ export class AdminEmployeeController {
       const status = error.message.includes('not found') ? 404 : 500;
       const apiResponse = ApiResponseBuilder.error(
         'EMPLOYEE_PHOTO_ANALYTICS_ERROR',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
+  }
+
+  @Get('photos/active')
+  @ApiOperation({ summary: 'Get active employee photos only (Admin)' })
+  @ApiResponse({ status: 200, description: 'Active employee photos retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  @Roles('ADMIN', 'EDITOR')
+  async getActiveEmployeePhotos(
+    @Res() response: Response,
+    @Query() query?: EmployeeQueryDto
+  ): Promise<void> {
+    try {
+      const result = await this.employeeService.getActiveEmployeePhotos(query);
+      
+      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_ACTIVE_PHOTOS_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('positions/summary')
+  @ApiOperation({ summary: 'Get position summary with employee counts (Admin)' })
+  @ApiResponse({ status: 200, description: 'Position summary retrieved successfully' })
+  @Roles('ADMIN', 'EDITOR')
+  async getPositionSummary(
+    @Res() response: Response
+  ): Promise<void> {
+    try {
+      const summary = await this.employeeService.getPositionSummary();
+      
+      const apiResponse = ApiResponseBuilder.success(summary);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'POSITION_SUMMARY_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('with-details-and-photos')
+  @ApiOperation({ summary: 'Get all employees with detailed information and photos (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employees with details and photos retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'departmentId', required: false, type: Number })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeesWithDetailsAndPhotos(
+    @Res() response: Response,
+    @Query() query?: EmployeeQueryDto
+  ): Promise<void> {
+    try {
+      const result = await this.employeeService.getEmployeesWithDetailsAndPhotos(query);
+      
+      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEES_WITH_DETAILS_AND_PHOTOS_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('position/:position/with-details-and-photos')
+  @ApiOperation({ summary: 'Get employees by position with detailed information and photos (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employees by position with details and photos retrieved successfully' })
+  @ApiParam({ name: 'position', description: 'Position name' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeesByPositionWithDetailsAndPhotos(
+    @Res() response: Response,
+    @Param('position') position: string,
+    @Query() query?: EmployeeQueryDto
+  ): Promise<void> {
+    try {
+      const result = await this.employeeService.getEmployeesByPositionWithDetailsAndPhotos(position, query);
+      
+      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEES_BY_POSITION_WITH_DETAILS_AND_PHOTOS_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get(':id/with-details-and-photo')
+  @ApiOperation({ summary: 'Get employee with detailed information and photo (Admin)' })
+  @ApiResponse({ status: 200, description: 'Employee with details and photo retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Employee not found' })
+  @ApiParam({ name: 'id', description: 'Employee ID' })
+  @Roles('ADMIN', 'EDITOR')
+  async getEmployeeWithDetailsAndPhoto(
+    @Res() response: Response,
+    @Param('id') id: string
+  ): Promise<void> {
+    try {
+      const employee = await this.employeeService.getEmployeeDetailsWithPhoto(id);
+      
+      const apiResponse = ApiResponseBuilder.success(employee);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'EMPLOYEE_WITH_DETAILS_AND_PHOTO_NOT_FOUND',
         error.message
       );
 

@@ -109,6 +109,304 @@ export class EmployeeService {
     return Promise.all(employees.map(employee => this.transformToResponseDto(employee)));
   }
 
+  async getEmployeesWithPosition(query: EmployeeQueryDto): Promise<{
+    data: Array<{
+      id: string;
+      name: any;
+      position: any;
+      department: any;
+      photo: any;
+      presignedUrl?: string;
+      isActive: boolean;
+      order: number;
+      mobileNumber?: string;
+      telephone?: string;
+      email?: string;
+      roomNumber?: string;
+    }>;
+    pagination: PaginationInfo;
+  }> {
+    console.log('👥 Employee: Getting employees with position information');
+    console.log('  Query:', query);
+
+    const result = await this.employeeRepository.findAll(query);
+    
+    const employeesWithPosition = await Promise.all(
+      result.data.map(async (employee) => {
+        let presignedUrl: string | undefined;
+        
+        if (employee.photoMediaId && employee.photo) {
+          try {
+            presignedUrl = await this.mediaService.generatePresignedUrl(
+              employee.photoMediaId,
+              'get',
+              86400 // 24 hours expiration
+            );
+          } catch (error) {
+            console.warn(`⚠️ Employee: Failed to generate presigned URL for employee ${employee.id}:`, error.message);
+          }
+        }
+
+        return {
+          id: employee.id,
+          name: employee.name,
+          position: employee.position,
+          department: employee.department,
+          photo: employee.photo,
+          presignedUrl,
+          isActive: employee.isActive,
+          order: employee.order,
+          mobileNumber: employee.mobileNumber,
+          telephone: employee.telephone,
+          email: employee.email,
+          roomNumber: employee.roomNumber
+        };
+      })
+    );
+
+    console.log(`✅ Employee: Retrieved ${employeesWithPosition.length} employees with position information`);
+
+    return {
+      data: employeesWithPosition,
+      pagination: result.pagination
+    };
+  }
+
+  async getEmployeesByPositionDetailed(position: string, query: EmployeeQueryDto): Promise<{
+    data: Array<{
+      id: string;
+      name: any;
+      position: any;
+      department: any;
+      photo: any;
+      presignedUrl?: string;
+      isActive: boolean;
+      order: number;
+      mobileNumber?: string;
+      telephone?: string;
+      email?: string;
+      roomNumber?: string;
+    }>;
+    pagination: PaginationInfo;
+  }> {
+    console.log('👥 Employee: Getting employees by position with detailed information');
+    console.log('  Position:', position);
+    console.log('  Query:', query);
+
+    // First get employees by position
+    const employees = await this.employeeRepository.findByPosition(position);
+    
+    // Apply pagination and filtering
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+    
+    const total = employees.length;
+    const paginatedEmployees = employees.slice(skip, skip + limit);
+    
+    const employeesWithDetails = await Promise.all(
+      paginatedEmployees.map(async (employee) => {
+        let presignedUrl: string | undefined;
+        
+        if (employee.photoMediaId && employee.photo) {
+          try {
+            presignedUrl = await this.mediaService.generatePresignedUrl(
+              employee.photoMediaId,
+              'get',
+              86400 // 24 hours expiration
+            );
+          } catch (error) {
+            console.warn(`⚠️ Employee: Failed to generate presigned URL for employee ${employee.id}:`, error.message);
+          }
+        }
+
+        return {
+          id: employee.id,
+          name: employee.name,
+          position: employee.position,
+          department: employee.department,
+          photo: employee.photo,
+          presignedUrl,
+          isActive: employee.isActive,
+          order: employee.order,
+          mobileNumber: employee.mobileNumber,
+          telephone: employee.telephone,
+          email: employee.email,
+          roomNumber: employee.roomNumber
+        };
+      })
+    );
+
+    const totalPages = Math.ceil(total / limit);
+
+    console.log(`✅ Employee: Retrieved ${employeesWithDetails.length} employees for position "${position}"`);
+
+    return {
+      data: employeesWithDetails,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    };
+  }
+
+  async getEmployeesWithDetailsAndPhotos(query: EmployeeQueryDto): Promise<{
+    data: Array<{
+      id: string;
+      name: any;
+      position: any;
+      department: any;
+      photo: any;
+      presignedUrl?: string;
+      isActive: boolean;
+      order: number;
+      mobileNumber?: string;
+      telephone?: string;
+      email?: string;
+      roomNumber?: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
+    pagination: PaginationInfo;
+  }> {
+    console.log('👥 Employee: Getting employees with details and photos');
+    console.log('  Query:', query);
+
+    const result = await this.employeeRepository.findAll(query);
+    
+    const employeesWithDetails = await Promise.all(
+      result.data.map(async (employee) => {
+        let presignedUrl: string | undefined;
+        
+        if (employee.photoMediaId && employee.photo) {
+          try {
+            presignedUrl = await this.mediaService.generatePresignedUrl(
+              employee.photoMediaId,
+              'get',
+              86400 // 24 hours expiration
+            );
+          } catch (error) {
+            console.warn(`⚠️ Employee: Failed to generate presigned URL for employee ${employee.id}:`, error.message);
+          }
+        }
+
+        return {
+          id: employee.id,
+          name: employee.name,
+          position: employee.position,
+          department: employee.department,
+          photo: employee.photo,
+          presignedUrl,
+          isActive: employee.isActive,
+          order: employee.order,
+          mobileNumber: employee.mobileNumber,
+          telephone: employee.telephone,
+          email: employee.email,
+          roomNumber: employee.roomNumber,
+          createdAt: employee.createdAt,
+          updatedAt: employee.updatedAt
+        };
+      })
+    );
+
+    console.log(`✅ Employee: Retrieved ${employeesWithDetails.length} employees with details and photos`);
+
+    return {
+      data: employeesWithDetails,
+      pagination: result.pagination
+    };
+  }
+
+  async getEmployeesByPositionWithDetailsAndPhotos(position: string, query: EmployeeQueryDto): Promise<{
+    data: Array<{
+      id: string;
+      name: any;
+      position: any;
+      department: any;
+      photo: any;
+      presignedUrl?: string;
+      isActive: boolean;
+      order: number;
+      mobileNumber?: string;
+      telephone?: string;
+      email?: string;
+      roomNumber?: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
+    pagination: PaginationInfo;
+  }> {
+    console.log('👥 Employee: Getting employees by position with details and photos');
+    console.log('  Position:', position);
+    console.log('  Query:', query);
+
+    // First get employees by position
+    const employees = await this.employeeRepository.findByPosition(position);
+    
+    // Apply pagination and filtering
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+    
+    const total = employees.length;
+    const paginatedEmployees = employees.slice(skip, skip + limit);
+    
+    const employeesWithDetails = await Promise.all(
+      paginatedEmployees.map(async (employee) => {
+        let presignedUrl: string | undefined;
+        
+        if (employee.photoMediaId && employee.photo) {
+          try {
+            presignedUrl = await this.mediaService.generatePresignedUrl(
+              employee.photoMediaId,
+              'get',
+              86400 // 24 hours expiration
+            );
+          } catch (error) {
+            console.warn(`⚠️ Employee: Failed to generate presigned URL for employee ${employee.id}:`, error.message);
+          }
+        }
+
+        return {
+          id: employee.id,
+          name: employee.name,
+          position: employee.position,
+          department: employee.department,
+          photo: employee.photo,
+          presignedUrl,
+          isActive: employee.isActive,
+          order: employee.order,
+          mobileNumber: employee.mobileNumber,
+          telephone: employee.telephone,
+          email: employee.email,
+          roomNumber: employee.roomNumber,
+          createdAt: employee.createdAt,
+          updatedAt: employee.updatedAt
+        };
+      })
+    );
+
+    const totalPages = Math.ceil(total / limit);
+
+    console.log(`✅ Employee: Retrieved ${employeesWithDetails.length} employees for position "${position}" with details and photos`);
+
+    return {
+      data: employeesWithDetails,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    };
+  }
+
   async validateEmployee(data: CreateEmployeeDto | UpdateEmployeeDto): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
 
@@ -324,6 +622,48 @@ export class EmployeeService {
     );
 
     console.log(`✅ Employee: Retrieved ${photosWithUrls.length} employee photos`);
+
+    return {
+      data: photosWithUrls,
+      pagination: result.pagination
+    };
+  }
+
+  async getActiveEmployeePhotos(query: EmployeeQueryDto): Promise<{
+    data: Array<{ id: string; name: any; photo: any; presignedUrl?: string }>;
+    pagination: PaginationInfo;
+  }> {
+    console.log('🖼️ Employee: Getting active employee photos');
+    console.log('  Query:', query);
+
+    const result = await this.employeeRepository.findActive(query);
+    
+    const photosWithUrls = await Promise.all(
+      result.data.map(async (employee) => {
+        let presignedUrl: string | undefined;
+        
+        if (employee.photoMediaId && employee.photo) {
+          try {
+            presignedUrl = await this.mediaService.generatePresignedUrl(
+              employee.photoMediaId,
+              'get',
+              86400 // 24 hours expiration
+            );
+          } catch (error) {
+            console.warn(`⚠️ Employee: Failed to generate presigned URL for employee ${employee.id}:`, error.message);
+          }
+        }
+
+        return {
+          id: employee.id,
+          name: employee.name,
+          photo: employee.photo,
+          presignedUrl
+        };
+      })
+    );
+
+    console.log(`✅ Employee: Retrieved ${photosWithUrls.length} active employee photos`);
 
     return {
       data: photosWithUrls,
@@ -550,6 +890,75 @@ export class EmployeeService {
     
     // TODO: Implement CSV and PDF export
     throw new BadRequestException('Export format not implemented yet');
+  }
+
+  async getPositionSummary(): Promise<{
+    totalPositions: number;
+    positions: Array<{
+      position: any;
+      employeeCount: number;
+      activeEmployees: number;
+      departments: string[];
+      sampleEmployees: Array<{
+        id: string;
+        name: any;
+        department: any;
+        photo: any;
+        presignedUrl?: string;
+      }>;
+    }>;
+  }> {
+    console.log('📊 Employee: Getting position summary');
+
+    // Get all employees to analyze positions
+    const allEmployees = await this.employeeRepository.findAll({ limit: 10000 });
+    
+    // Group employees by position
+    const positionGroups = new Map<string, any[]>();
+    
+    for (const emp of allEmployees.data) {
+      if (emp.position?.en) {
+        const positionKey = emp.position.en;
+        if (!positionGroups.has(positionKey)) {
+          positionGroups.set(positionKey, []);
+        }
+        positionGroups.get(positionKey)!.push(emp);
+      }
+    }
+
+    const positions = Array.from(positionGroups.entries()).map(([positionName, employees]) => {
+      const activeEmployees = employees.filter(emp => emp.isActive);
+      const departments = [...new Set(employees.map(emp => emp.department?.departmentName?.en).filter(Boolean))];
+      
+      // Get sample employees with photos
+      const sampleEmployees = employees.slice(0, 3).map(emp => ({
+        id: emp.id,
+        name: emp.name,
+        department: emp.department,
+        photo: emp.photo,
+        presignedUrl: undefined // Will be generated if needed
+      }));
+
+      return {
+        position: { en: positionName, ne: employees[0]?.position?.ne || '' },
+        employeeCount: employees.length,
+        activeEmployees: activeEmployees.length,
+        departments,
+        sampleEmployees
+      };
+    });
+
+    // Sort by employee count (descending)
+    positions.sort((a, b) => b.employeeCount - a.employeeCount);
+
+    const summary = {
+      totalPositions: positions.length,
+      positions
+    };
+
+    console.log(`✅ Employee: Position summary generated with ${positions.length} positions`);
+
+    return summary;
   }
 
   private async transformToResponseDto(employee: any): Promise<EmployeeResponseDto> {
@@ -1111,5 +1520,69 @@ export class EmployeeService {
     console.log('  Photo size:', photoInfo.photoSize);
 
     return analytics;
+  }
+
+  async getEmployeeDetailsWithPhoto(id: string): Promise<{
+    id: string;
+    name: any;
+    position: any;
+    department: any;
+    photo: any;
+    presignedUrl?: string;
+    isActive: boolean;
+    order: number;
+    mobileNumber?: string;
+    telephone?: string;
+    email?: string;
+    roomNumber?: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }> {
+    console.log('👤 Employee: Getting employee details with photo');
+    console.log('  Employee ID:', id);
+
+    const employee = await this.employeeRepository.findById(id);
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    let presignedUrl: string | undefined;
+    
+    if (employee.photoMediaId && employee.photo) {
+      try {
+        console.log('🖼️ Employee: Generating presigned URL for photo');
+        presignedUrl = await this.mediaService.generatePresignedUrl(
+          employee.photoMediaId,
+          'get',
+          86400 // 24 hours expiration
+        );
+        console.log('✅ Employee: Presigned URL generated successfully');
+      } catch (error) {
+        console.warn('⚠️ Employee: Failed to generate presigned URL for photo:', error.message);
+      }
+    }
+
+    const employeeDetails = {
+      id: employee.id,
+      name: employee.name,
+      position: employee.position,
+      department: employee.department,
+      photo: employee.photo,
+      presignedUrl,
+      isActive: employee.isActive,
+      order: employee.order,
+      mobileNumber: employee.mobileNumber,
+      telephone: employee.telephone,
+      email: employee.email,
+      roomNumber: employee.roomNumber,
+      createdAt: employee.createdAt,
+      updatedAt: employee.updatedAt
+    };
+
+    console.log('✅ Employee: Employee details with photo retrieved successfully');
+    console.log('  Has photo:', !!employee.photo);
+    console.log('  Has presigned URL:', !!presignedUrl);
+
+    return employeeDetails;
   }
 } 

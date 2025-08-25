@@ -85,6 +85,36 @@ export class PublicEmployeeController {
     return employees;
   }
 
+  @Get('with-position')
+  @ApiOperation({ summary: 'Get all employees with position information' })
+  @ApiResponse({ status: 200, description: 'Employees with position retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  async getEmployeesWithPosition(
+    @Query() query?: EmployeeQueryDto
+  ) {
+    const result = await this.employeeService.getEmployeesWithPosition(query);
+    return result;
+  }
+
+  @Get('position/:position/with-details')
+  @ApiOperation({ summary: 'Get employees by position with detailed information' })
+  @ApiResponse({ status: 200, description: 'Employees by position retrieved successfully' })
+  @ApiParam({ name: 'position', description: 'Position name' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getEmployeesByPositionDetailed(
+    @Param('position') position: string,
+    @Query() query?: EmployeeQueryDto
+  ) {
+    // Use the new method that includes photos and detailed information
+    const result = await this.employeeService.getEmployeesByPositionWithDetailsAndPhotos(position, query);
+    return result;
+  }
+
   @Get('photos')
   @ApiOperation({ summary: 'Get all employee photos' })
   @ApiResponse({ status: 200, description: 'Employee photos retrieved successfully' })
@@ -122,6 +152,20 @@ export class PublicEmployeeController {
     return result;
   }
 
+  @Get('photos/active')
+  @ApiOperation({ summary: 'Get active employee photos only' })
+  @ApiResponse({ status: 200, description: 'Active employee photos retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  async getActiveEmployeePhotos(
+    @Query() query?: EmployeeQueryDto
+  ) {
+    const result = await this.employeeService.getActiveEmployeePhotos(query);
+    return result;
+  }
+
   @Get('photos/statistics')
   @ApiOperation({ summary: 'Get employee photo statistics' })
   @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
@@ -150,6 +194,62 @@ export class PublicEmployeeController {
   ) {
     const photos = await this.employeeService.getEmployeePhotosByPosition(position);
     return photos;
+  }
+
+  @Get('positions/summary')
+  @ApiOperation({ summary: 'Get position summary with employee counts' })
+  @ApiResponse({ status: 200, description: 'Position summary retrieved successfully' })
+  async getPositionSummary() {
+    const summary = await this.employeeService.getPositionSummary();
+    return summary;
+  }
+
+  @Get('with-details-and-photos')
+  @ApiOperation({ summary: 'Get all employees with detailed information and photos' })
+  @ApiResponse({ status: 200, description: 'Employees with details and photos retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiQuery({ name: 'locale', required: false, type: String, description: 'Locale for internationalization (en/ne)' })
+  async getEmployeesWithDetailsAndPhotos(
+    @Query() query?: EmployeeQueryDto
+  ) {
+    const result = await this.employeeService.getEmployeesWithDetailsAndPhotos(query);
+    return result;
+  }
+
+  @Get('position/:position/with-details-and-photos')
+  @ApiOperation({ summary: 'Get employees by position with detailed information and photos' })
+  @ApiResponse({ status: 200, description: 'Employees by position with details and photos retrieved successfully' })
+  @ApiParam({ name: 'position', description: 'Position name' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'locale', required: false, type: String, description: 'Locale for internationalization (en/ne)' })
+  async getEmployeesByPositionWithDetailsAndPhotos(
+    @Param('position') position: string,
+    @Query() query?: EmployeeQueryDto
+  ) {
+    // Use the new method that includes photos and detailed information
+    const result = await this.employeeService.getEmployeesByPositionWithDetailsAndPhotos(position, query);
+    return result;
+  }
+
+  @Get(':id/with-details-and-photo')
+  @ApiOperation({ summary: 'Get employee with detailed information and photo' })
+  @ApiResponse({ status: 200, description: 'Employee with details and photo retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Employee not found' })
+  @ApiParam({ name: 'id', description: 'Employee ID' })
+  async getEmployeeWithDetailsAndPhoto(
+    @Param('id') id: string
+  ) {
+    try {
+      const employee = await this.employeeService.getEmployeeDetailsWithPhoto(id);
+      return employee;
+    } catch (error) {
+      throw new HttpException('Employee not found', HttpStatus.NOT_FOUND);
+    }
   }
 
   @Get(':id')
