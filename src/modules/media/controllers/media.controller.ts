@@ -465,6 +465,22 @@ export class MediaController {
     return this.mediaService.getAllMedia({ ...query, tags: tagArray });
   }
 
+  @Get('public/gallery')
+  @ApiOperation({ summary: 'Get public gallery photos from general folder (no authentication required)' })
+  @ApiResponse({ status: 200, description: 'Public gallery photos retrieved successfully' })
+  async getPublicGalleryPhotos(@Query() query: MediaQueryDto) {
+    // Filter for public, active photos in the general folder
+    const galleryQuery = {
+      ...query,
+      isPublic: true,
+      isActive: true,
+      folder: 'general',
+      category: MediaCategory.IMAGE
+    };
+    
+    return this.mediaService.getPublicGalleryPhotos(galleryQuery);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get media by ID' })

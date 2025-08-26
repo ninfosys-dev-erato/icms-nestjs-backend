@@ -390,6 +390,41 @@ export class MediaService {
     return { data: enriched, pagination: result.pagination };
   }
 
+  async getPublicGalleryPhotos(query?: MediaQueryDto): Promise<{
+    data: MediaResponseDto[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }> {
+    // Get public, active photos from general folder
+    const result = await this.mediaRepository.findByFolder('general', {
+      ...query,
+      isPublic: true,
+      isActive: true,
+      category: MediaCategory.IMAGE
+    });
+    
+    // Generate presigned URLs for all photos
+    const enriched = await Promise.all(
+      result.data.map(async (item) => {
+        try {
+          const presignedUrl = await this.fileStorageService.generatePresignedUrl(item.fileName, 'get', 86400);
+          return { ...item, presignedUrl };
+        } catch (error) {
+          this.logger.warn(`Failed to generate presigned URL for media ${item.id}: ${error.message}`);
+          return item;
+        }
+      })
+    );
+    
+    return { data: enriched, pagination: result.pagination };
+  }
+
   async getMediaByUser(userId: string, query?: MediaQueryDto): Promise<{
     data: MediaResponseDto[];
     pagination: {
