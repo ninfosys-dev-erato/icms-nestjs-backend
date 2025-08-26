@@ -22,6 +22,8 @@ import { Roles } from '@/modules/auth/decorators/roles.decorator';
 import { CurrentUser } from '@/modules/auth/decorators/current-user.decorator';
 import { MenuService } from '../services/menu.service';
 import { MenuItemService } from '../services/menu-item.service';
+import { ContentService } from '../../content-management/services/content.service';
+import { CategoryService } from '../../content-management/services/category.service';
 import {
   CreateMenuDto,
   UpdateMenuDto,
@@ -41,6 +43,8 @@ export class AdminNavigationController {
   constructor(
     private readonly menuService: MenuService,
     private readonly menuItemService: MenuItemService,
+    private readonly contentService: ContentService,
+    private readonly categoryService: CategoryService,
   ) {}
 
   // Test endpoint for debugging
@@ -320,5 +324,36 @@ export class AdminNavigationController {
   ): Promise<any> {
     await this.menuItemService.deleteMenuItem(id);
     return { message: 'Menu item deleted successfully' };
+  }
+
+  // Helper endpoints for admin UI
+  @Get('categories/for-menu')
+  @ApiOperation({ summary: 'Get categories for menu item selection' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved categories' })
+  @Roles('ADMIN', 'EDITOR')
+  async getCategoriesForMenu(): Promise<any> {
+    return await this.categoryService.getActiveCategories();
+  }
+
+  @Get('content/by-category/:categorySlug')
+  @ApiOperation({ summary: 'Get content by category for menu item selection' })
+  @ApiParam({ name: 'categorySlug', description: 'Category slug' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved content' })
+  @Roles('ADMIN', 'EDITOR')
+  async getContentByCategory(@Param('categorySlug') categorySlug: string): Promise<any> {
+    return await this.contentService.getPublishedContentByCategory(categorySlug, { page: 1, limit: 100 });
+  }
+
+  @Get('content/search')
+  @ApiOperation({ summary: 'Search content for menu item selection' })
+  @ApiQuery({ name: 'q', description: 'Search query' })
+  @ApiQuery({ name: 'limit', description: 'Maximum number of results', required: false })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved content' })
+  @Roles('ADMIN', 'EDITOR')
+  async searchContentForMenu(
+    @Query('q') query: string,
+    @Query('limit') limit: number = 20,
+  ): Promise<any> {
+    return await this.contentService.searchContent(query, { page: 1, limit });
   }
 } 

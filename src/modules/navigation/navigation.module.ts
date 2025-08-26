@@ -5,8 +5,10 @@ import { MenuService } from './services/menu.service';
 import { MenuItemService } from './services/menu-item.service';
 import { MenuRepository } from './repositories/menu.repository';
 import { MenuItemRepository } from './repositories/menu-item.repository';
+import { ContentManagementModule } from '../content-management/content-management.module';
 
 @Module({
+  imports: [ContentManagementModule],
   controllers: [PublicNavigationController, AdminNavigationController],
   providers: [MenuService, MenuItemService, MenuRepository, MenuItemRepository],
   exports: [MenuService, MenuItemService],

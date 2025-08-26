@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { MenuRepository } from '../repositories/menu.repository';
+import { CategoryService } from '../../content-management/services/category.service';
 import {
   CreateMenuDto,
   UpdateMenuDto,
@@ -19,7 +20,10 @@ import { MenuLocation } from '@prisma/client';
 
 @Injectable()
 export class MenuService {
-  constructor(private readonly menuRepository: MenuRepository) {}
+  constructor(
+    private readonly menuRepository: MenuRepository,
+    private readonly categoryService: CategoryService,
+  ) {}
 
   async getMenuById(id: string): Promise<MenuResponseDto> {
     const menu = await this.menuRepository.findById(id);
@@ -72,6 +76,9 @@ export class MenuService {
   }
 
   async createMenu(data: CreateMenuDto, userId: string): Promise<MenuResponseDto> {
+    // Validate menu data including category slug
+    await this.validateMenuData(data);
+    
     const validation = await this.validateMenu(data);
     if (!validation.isValid) {
       throw new BadRequestException('Menu validation failed', { cause: validation.errors });
@@ -82,6 +89,11 @@ export class MenuService {
   }
 
   async updateMenu(id: string, data: UpdateMenuDto, userId: string): Promise<MenuResponseDto> {
+    // Validate menu data including category slug
+    if (data.categorySlug !== undefined) {
+      await this.validateMenuData(data);
+    }
+    
     const validation = await this.validateMenu(data);
     if (!validation.isValid) {
       throw new BadRequestException('Menu validation failed', { cause: validation.errors });
@@ -147,7 +159,7 @@ export class MenuService {
 
     return {
       menu: this.transformToResponseDto(tree.menu),
-      items: tree.items.map(item => this.transformMenuItemToTreeResponse(item)),
+      items: tree.items.map(item => this.transformMenuItemToTreeResponse(item, tree.menu.categorySlug)),
     };
   }
 
@@ -251,8 +263,10 @@ export class MenuService {
       location: menu.location,
       isActive: menu.isActive,
       isPublished: menu.isPublished,
+      categorySlug: menu.categorySlug,
+      resolvedUrl: this.resolveMenuUrl(menu),
       menuItemCount: menu.menuItems?.length || 0,
-      menuItems: menu.menuItems?.map((item: any) => this.transformMenuItemToResponseDto(item)) || [],
+      menuItems: menu.menuItems?.map((item: any) => this.transformMenuItemToResponseDto(item, menu.categorySlug)) || [],
       createdAt: menu.createdAt,
       updatedAt: menu.updatedAt,
       createdBy: menu.createdBy,
@@ -260,7 +274,7 @@ export class MenuService {
     };
   }
 
-  private transformMenuItemToResponseDto(item: any): any {
+  private transformMenuItemToResponseDto(item: any, parentCategorySlug?: string): any {
     return {
       id: item.id,
       menuId: item.menuId,
@@ -275,7 +289,10 @@ export class MenuService {
       isPublished: item.isPublished,
       itemType: item.itemType,
       itemId: item.itemId,
-      children: item.children?.map((child: any) => this.transformMenuItemToResponseDto(child)) || [],
+      categorySlug: item.categorySlug,
+      contentSlug: item.contentSlug,
+      resolvedUrl: this.resolveMenuItemUrl(item, parentCategorySlug),
+      children: item.children?.map((child: any) => this.transformMenuItemToResponseDto(child, parentCategorySlug)) || [],
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       createdBy: item.createdBy,
@@ -283,7 +300,7 @@ export class MenuService {
     };
   }
 
-  private transformMenuItemToTreeResponse(item: any): any {
+  private transformMenuItemToTreeResponse(item: any, parentCategorySlug?: string): any {
     return {
       id: item.id,
       menuId: item.menuId,
@@ -298,11 +315,104 @@ export class MenuService {
       isPublished: item.isPublished,
       itemType: item.itemType,
       itemId: item.itemId,
-      children: item.children?.map((child: any) => this.transformMenuItemToTreeResponse(child)) || [],
+      categorySlug: item.categorySlug,
+      contentSlug: item.contentSlug,
+      resolvedUrl: this.resolveMenuItemUrl(item, parentCategorySlug),
+      children: item.children?.map((child: any) => this.transformMenuItemToTreeResponse(child, parentCategorySlug)) || [],
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       createdBy: item.createdBy,
       updatedBy: item.updatedBy,
     };
+  }
+
+  /**
+   * Resolves menu to its category URL
+   */
+  private resolveMenuUrl(menu: any): string {
+    return menu.categorySlug ? `/content/${menu.categorySlug}` : '/';
+  }
+
+  /**
+   * Resolves menu item URL using parent menu's category and item's slugs
+   */
+  private resolveMenuItemUrl(menuItem: any, parentCategorySlug?: string): string {
+    const baseUrl = '/content';
+
+    switch (menuItem.itemType) {
+      case 'CATEGORY':
+        // Use menu item's category slug if provided, otherwise use parent menu's
+        const categorySlug = menuItem.categorySlug || parentCategorySlug;
+        return categorySlug ? `${baseUrl}/${categorySlug}` : '/';
+
+      case 'CONTENT':
+        // Use menu item's category slug (or parent menu's) + content slug
+        const itemCategorySlug = menuItem.categorySlug || parentCategorySlug;
+        return itemCategorySlug && menuItem.contentSlug
+          ? `${baseUrl}/${itemCategorySlug}/${menuItem.contentSlug}`
+          : '/';
+
+      case 'LINK':
+        return menuItem.url || '/';
+
+      case 'PAGE':
+        return menuItem.url || `/pages/${menuItem.itemId || ''}`;
+
+      case 'CUSTOM':
+        return this.resolveCustomUrl(menuItem);
+
+      default:
+        return menuItem.url || '/';
+    }
+  }
+
+  /**
+   * Handle custom menu item types (contact, search, etc.)
+   */
+  private resolveCustomUrl(menuItem: any): string {
+    if (menuItem.itemId) {
+      switch (menuItem.itemId) {
+        case 'contact': return '/contact';
+        case 'search': return '/search';
+        case 'downloads': return '/downloads';
+        default: return menuItem.url || '/';
+      }
+    }
+    return menuItem.url || '/';
+  }
+
+  /**
+   * Add resolvedUrl to menu response (for external use)
+   */
+  enhanceMenuWithUrl(menu: any): any {
+    return {
+      ...menu,
+      resolvedUrl: this.resolveMenuUrl(menu),
+      menuItems: menu.menuItems?.map((item: any) =>
+        this.enhanceMenuItemWithUrl(item, menu.categorySlug)
+      )
+    };
+  }
+
+  /**
+   * Add resolvedUrl to menu item response (for external use)
+   */
+  enhanceMenuItemWithUrl(menuItem: any, parentCategorySlug?: string): any {
+    return {
+      ...menuItem,
+      resolvedUrl: this.resolveMenuItemUrl(menuItem, parentCategorySlug),
+      children: menuItem.children?.map((child: any) =>
+        this.enhanceMenuItemWithUrl(child, parentCategorySlug)
+      )
+    };
+  }
+
+  private async validateMenuData(data: CreateMenuDto | UpdateMenuDto) {
+    if (data.categorySlug) {
+      const category = await this.categoryService.getCategoryBySlug(data.categorySlug);
+      if (!category) {
+        throw new BadRequestException(`Category with slug "${data.categorySlug}" not found.`);
+      }
+    }
   }
 } 

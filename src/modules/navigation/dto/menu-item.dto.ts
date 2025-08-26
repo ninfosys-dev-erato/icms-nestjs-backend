@@ -47,6 +47,16 @@ export class CreateMenuItemDto {
   @ApiPropertyOptional() @IsBoolean() @IsOptional() isPublished?: boolean;
   @ApiProperty({ enum: MenuItemType }) @IsEnum(MenuItemType) itemType: MenuItemType;
   @ApiPropertyOptional() @IsString() @IsOptional() itemId?: string;
+  
+  @ApiPropertyOptional({ description: 'Category slug for CATEGORY type or to override parent menu category' })
+  @IsString() 
+  @IsOptional()
+  categorySlug?: string;
+  
+  @ApiPropertyOptional({ description: 'Content slug for CONTENT type menu items' })
+  @IsString() 
+  @IsOptional()
+  contentSlug?: string;
 }
 
 export class UpdateMenuItemDto {
@@ -81,6 +91,16 @@ export class UpdateMenuItemDto {
   @ApiPropertyOptional() @IsBoolean() @IsOptional() isPublished?: boolean;
   @ApiPropertyOptional({ enum: MenuItemType }) @IsOptional() @IsEnum(MenuItemType) itemType?: MenuItemType;
   @ApiPropertyOptional() @IsString() @IsOptional() itemId?: string;
+  
+  @ApiPropertyOptional({ description: 'Category slug for CATEGORY type or to override parent menu category' })
+  @IsString() 
+  @IsOptional()
+  categorySlug?: string;
+  
+  @ApiPropertyOptional({ description: 'Content slug for CONTENT type menu items' })
+  @IsString() 
+  @IsOptional()
+  contentSlug?: string;
 }
 
 export class MenuItemResponseDto {
@@ -97,6 +117,9 @@ export class MenuItemResponseDto {
   @ApiProperty() isPublished: boolean;
   @ApiProperty({ enum: MenuItemType }) itemType: MenuItemType;
   @ApiPropertyOptional() itemId?: string;
+  @ApiPropertyOptional() categorySlug?: string;
+  @ApiPropertyOptional() contentSlug?: string;
+  @ApiProperty({ description: 'Pre-computed URL for the menu item' }) resolvedUrl: string;
   @ApiProperty({ type: [Object] }) children: MenuItemResponseDto[];
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;

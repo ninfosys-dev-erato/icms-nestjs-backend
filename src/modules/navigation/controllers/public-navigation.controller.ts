@@ -2,6 +2,8 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { MenuService } from '../services/menu.service';
 import { MenuItemService } from '../services/menu-item.service';
+import { ContentService } from '../../content-management/services/content.service';
+import { CategoryService } from '../../content-management/services/category.service';
 import { MenuQueryDto, MenuLocation } from '../dto/menu.dto';
 import { MenuItemQueryDto } from '../dto/menu-item.dto';
 
@@ -11,6 +13,8 @@ export class PublicNavigationController {
   constructor(
     private readonly menuService: MenuService,
     private readonly menuItemService: MenuItemService,
+    private readonly contentService: ContentService,
+    private readonly categoryService: CategoryService,
   ) {}
 
   @Get('menus')
@@ -129,5 +133,170 @@ export class PublicNavigationController {
     @Param('id') id: string,
   ): Promise<any> {
     return await this.menuItemService.getMenuItemById(id);
+  }
+
+  // Content and Category endpoints for frontend content loading
+  @Get('content/category/:slug')
+  @ApiOperation({ summary: 'Get category by slug with its content' })
+  @ApiParam({ name: 'slug', description: 'Category slug' })
+  @ApiQuery({ name: 'page', description: 'Page number', required: false })
+  @ApiQuery({ name: 'limit', description: 'Items per page', required: false })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved category and content' })
+  @ApiResponse({ status: 404, description: 'Category not found' })
+  async getCategoryWithContent(
+    @Param('slug') slug: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ): Promise<any> {
+    try {
+      // Get category information
+      const category = await this.categoryService.getCategoryBySlug(slug);
+      
+      // Get published content for this category
+      const contentResult = await this.contentService.getPublishedContentByCategory(
+        slug, 
+        { page, limit }
+      );
+      
+      return {
+        success: true,
+        data: {
+          category,
+          content: contentResult.data,
+          pagination: contentResult.pagination
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get('content/:slug')
+  @ApiOperation({ summary: 'Get content by slug' })
+  @ApiParam({ name: 'slug', description: 'Content slug' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved content' })
+  @ApiResponse({ status: 404, description: 'Content not found' })
+  async getContentBySlug(
+    @Param('slug') slug: string,
+  ): Promise<any> {
+    try {
+      const content = await this.contentService.getPublishedContentBySlug(slug);
+      
+      return {
+        success: true,
+        data: content
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get('content/:categorySlug/:contentSlug')
+  @ApiOperation({ summary: 'Get content by category and content slugs' })
+  @ApiParam({ name: 'categorySlug', description: 'Category slug' })
+  @ApiParam({ name: 'contentSlug', description: 'Content slug' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved content' })
+  @ApiResponse({ status: 404, description: 'Content not found' })
+  async getContentByCategoryAndSlug(
+    @Param('categorySlug') categorySlug: string,
+    @Param('contentSlug') contentSlug: string,
+  ): Promise<any> {
+    try {
+      // First verify the category exists
+      const category = await this.categoryService.getCategoryBySlug(categorySlug);
+      
+      // Then get the content
+      const content = await this.contentService.getPublishedContentBySlug(contentSlug);
+      
+      // Verify content belongs to the specified category
+      if (content.category?.slug !== categorySlug) {
+        throw new Error('Content does not belong to the specified category');
+      }
+      
+      return {
+        success: true,
+        data: {
+          category,
+          content
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get('categories')
+  @ApiOperation({ summary: 'Get all active categories' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved categories' })
+  async getAllCategories(): Promise<any> {
+    try {
+      const categories = await this.categoryService.getActiveCategories();
+      
+      return {
+        success: true,
+        data: categories
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get('categories/:slug')
+  @ApiOperation({ summary: 'Get category by slug' })
+  @ApiParam({ name: 'slug', description: 'Category slug' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved category' })
+  @ApiResponse({ status: 404, description: 'Category not found' })
+  async getCategoryBySlugOnly(
+    @Param('slug') slug: string,
+  ): Promise<any> {
+    try {
+      const category = await this.categoryService.getCategoryBySlug(slug);
+      
+      return {
+        success: true,
+        data: category
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get('content/search')
+  @ApiOperation({ summary: 'Search content across all categories' })
+  @ApiQuery({ name: 'q', description: 'Search query', required: true })
+  @ApiQuery({ name: 'page', description: 'Page number', required: false })
+  @ApiQuery({ name: 'limit', description: 'Items per page', required: false })
+  @ApiQuery({ name: 'categorySlug', description: 'Filter by category slug', required: false })
+  @ApiResponse({ status: 200, description: 'Successfully searched content' })
+  async searchContent(
+    @Query('q') query: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('categorySlug') categorySlug?: string,
+  ): Promise<any> {
+    try {
+      let searchResult;
+      
+      if (categorySlug) {
+        // Search within a specific category
+        const category = await this.categoryService.getCategoryBySlug(categorySlug);
+        searchResult = await this.contentService.searchContent(query, { 
+          page, 
+          limit,
+          category: category.id 
+        });
+      } else {
+        // Search across all categories
+        searchResult = await this.contentService.searchContent(query, { page, limit });
+      }
+      
+      return {
+        success: true,
+        data: searchResult.data,
+        pagination: searchResult.pagination
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 } 

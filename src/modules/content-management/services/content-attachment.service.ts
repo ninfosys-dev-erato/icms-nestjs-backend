@@ -88,9 +88,9 @@ export class ContentAttachmentService {
 
   private async transformToResponseDto(attachment: any, expiresIn?: number): Promise<ContentAttachmentResponseDto> {
     // Generate presigned URL for the attachment file
-    let presignedUrl: string | null = null;
+    let downloadUrl: string;
     try {
-      presignedUrl = await this.fileStorageService.generatePresignedUrl(
+      downloadUrl = await this.fileStorageService.generatePresignedUrl(
         attachment.filePath,
         'get',
         expiresIn
@@ -98,10 +98,11 @@ export class ContentAttachmentService {
       
       console.log('🔗 Generated presigned URL for attachment:', attachment.id);
       console.log('  File path:', attachment.filePath);
-      console.log('  Presigned URL length:', presignedUrl?.length || 0);
+      console.log('  Presigned URL length:', downloadUrl?.length || 0);
     } catch (error) {
       console.error('❌ Failed to generate presigned URL for attachment:', attachment.id, error.message);
-      presignedUrl = null;
+      // Fallback to original download URL if presigned URL generation fails
+      downloadUrl = `/api/v1/attachments/${attachment.id}/download`;
     }
 
     return {
@@ -113,8 +114,7 @@ export class ContentAttachmentService {
       mimeType: attachment.mimeType,
       order: attachment.order,
       createdAt: attachment.createdAt,
-      downloadUrl: `/api/v1/attachments/${attachment.id}/download`,
-      presignedUrl,
+      downloadUrl,
     };
   }
 

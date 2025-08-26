@@ -50,6 +50,11 @@ export class CreateMenuDto {
   @IsBoolean() 
   @IsOptional() 
   isPublished?: boolean;
+  
+  @ApiPropertyOptional({ description: 'Category slug for the menu' })
+  @IsString() 
+  @IsOptional()
+  categorySlug?: string;
 }
 
 export class UpdateMenuDto {
@@ -89,6 +94,11 @@ export class UpdateMenuDto {
   @IsBoolean() 
   @IsOptional() 
   isPublished?: boolean;
+  
+  @ApiPropertyOptional({ description: 'Category slug for the menu' })
+  @IsString() 
+  @IsOptional()
+  categorySlug?: string;
 }
 
 export class MenuResponseDto {
@@ -98,6 +108,8 @@ export class MenuResponseDto {
   @ApiProperty({ enum: MenuLocation }) location: MenuLocation;
   @ApiProperty() isActive: boolean;
   @ApiProperty() isPublished: boolean;
+  @ApiPropertyOptional() categorySlug?: string;
+  @ApiProperty({ description: 'Pre-computed URL for the menu category' }) resolvedUrl?: string;
   @ApiProperty() menuItemCount: number;
   @ApiProperty({ type: [Object] }) menuItems: any[];
   @ApiProperty() createdAt: Date;

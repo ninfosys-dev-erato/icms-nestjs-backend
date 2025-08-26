@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 
 import { ContentRepository } from '../repositories/content.repository';
 import { CategoryRepository } from '../repositories/category.repository';
+import { FileStorageService } from '../../../common/services/file-storage/interfaces/file-storage.interface';
 import {
   CreateContentDto,
   UpdateContentDto,
@@ -20,6 +21,7 @@ export class ContentService {
   constructor(
     private readonly contentRepository: ContentRepository,
     private readonly categoryRepository: CategoryRepository,
+    private readonly fileStorageService: FileStorageService,
   ) {}
 
   async getContentById(id: string): Promise<ContentResponseDto> {
@@ -28,7 +30,7 @@ export class ContentService {
       throw new NotFoundException('Content not found');
     }
 
-    return this.mapContentToResponse(content);
+    return await this.mapContentToResponse(content);
   }
 
   async getContentBySlug(slug: string): Promise<ContentResponseDto> {
@@ -37,7 +39,7 @@ export class ContentService {
       throw new NotFoundException('Content not found');
     }
 
-    return this.mapContentToResponse(content);
+    return await this.mapContentToResponse(content);
   }
 
   async getPublishedContentBySlug(slug: string): Promise<ContentResponseDto> {
@@ -50,30 +52,42 @@ export class ContentService {
       throw new NotFoundException('Content not found');
     }
 
-    return this.mapContentToResponse(content);
+    return await this.mapContentToResponse(content);
   }
 
   async getAllContent(query: ContentQueryDto): Promise<PaginatedContentResponse> {
     const result = await this.contentRepository.findAll(query);
+    const mappedData = await Promise.all(
+      result.data.map(content => this.mapContentToResponse(content))
+    );
+    
     return {
       ...result,
-      data: result.data.map(content => this.mapContentToResponse(content)),
+      data: mappedData,
     };
   }
 
   async getPublishedContent(query: ContentQueryDto): Promise<PaginatedContentResponse> {
     const result = await this.contentRepository.findPublished(query);
+    const mappedData = await Promise.all(
+      result.data.map(content => this.mapContentToResponse(content))
+    );
+    
     return {
       ...result,
-      data: result.data.map(content => this.mapContentToResponse(content)),
+      data: mappedData,
     };
   }
 
   async getContentByCategory(categoryId: string, query: ContentQueryDto): Promise<PaginatedContentResponse> {
     const result = await this.contentRepository.findByCategory(categoryId, query);
+    const mappedData = await Promise.all(
+      result.data.map(content => this.mapContentToResponse(content))
+    );
+    
     return {
       ...result,
-      data: result.data.map(content => this.mapContentToResponse(content)),
+      data: mappedData,
     };
   }
 
@@ -86,22 +100,32 @@ export class ContentService {
 
     // Then get published content for that category
     const result = await this.contentRepository.findByCategory(category.id, { ...query, status: ContentStatus.PUBLISHED });
+    const mappedData = await Promise.all(
+      result.data.map(content => this.mapContentToResponse(content))
+    );
+    
     return {
       ...result,
-      data: result.data.map(content => this.mapContentToResponse(content)),
+      data: mappedData,
     };
   }
 
   async getFeaturedContent(limit: number = 10): Promise<ContentResponseDto[]> {
     const contents = await this.contentRepository.findFeatured(limit);
-    return contents.map(content => this.mapContentToResponse(content));
+    return await Promise.all(
+      contents.map(content => this.mapContentToResponse(content))
+    );
   }
 
   async searchContent(searchTerm: string, query: ContentQueryDto): Promise<PaginatedContentResponse> {
     const result = await this.contentRepository.search(searchTerm, query);
+    const mappedData = await Promise.all(
+      result.data.map(content => this.mapContentToResponse(content))
+    );
+    
     return {
       ...result,
-      data: result.data.map(content => this.mapContentToResponse(content)),
+      data: mappedData,
     };
   }
 
@@ -129,7 +153,7 @@ export class ContentService {
       slug,
     }, userId);
 
-    return this.mapContentToResponse(content);
+    return await this.mapContentToResponse(content);
   }
 
   async updateContent(id: string, data: UpdateContentDto, userId: string): Promise<ContentResponseDto> {
@@ -160,7 +184,7 @@ export class ContentService {
     }
 
     const updatedContent = await this.contentRepository.update(id, data, userId);
-    return this.mapContentToResponse(updatedContent);
+    return await this.mapContentToResponse(updatedContent);
   }
 
   async deleteContent(id: string): Promise<void> {
@@ -183,7 +207,7 @@ export class ContentService {
     }
 
     const publishedContent = await this.contentRepository.publish(id, userId);
-    return this.mapContentToResponse(publishedContent);
+    return await this.mapContentToResponse(publishedContent);
   }
 
   async archiveContent(id: string, userId: string): Promise<ContentResponseDto> {
@@ -197,7 +221,7 @@ export class ContentService {
     }
 
     const archivedContent = await this.contentRepository.archive(id, userId);
-    return this.mapContentToResponse(archivedContent);
+    return await this.mapContentToResponse(archivedContent);
   }
 
   async validateContent(data: CreateContentDto | UpdateContentDto): Promise<ValidationResult> {
@@ -342,7 +366,46 @@ export class ContentService {
   }
 
   // Utility methods
-  private mapContentToResponse(content: any): ContentResponseDto {
+  private async mapContentToResponse(content: any): Promise<ContentResponseDto> {
+    // Generate presigned URLs for attachments
+    const attachmentsWithPresignedUrls = content.attachments ? await Promise.all(
+      content.attachments.map(async (attachment: any) => {
+        try {
+          const presignedUrl = await this.fileStorageService.generatePresignedUrl(
+            attachment.filePath,
+            'get',
+            86400 // 24 hours expiration
+          );
+          
+          return {
+            id: attachment.id,
+            contentId: attachment.contentId,
+            fileName: attachment.fileName,
+            filePath: attachment.filePath,
+            fileSize: attachment.fileSize,
+            mimeType: attachment.mimeType,
+            order: attachment.order,
+            createdAt: attachment.createdAt,
+            downloadUrl: presignedUrl,
+          };
+        } catch (error) {
+          // Fallback to original download URL if presigned URL generation fails
+          console.warn(`Failed to generate presigned URL for attachment ${attachment.id}:`, error.message);
+          return {
+            id: attachment.id,
+            contentId: attachment.contentId,
+            fileName: attachment.fileName,
+            filePath: attachment.filePath,
+            fileSize: attachment.fileSize,
+            mimeType: attachment.mimeType,
+            order: attachment.order,
+            createdAt: attachment.createdAt,
+            downloadUrl: `/api/v1/attachments/${attachment.id}/download`,
+          };
+        }
+      })
+    ) : [];
+
     return {
       id: content.id,
       title: content.title,
@@ -369,17 +432,7 @@ export class ContentService {
         children: [],
         contentCount: 0,
       },
-      attachments: content.attachments ? content.attachments.map((attachment: any) => ({
-        id: attachment.id,
-        contentId: attachment.contentId,
-        fileName: attachment.fileName,
-        filePath: attachment.filePath,
-        fileSize: attachment.fileSize,
-        mimeType: attachment.mimeType,
-        order: attachment.order,
-        createdAt: attachment.createdAt,
-        downloadUrl: `/api/v1/attachments/${attachment.id}/download`,
-      })) : [],
+      attachments: attachmentsWithPresignedUrls,
       createdBy: content.createdBy,
       updatedBy: content.updatedBy,
     };

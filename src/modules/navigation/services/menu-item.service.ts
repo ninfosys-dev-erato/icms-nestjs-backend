@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { MenuItemRepository } from '../repositories/menu-item.repository';
+import { ContentService } from '../../content-management/services/content.service';
+import { CategoryService } from '../../content-management/services/category.service';
 import {
   CreateMenuItemDto,
   UpdateMenuItemDto,
@@ -15,7 +17,11 @@ import { MenuItemType } from '@prisma/client';
 
 @Injectable()
 export class MenuItemService {
-  constructor(private readonly menuItemRepository: MenuItemRepository) {}
+  constructor(
+    private readonly menuItemRepository: MenuItemRepository,
+    private readonly contentService: ContentService,
+    private readonly categoryService: CategoryService,
+  ) {}
 
   async getMenuItemById(id: string): Promise<MenuItemResponseDto> {
     const menuItem = await this.menuItemRepository.findById(id);
@@ -71,6 +77,9 @@ export class MenuItemService {
   }
 
   async createMenuItem(data: CreateMenuItemDto, userId: string): Promise<MenuItemResponseDto> {
+    // Validate menu item data including slugs
+    await this.validateMenuItemData(data);
+    
     const validation = await this.validateMenuItem(data);
     if (!validation.isValid) {
       throw new BadRequestException('Menu item validation failed', { cause: validation.errors });
@@ -81,6 +90,11 @@ export class MenuItemService {
   }
 
   async updateMenuItem(id: string, data: UpdateMenuItemDto, userId: string): Promise<MenuItemResponseDto> {
+    // Validate menu item data including slugs
+    if (data.itemType || data.categorySlug || data.contentSlug) {
+      await this.validateMenuItemData(data);
+    }
+    
     const validation = await this.validateMenuItem(data);
     if (!validation.isValid) {
       throw new BadRequestException('Menu item validation failed', { cause: validation.errors });
@@ -242,7 +256,7 @@ export class MenuItemService {
     return { success, failed, errors };
   }
 
-  private transformToResponseDto(menuItem: any): MenuItemResponseDto {
+  private transformToResponseDto(menuItem: any, parentCategorySlug?: string): any {
     return {
       id: menuItem.id,
       menuId: menuItem.menuId,
@@ -257,11 +271,122 @@ export class MenuItemService {
       isPublished: menuItem.isPublished,
       itemType: menuItem.itemType,
       itemId: menuItem.itemId,
-      children: menuItem.children?.map((child: any) => this.transformToResponseDto(child)) || [],
+      categorySlug: menuItem.categorySlug,
+      contentSlug: menuItem.contentSlug,
+      resolvedUrl: this.resolveMenuItemUrl(menuItem, parentCategorySlug),
+      children: menuItem.children?.map((child: any) => this.transformToResponseDto(child, parentCategorySlug)) || [],
       createdAt: menuItem.createdAt,
       updatedAt: menuItem.updatedAt,
       createdBy: menuItem.createdBy,
       updatedBy: menuItem.updatedBy,
     };
+  }
+
+  /**
+   * Resolves menu item to appropriate URL based on itemType and slugs
+   */
+  private resolveMenuItemUrl(menuItem: any, parentCategorySlug?: string): string {
+    const baseUrl = '/content';
+
+    switch (menuItem.itemType) {
+      case 'CATEGORY':
+        // Use menu item's category slug if provided, otherwise use parent menu's
+        const categorySlug = menuItem.categorySlug || parentCategorySlug;
+        return categorySlug ? `${baseUrl}/${categorySlug}` : '/';
+
+      case 'CONTENT':
+        // Use menu item's category slug (or parent menu's) + content slug
+        const itemCategorySlug = menuItem.categorySlug || parentCategorySlug;
+        return itemCategorySlug && menuItem.contentSlug
+          ? `${baseUrl}/${itemCategorySlug}/${menuItem.contentSlug}`
+          : '/';
+
+      case 'LINK':
+        return menuItem.url || '/';
+
+      case 'PAGE':
+        return menuItem.url || `/pages/${menuItem.itemId || ''}`;
+
+      case 'CUSTOM':
+        return this.resolveCustomUrl(menuItem);
+
+      default:
+        return menuItem.url || '/';
+    }
+  }
+
+  /**
+   * Handle custom menu item types (contact, search, etc.)
+   */
+  private resolveCustomUrl(menuItem: any): string {
+    if (menuItem.itemId) {
+      switch (menuItem.itemId) {
+        case 'contact': return '/contact';
+        case 'search': return '/search';
+        case 'downloads': return '/downloads';
+        default: return menuItem.url || '/';
+      }
+    }
+    return menuItem.url || '/';
+  }
+
+  /**
+   * Add resolvedUrl to menu item response (for external use)
+   */
+  enhanceMenuItemWithUrl(menuItem: any, parentCategorySlug?: string): any {
+    return {
+      ...menuItem,
+      resolvedUrl: this.resolveMenuItemUrl(menuItem, parentCategorySlug),
+      children: menuItem.children?.map((child: any) =>
+        this.enhanceMenuItemWithUrl(child, parentCategorySlug)
+      )
+    };
+  }
+
+  /**
+   * Validate menu item data including slug validation
+   */
+  async validateMenuItemData(dto: CreateMenuItemDto | UpdateMenuItemDto, menuCategorySlug?: string): Promise<void> {
+    switch (dto.itemType) {
+      case 'CATEGORY':
+        if (dto.categorySlug) {
+          // Validate that category exists
+          const categoryExists = await this.categoryService.getCategoryBySlug(dto.categorySlug);
+          if (!categoryExists) {
+            throw new NotFoundException(`Category with slug '${dto.categorySlug}' not found`);
+          }
+        }
+        break;
+
+      case 'CONTENT':
+        if (dto.contentSlug) {
+          // Validate that content exists
+          const contentExists = await this.contentService.getContentBySlug(dto.contentSlug);
+          if (!contentExists) {
+            throw new NotFoundException(`Content with slug '${dto.contentSlug}' not found`);
+          }
+
+          // Validate that content belongs to the expected category
+          if (dto.categorySlug && contentExists.category?.slug !== dto.categorySlug) {
+            throw new BadRequestException(
+              `Content '${dto.contentSlug}' does not belong to category '${dto.categorySlug}'`
+            );
+          }
+
+          // If no categorySlug provided, validate against menu's category
+          if (!dto.categorySlug && menuCategorySlug && contentExists.category?.slug !== menuCategorySlug) {
+            throw new BadRequestException(
+              `Content '${dto.contentSlug}' does not belong to menu's category '${menuCategorySlug}'`
+            );
+          }
+        }
+        break;
+
+      case 'LINK':
+        if (!dto.url) {
+          throw new BadRequestException('url is required for LINK type menu items');
+        }
+        break;
+    }
   }
 } 

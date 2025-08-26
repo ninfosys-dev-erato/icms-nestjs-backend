@@ -38,6 +38,17 @@ export class CategoryService {
     return categories.map(category => this.mapCategoryToResponse(category));
   }
 
+  async getAvailableParentCategories(excludeCategoryId?: string): Promise<CategoryResponseDto[]> {
+    const categories = await this.categoryRepository.findActive();
+    
+    // Filter out the current category if updating (to prevent self-reference)
+    const availableParents = categories.filter(category => 
+      category.id !== excludeCategoryId
+    );
+    
+    return availableParents.map(category => this.mapCategoryToResponse(category));
+  }
+
   async getCategoryTree(): Promise<CategoryResponseDto[]> {
     const categories = await this.categoryRepository.findTree();
     return categories.map(category => this.mapCategoryToResponse(category));
@@ -63,9 +74,24 @@ export class CategoryService {
 
     // Validate parent category if provided
     if (data.parentId) {
+      // Check if parentId is not empty or whitespace
+      if (typeof data.parentId === 'string' && data.parentId.trim() === '') {
+        throw new BadRequestException('Parent ID cannot be empty or whitespace. Omit the field to make this a root category.');
+      }
+      
       const parentCategory = await this.categoryRepository.findById(data.parentId);
       if (!parentCategory) {
-        throw new NotFoundException('Parent category not found');
+        throw new NotFoundException(
+          `Parent category with ID '${data.parentId}' not found. ` +
+          `Please select a valid parent category from the existing categories, ` +
+          `or omit the parentId field to make this a root category. ` +
+          `Available root categories: ${(await this.getActiveCategories()).map(c => c.name.en).join(', ')}`
+        );
+      }
+      
+      // Check if parent category is active
+      if (!parentCategory.isActive) {
+        throw new BadRequestException(`Cannot move category under inactive parent category '${parentCategory.name.en}'. Please select an active parent category.`);
       }
     }
 

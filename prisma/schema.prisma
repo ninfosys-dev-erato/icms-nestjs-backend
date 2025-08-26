@@ -471,6 +471,10 @@ model Menu {
   location    MenuLocation
   isActive    Boolean      @default(true)
   isPublished Boolean      @default(false)
+  
+  // NEW FIELD - Category association for the entire menu
+  categorySlug String? // Associates menu with a category
+  
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   createdById String?
@@ -497,7 +501,12 @@ model MenuItem {
   isActive    Boolean      @default(true)
   isPublished Boolean      @default(false)
   itemType    MenuItemType
-  itemId      String? // Reference to content, page, etc.
+  itemId      String? // Keep for backward compatibility
+  
+  // NEW FIELDS - Both category and content associations for menu items
+  categorySlug String? // Associates menu item with a category (can override parent menu's category)
+  contentSlug  String? // Associates menu item with specific content
+  
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   createdById String?

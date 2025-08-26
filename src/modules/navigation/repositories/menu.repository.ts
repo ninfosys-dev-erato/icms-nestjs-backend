@@ -122,6 +122,7 @@ export class MenuRepository {
       location: data.location,
       isActive: data.isActive ?? true,
       isPublished: data.isPublished ?? false,
+      categorySlug: data.categorySlug,
       createdById: userId,
       updatedById: userId,
     };
@@ -152,6 +153,7 @@ export class MenuRepository {
         ...data,
         name: data.name as any,
         description: data.description as any,
+        categorySlug: data.categorySlug,
         updatedById: userId,
       },
       include: {
