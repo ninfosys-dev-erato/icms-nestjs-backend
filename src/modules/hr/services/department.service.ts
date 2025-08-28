@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DepartmentRepository } from '../repositories/department.repository';
+import { MediaService } from '../../media/services/media.service';
 import { 
   CreateDepartmentDto, 
   UpdateDepartmentDto, 
@@ -14,7 +15,10 @@ import {
 
 @Injectable()
 export class DepartmentService {
-  constructor(private readonly departmentRepository: DepartmentRepository) {}
+  constructor(
+    private readonly departmentRepository: DepartmentRepository,
+    private readonly mediaService: MediaService
+  ) {}
 
   async getDepartmentById(id: string): Promise<DepartmentResponseDto> {
     const department = await this.departmentRepository.findById(id);
@@ -108,6 +112,83 @@ export class DepartmentService {
   async getDepartmentHierarchy(): Promise<DepartmentResponseDto[]> {
     const departments = await this.departmentRepository.getHierarchy();
     return departments.map(department => this.transformToResponseDto(department));
+  }
+
+  async getDepartmentsWithEmployeesOrdered(): Promise<{
+    data: Array<{
+      id: string;
+      departmentName: any;
+      parentId?: string;
+      order: number;
+      isActive: boolean;
+      employees: Array<{
+        id: string;
+        name: any;
+        position: any;
+        order: number;
+        mobileNumber?: string;
+        telephone?: string;
+        email?: string;
+        roomNumber?: string;
+        photoMediaId?: string;
+        photoPresignedUrl?: string;
+        isActive: boolean;
+      }>;
+    }>;
+  }> {
+    const departments = await this.departmentRepository.getHierarchyWithEmployeesOrdered();
+    
+    // Process departments and generate presigned URLs for employee photos
+    const processedData = await Promise.all(
+      departments.map(async (department) => {
+        // Process employees and generate presigned URLs for photos
+        const processedEmployees = await Promise.all(
+          department.employees
+            .filter(emp => emp.isActive)
+            .sort((a, b) => a.order - b.order)
+            .map(async (employee) => {
+              let photoPresignedUrl: string | undefined;
+              
+              // Generate presigned URL for employee photo if available
+              if (employee.photoMediaId) {
+                try {
+                  // Use the media service to generate presigned URL directly with media ID
+                  photoPresignedUrl = await this.mediaService.generatePresignedUrl(employee.photoMediaId, 'get', 86400);
+                } catch (error) {
+                  console.warn(`Failed to generate presigned URL for employee photo ${employee.photoMediaId}: ${error.message}`);
+                }
+              }
+              
+              return {
+                id: employee.id,
+                name: employee.name,
+                position: employee.position,
+                order: employee.order,
+                mobileNumber: employee.mobileNumber,
+                telephone: employee.telephone,
+                email: employee.email,
+                roomNumber: employee.roomNumber,
+                photoMediaId: employee.photoMediaId,
+                photoPresignedUrl,
+                isActive: employee.isActive
+              };
+            })
+        );
+        
+        return {
+          id: department.id,
+          departmentName: department.departmentName,
+          parentId: department.parentId,
+          order: department.order,
+          isActive: department.isActive,
+          employees: processedEmployees
+        };
+      })
+    );
+    
+    return {
+      data: processedData
+    };
   }
 
   async validateDepartment(data: CreateDepartmentDto | UpdateDepartmentDto): Promise<ValidationResult> {

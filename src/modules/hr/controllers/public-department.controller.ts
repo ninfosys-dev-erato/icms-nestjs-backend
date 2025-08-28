@@ -33,10 +33,18 @@ export class PublicDepartmentController {
 
   @Get('hierarchy')
   @ApiOperation({ summary: 'Get department hierarchy' })
-  @ApiResponse({ status: 200, description: 'Hierarchy retrieved successfully' })
+  @ApiResponse({ status: 200, description: 'Department hierarchy retrieved successfully' })
   async getDepartmentHierarchy() {
     const hierarchy = await this.departmentService.getDepartmentHierarchy();
     return hierarchy;
+  }
+
+  @Get('with-employees')
+  @ApiOperation({ summary: 'Get all departments with their employees ordered by display order' })
+  @ApiResponse({ status: 200, description: 'Departments with employees retrieved successfully' })
+  async getDepartmentsWithEmployeesOrdered() {
+    const result = await this.departmentService.getDepartmentsWithEmployeesOrdered();
+    return result;
   }
 
   @Get('search')

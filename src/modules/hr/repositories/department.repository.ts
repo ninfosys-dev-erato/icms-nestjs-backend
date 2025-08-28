@@ -258,6 +258,22 @@ export class DepartmentRepository {
     });
   }
 
+  async getHierarchyWithEmployeesOrdered(): Promise<Department[]> {
+    return this.prisma.department.findMany({
+      where: { isActive: true },
+      include: {
+        parent: true,
+        children: true,
+        employees: {
+          where: { isActive: true },
+          orderBy: { order: 'asc' }
+        },
+        departmentHead: true
+      },
+      orderBy: { order: 'asc' }
+    });
+  }
+
   async getStatistics(): Promise<HRStatistics> {
     const [totalDepartments, activeDepartments, totalEmployees, activeEmployees, byDepartment, withHead, withoutHead] = await Promise.all([
       this.prisma.department.count(),
