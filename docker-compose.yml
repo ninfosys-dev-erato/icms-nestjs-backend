@@ -115,11 +115,6 @@ services:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
       - ./prisma:/app/prisma
-    networks:
-      - icms-network
-    depends_on:
-      - postgres
-      - redis
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
