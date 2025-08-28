@@ -22,6 +22,7 @@ import { NavigationModule } from '@/modules/navigation';
 import { SliderModule } from '@/modules/slider';
 import { BootstrapModule } from '@/modules/bootstrap/bootstrap.module';
 import { DashboardModule } from '@/modules/dashboard';
+import { HealthModule } from '@/modules/health/health.module';
 import { RequestIdMiddleware } from '@/common/middleware/request-id.middleware';
 import configuration from '@/config/configuration';
 
@@ -101,6 +102,9 @@ import configuration from '@/config/configuration';
     
     // Dashboard Module
     DashboardModule,
+    
+    // Health Module
+    HealthModule,
   ],
   controllers: [],
   providers: [],
