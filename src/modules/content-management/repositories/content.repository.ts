@@ -71,6 +71,39 @@ export class ContentRepository {
     });
   }
 
+  async findByCategoryAndSlug(categorySlug: string, contentSlug: string): Promise<Content | null> {
+    return (this.prisma as any).content.findFirst({
+      where: { 
+        slug: contentSlug,
+        category: {
+          slug: categorySlug
+        }
+      },
+      include: {
+        category: true,
+        attachments: {
+          orderBy: { order: 'asc' },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        updatedBy: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+  }
+
   async findAll(query: ContentQueryDto): Promise<PaginatedContentResult> {
     const { page = 1, limit = 10, search, category, status, featured, dateFrom, dateTo, sort = 'createdAt', order = 'desc' } = query;
     const skip = (page - 1) * limit;

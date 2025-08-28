@@ -137,6 +137,32 @@ export class ContentController {
     }
   }
 
+  @Get(':categorySlug/:contentSlug')
+  @ApiOperation({ summary: 'Get content by category and content slug (Public)' })
+  @ApiResponse({ status: 200, description: 'Content retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Content not found' })
+  async getContentByCategoryAndSlug(
+    @Param('categorySlug') categorySlug: string,
+    @Param('contentSlug') contentSlug: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    try {
+      const content = await this.contentService.getPublishedContentByCategoryAndSlug(categorySlug, contentSlug);
+      
+      const apiResponse = ApiResponseBuilder.success(content);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const status = error.message.includes('not found') ? 404 : 500;
+      const apiResponse = ApiResponseBuilder.error(
+        'CONTENT_NOT_FOUND',
+        error.message
+      );
+
+      response.status(status).json(apiResponse);
+    }
+  }
+
   @Get(':contentId/attachments')
   @ApiOperation({ summary: 'Get attachments by content ID' })
   @ApiResponse({ status: 200, description: 'Attachments retrieved successfully' })

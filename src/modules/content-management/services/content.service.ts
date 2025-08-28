@@ -55,6 +55,19 @@ export class ContentService {
     return await this.mapContentToResponse(content);
   }
 
+  async getPublishedContentByCategoryAndSlug(categorySlug: string, contentSlug: string): Promise<ContentResponseDto> {
+    const content = await this.contentRepository.findByCategoryAndSlug(categorySlug, contentSlug);
+    if (!content) {
+      throw new NotFoundException('Content not found');
+    }
+    
+    if (content.status !== ContentStatus.PUBLISHED) {
+      throw new NotFoundException('Content not found');
+    }
+
+    return await this.mapContentToResponse(content);
+  }
+
   async getAllContent(query: ContentQueryDto): Promise<PaginatedContentResponse> {
     const result = await this.contentRepository.findAll(query);
     const mappedData = await Promise.all(
