@@ -129,5 +129,4 @@ docker-compose*
 # ========================================
 # LOCK FILES (keep package-lock.json for production builds)
 # ========================================
-yarn.lock
 pnpm-lock.yaml
