@@ -24,55 +24,50 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix);
 
   // Security middleware
-  if (configService.get<boolean>('app.features.enableHelmet', true)) {
-    app.use(helmet());
-  }
+  if (configService.get<boolean>('app.features.enableHelmet', true)) app.use(helmet());
+  if (configService.get<boolean>('app.features.enableCompression', true)) app.use(compression());
 
-  if (configService.get<boolean>('app.features.enableCompression', true)) {
-    app.use(compression());
-  }
-
-  // CORS
+  // =====================
+  // CORS - Admin + Public
+  // =====================
   if (configService.get<boolean>('app.features.enableCors', true)) {
-    const corsConfig = configService.get('app.cors');
-    console.log('🌐 CORS Configuration:', corsConfig);
-    
-    // For development, allow all localhost origins and be very permissive
-    let allowedOrigins;
-    if (process.env.NODE_ENV === 'development') {
-      // In development, allow all localhost ports and be very permissive
-      allowedOrigins = true; // This allows all origins in development
-      console.log('🌐 Development Mode: Allowing ALL origins for development');
-    } else {
-      // In production, use the configured origins
-      allowedOrigins = corsConfig.origin;
-      console.log('🌐 Production Mode: Using configured origins:', allowedOrigins);
-    }
-    
+    const allowedOrigins = [
+      'https://admin.icms.csiodadeldhura.easypalika.com',
+      'https://icms.csiodadeldhura.easypalika.com'
+    ];
+
     app.enableCors({
-      origin: allowedOrigins,
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'X-Request-Id'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'Accept',
+        'Origin',
+        'X-Request-Id',
+      ],
       exposedHeaders: ['Content-Length', 'X-Request-Id'],
       preflightContinue: false,
       optionsSuccessStatus: 204,
     });
-    
-    console.log('🌐 CORS enabled with configuration:', {
-      origin: allowedOrigins,
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'X-Request-Id']
-    });
+
+    console.log('🌐 CORS enabled for admin and public frontends');
   }
 
   // Cookie parser
   app.use(cookieParser());
 
-  // Global request logging middleware for debugging
+  // Global request logging middleware (optional)
   app.use((req, res, next) => {
-    if (req.path.includes('/media/upload') || req.path.includes('/office-settings') && req.method === 'POST') {
+    if ((req.path.includes('/media/upload') || req.path.includes('/office-settings')) && req.method === 'POST') {
       console.log('🌐 DEBUG: Incoming Request');
       console.log('  Method:', req.method);
       console.log('  URL:', req.url);
@@ -93,18 +88,14 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: false, // Changed from true to false to allow extra fields in multipart/form-data
+      forbidNonWhitelisted: false,
       transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
 
-  // Global filters
+  // Global filters and interceptors
   app.useGlobalFilters(new HttpExceptionFilter());
-
-  // Global interceptors
   app.useGlobalInterceptors(new ApiResponseInterceptor());
 
   // Swagger documentation
@@ -136,4 +127,5 @@ async function bootstrap() {
 bootstrap().catch((error) => {
   console.error('Failed to start application:', error);
   process.exit(1);
-}); 
+});
+
