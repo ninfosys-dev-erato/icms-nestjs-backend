@@ -25,6 +25,8 @@ describe('EmployeeRepository', () => {
     email: 'john.doe@example.com',
     roomNumber: 'Room 101',
     isActive: true,
+    showUpInHomepage: false,
+    showDownInHomepage: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

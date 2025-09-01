@@ -51,7 +51,10 @@ export class MenuRepository {
         where,
         skip,
         take: limit,
-        orderBy: sort ? { [sort]: sortOrder || 'asc' } : { order: 'asc', createdAt: 'desc' },
+        orderBy: sort ? { [sort]: sortOrder || 'asc' } : [
+          { order: 'asc' },
+          { createdAt: 'desc' }
+        ],
         include: {
           menuItems: {
             where: { isActive: true, isPublished: true },
@@ -108,7 +111,10 @@ export class MenuRepository {
         createdBy: true,
         updatedBy: true,
       },
-      orderBy: { order: 'asc', createdAt: 'asc' },
+      orderBy: [
+        { order: 'asc' },
+        { createdAt: 'asc' }
+      ],
     });
   }
 

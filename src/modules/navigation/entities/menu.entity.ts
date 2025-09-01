@@ -13,6 +13,9 @@ export interface Menu {
   isPublished: boolean;
   createdAt: Date;
   updatedAt: Date;
+  createdById?: string;
+  updatedById?: string;
+  categorySlug?: string;
   
   // Relations
   menuItems?: any[];
