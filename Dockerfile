@@ -10,7 +10,7 @@ RUN yarn install --frozen-lockfile --production=false
 # Copy source code and build
 COPY . .
 RUN npx prisma generate && \
-    yarn build && \
+    yarn build && 
     yarn install --frozen-lockfile --production=true && \
     yarn cache clean
 

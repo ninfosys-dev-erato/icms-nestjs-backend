@@ -29,7 +29,7 @@ export class MenuRepository {
   }
 
   async findAll(query: MenuQueryDto): Promise<any> {
-    const { page = 1, limit = 10, search, location, isActive, isPublished, sort, order } = query;
+    const { page = 1, limit = 10, search, location, order, isActive, isPublished, sort, sortOrder } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -42,6 +42,7 @@ export class MenuRepository {
       ];
     }
     if (location) where.location = location;
+    if (order !== undefined) where.order = order;
     if (isActive !== undefined) where.isActive = isActive;
     if (isPublished !== undefined) where.isPublished = isPublished;
 
@@ -50,7 +51,7 @@ export class MenuRepository {
         where,
         skip,
         take: limit,
-        orderBy: sort ? { [sort]: order || 'asc' } : { createdAt: 'desc' },
+        orderBy: sort ? { [sort]: sortOrder || 'asc' } : { order: 'asc', createdAt: 'desc' },
         include: {
           menuItems: {
             where: { isActive: true, isPublished: true },
@@ -107,7 +108,7 @@ export class MenuRepository {
         createdBy: true,
         updatedBy: true,
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { order: 'asc', createdAt: 'asc' },
     });
   }
 
@@ -120,6 +121,7 @@ export class MenuRepository {
       name: data.name as any,
       description: data.description as any,
       location: data.location,
+      order: data.order || 0,
       isActive: data.isActive ?? true,
       isPublished: data.isPublished ?? false,
       categorySlug: data.categorySlug,
@@ -281,5 +283,16 @@ export class MenuRepository {
     });
 
     return { menu, items };
+  }
+
+  async reorder(orders: { id: string; order: number }[]): Promise<void> {
+    await Promise.all(
+      orders.map(({ id, order }) =>
+        this.prisma.menu.update({
+          where: { id },
+          data: { order },
+        })
+      )
+    );
   }
 } 

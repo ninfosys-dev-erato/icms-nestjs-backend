@@ -8,11 +8,14 @@ import {
   PaginationInfo
 } from '../dto/hr.dto';
 
+// Type for Prisma employee with relations
+type EmployeeWithRelations = any; // Using any for now since Prisma types don't include new fields
+
 @Injectable()
 export class EmployeeRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findById(id: string): Promise<Employee | null> {
+  async findById(id: string): Promise<EmployeeWithRelations | null> {
     return this.prisma.employee.findUnique({
       where: { id },
       include: {
@@ -226,7 +229,9 @@ export class EmployeeRepository {
         email: data.email,
         roomNumber: data.roomNumber,
         photoMediaId: data.photoMediaId,
-        isActive: data.isActive ?? true
+        isActive: data.isActive ?? true,
+        showUpInHomepage: data.showUpInHomepage ?? false,
+        showDownInHomepage: data.showDownInHomepage ?? false
       },
       include: {
         department: true,
@@ -248,7 +253,9 @@ export class EmployeeRepository {
         email: data.email,
         roomNumber: data.roomNumber,
         photoMediaId: (data as any).photoMediaId,
-        isActive: data.isActive
+        isActive: data.isActive,
+        showUpInHomepage: data.showUpInHomepage,
+        showDownInHomepage: data.showDownInHomepage
       },
       include: {
         department: true,
@@ -303,5 +310,87 @@ export class EmployeeRepository {
     });
 
     return employee?.isActive || false;
+  }
+
+  async findHomepageEmployees(): Promise<{
+    upSection: Employee[];
+    downSection: Employee[];
+  }> {
+    const [upSection, downSection] = await Promise.all([
+      this.prisma.employee.findMany({
+        where: {
+          isActive: true,
+          showUpInHomepage: true
+        },
+        include: {
+          department: true,
+          photo: true
+        },
+        orderBy: { order: 'asc' }
+      }),
+      this.prisma.employee.findMany({
+        where: {
+          isActive: true,
+          showDownInHomepage: true
+        },
+        include: {
+          department: true,
+          photo: true
+        },
+        orderBy: { order: 'asc' }
+      })
+    ]);
+
+    return { upSection, downSection };
+  }
+
+  async findEmployeesByHomepageSection(section: 'up' | 'down', query?: EmployeeQueryDto): Promise<{
+    data: Employee[];
+    pagination: PaginationInfo;
+  }> {
+    let page = Number(query?.page) || 1;
+    let limit = Number(query?.limit) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      isActive: true,
+      [section === 'up' ? 'showUpInHomepage' : 'showDownInHomepage']: true
+    };
+
+    if (query?.departmentId) {
+      where.departmentId = query.departmentId;
+    }
+
+    const orderBy = { order: 'asc' as const };
+
+    const [data, total] = await Promise.all([
+      this.prisma.employee.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          department: true,
+          photo: true
+        }
+      }),
+      this.prisma.employee.count({ where })
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    };
   }
 } 

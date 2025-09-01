@@ -8,6 +8,7 @@ export interface Menu {
   name: any;
   description?: any;
   location: MenuLocation;
+  order: number;
   isActive: boolean;
   isPublished: boolean;
   createdAt: Date;
