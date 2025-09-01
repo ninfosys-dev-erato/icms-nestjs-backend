@@ -91,7 +91,11 @@ export default registerAs('app', () => ({
 
   // CORS
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+    origin: process.env.CORS_ORIGIN?.split(',') || [
+      'http://localhost:3000',
+      'https://admin.icms.csiodadeldhura.easypalika.com',
+      'https://icms.csiodadeldhura.easypalika.com'
+    ],
     credentials: process.env.CORS_CREDENTIALS === 'true',
   },
 
