@@ -8,10 +8,14 @@ export interface Menu {
   name: any;
   description?: any;
   location: MenuLocation;
+  order: number;
   isActive: boolean;
   isPublished: boolean;
   createdAt: Date;
   updatedAt: Date;
+  createdById?: string;
+  updatedById?: string;
+  categorySlug?: string;
   
   // Relations
   menuItems?: any[];

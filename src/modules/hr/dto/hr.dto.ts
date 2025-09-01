@@ -169,6 +169,16 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ example: false, description: 'Show in top section of homepage' })
+  @IsOptional()
+  @IsBoolean()
+  showUpInHomepage?: boolean;
+
+  @ApiPropertyOptional({ example: false, description: 'Show in bottom section of homepage' })
+  @IsOptional()
+  @IsBoolean()
+  showDownInHomepage?: boolean;
 }
 
 export class UpdateEmployeeDto {
@@ -206,7 +216,7 @@ export class UpdateEmployeeDto {
 
   @ApiPropertyOptional({ example: 'employee@example.com' })
   @IsOptional()
-  @IsEmail()
+  @IsString()
   email?: string;
 
   @ApiPropertyOptional({ example: 'Room 101' })
@@ -223,6 +233,16 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ example: false, description: 'Show in top section of homepage' })
+  @IsOptional()
+  @IsBoolean()
+  showUpInHomepage?: boolean;
+
+  @ApiPropertyOptional({ example: false, description: 'Show in bottom section of homepage' })
+  @IsOptional()
+  @IsBoolean()
+  showDownInHomepage?: boolean;
 }
 
 export class EmployeeResponseDto {
@@ -264,6 +284,12 @@ export class EmployeeResponseDto {
 
   @ApiPropertyOptional()
   department?: DepartmentResponseDto;
+
+  @ApiProperty({ example: false, description: 'Show in top section of homepage' })
+  showUpInHomepage: boolean;
+
+  @ApiProperty({ example: false, description: 'Show in bottom section of homepage' })
+  showDownInHomepage: boolean;
 
   @ApiProperty()
   createdAt: Date;
@@ -379,6 +405,18 @@ export class EmployeeQueryDto {
   @IsOptional()
   @IsDateString()
   dateTo?: Date;
+
+  @ApiPropertyOptional({ example: true, description: 'Filter by show up in homepage' })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  showUpInHomepage?: boolean;
+
+  @ApiPropertyOptional({ example: true, description: 'Filter by show down in homepage' })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  showDownInHomepage?: boolean;
 }
 
 // ========================================
@@ -538,4 +576,54 @@ export class PhotoValidationResult {
 
   @ApiProperty({ example: 'INVALID_FILE_TYPE' })
   code?: string;
+}
+
+// ========================================
+// HOMEPAGE DTOs
+// ========================================
+
+export class HomepageEmployeeDto {
+  @ApiProperty({ example: 'employee_id' })
+  id: string;
+
+  @ApiProperty()
+  name: TranslatableEntityDto;
+
+  @ApiProperty()
+  position: TranslatableEntityDto;
+
+  @ApiProperty()
+  department: DepartmentResponseDto;
+
+  @ApiProperty({ example: 1 })
+  order: number;
+
+  @ApiPropertyOptional({ example: 'media_id' })
+  photoMediaId?: string;
+
+  @ApiPropertyOptional({ type: 'object', additionalProperties: true })
+  photo?: any;
+
+  @ApiPropertyOptional({ example: 'https://example.com/photo.jpg' })
+  presignedUrl?: string;
+
+  @ApiProperty({ example: true })
+  showUpInHomepage: boolean;
+
+  @ApiProperty({ example: false })
+  showDownInHomepage: boolean;
+}
+
+export class HomepageResponseDto {
+  @ApiProperty({ type: [HomepageEmployeeDto], description: 'Employees to show in top section' })
+  upSection: HomepageEmployeeDto[];
+
+  @ApiProperty({ type: [HomepageEmployeeDto], description: 'Employees to show in bottom section' })
+  downSection: HomepageEmployeeDto[];
+
+  @ApiProperty({ example: 5, description: 'Total employees in top section' })
+  upSectionCount: number;
+
+  @ApiProperty({ example: 3, description: 'Total employees in bottom section' })
+  downSectionCount: number;
 } 

@@ -1003,6 +1003,8 @@ export class EmployeeService {
       photoMediaId: employee.photoMediaId,
       photo: photoWithPresignedUrl,
       isActive: employee.isActive,
+      showUpInHomepage: employee.showUpInHomepage ?? false,
+      showDownInHomepage: employee.showDownInHomepage ?? false,
       department: employee.department,
       createdAt: employee.createdAt,
       updatedAt: employee.updatedAt
@@ -1312,6 +1314,8 @@ export class EmployeeService {
       email: employeeData.email,
       roomNumber: employeeData.roomNumber,
       isActive: employeeData.isActive ? parseBoolean(employeeData.isActive, true) : true,
+      showUpInHomepage: employeeData.showUpInHomepage ? parseBoolean(employeeData.showUpInHomepage, false) : false,
+      showDownInHomepage: employeeData.showDownInHomepage ? parseBoolean(employeeData.showDownInHomepage, false) : false,
       photoMediaId: '' // will be set after media upload
     } as any;
 
@@ -1584,5 +1588,56 @@ export class EmployeeService {
     console.log('  Has presigned URL:', !!presignedUrl);
 
     return employeeDetails;
+  }
+
+  async getHomepageEmployees(): Promise<{
+    upSection: any[];
+    downSection: any[];
+    upSectionCount: number;
+    downSectionCount: number;
+  }> {
+    console.log('🏠 Employee: Getting homepage employees');
+
+    const { upSection, downSection } = await this.employeeRepository.findHomepageEmployees();
+    
+    // Transform employees with presigned URLs
+    const [transformedUpSection, transformedDownSection] = await Promise.all([
+      Promise.all(upSection.map(emp => this.transformToResponseDto(emp))),
+      Promise.all(downSection.map(emp => this.transformToResponseDto(emp)))
+    ]);
+
+    const result = {
+      upSection: transformedUpSection,
+      downSection: transformedDownSection,
+      upSectionCount: transformedUpSection.length,
+      downSectionCount: transformedDownSection.length
+    };
+
+    console.log(`✅ Employee: Homepage employees retrieved successfully`);
+    console.log(`  Up section: ${result.upSectionCount} employees`);
+    console.log(`  Down section: ${result.downSectionCount} employees`);
+
+    return result;
+  }
+
+  async getEmployeesByHomepageSection(section: 'up' | 'down', query?: EmployeeQueryDto): Promise<{
+    data: any[];
+    pagination: PaginationInfo;
+  }> {
+    console.log(`🏠 Employee: Getting employees for homepage ${section} section`);
+    console.log('  Query:', query);
+
+    const result = await this.employeeRepository.findEmployeesByHomepageSection(section, query);
+    
+    const transformedData = await Promise.all(
+      result.data.map(employee => this.transformToResponseDto(employee))
+    );
+
+    console.log(`✅ Employee: Retrieved ${transformedData.length} employees for ${section} section`);
+
+    return {
+      data: transformedData,
+      pagination: result.pagination
+    };
   }
 } 

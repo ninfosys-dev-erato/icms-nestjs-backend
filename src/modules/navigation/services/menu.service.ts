@@ -255,12 +255,17 @@ export class MenuService {
     return { success, failed, errors };
   }
 
+  async reorderMenus(orders: { id: string; order: number }[]): Promise<void> {
+    await this.menuRepository.reorder(orders);
+  }
+
   private transformToResponseDto(menu: any): MenuResponseDto {
     return {
       id: menu.id,
       name: menu.name,
       description: menu.description,
       location: menu.location,
+      order: menu.order || 0,
       isActive: menu.isActive,
       isPublished: menu.isPublished,
       categorySlug: menu.categorySlug,

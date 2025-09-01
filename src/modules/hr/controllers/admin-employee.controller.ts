@@ -1166,4 +1166,81 @@ export class AdminEmployeeController {
       response.status(status).json(apiResponse);
     }
   }
+
+  @Get('homepage/all')
+  @ApiOperation({ summary: 'Get all homepage employees (up and down sections) (Admin)' })
+  @ApiResponse({ status: 200, description: 'Homepage employees retrieved successfully' })
+  @Roles('ADMIN', 'EDITOR')
+  async getHomepageEmployees(
+    @Res() response: Response
+  ): Promise<void> {
+    try {
+      const result = await this.employeeService.getHomepageEmployees();
+      
+      const apiResponse = ApiResponseBuilder.success(result);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'HOMEPAGE_EMPLOYEES_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('homepage/up')
+  @ApiOperation({ summary: 'Get employees for homepage top section (Admin)' })
+  @ApiResponse({ status: 200, description: 'Up section employees retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  @Roles('ADMIN', 'EDITOR')
+  async getHomepageUpSection(
+    @Res() response: Response,
+    @Query() query?: EmployeeQueryDto
+  ): Promise<void> {
+    try {
+      const result = await this.employeeService.getEmployeesByHomepageSection('up', query);
+      
+      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'HOMEPAGE_UP_SECTION_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
+
+  @Get('homepage/down')
+  @ApiOperation({ summary: 'Get employees for homepage bottom section (Admin)' })
+  @ApiResponse({ status: 200, description: 'Down section employees retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  @Roles('ADMIN', 'EDITOR')
+  async getHomepageDownSection(
+    @Res() response: Response,
+    @Query() query?: EmployeeQueryDto
+  ): Promise<void> {
+    try {
+      const result = await this.employeeService.getEmployeesByHomepageSection('down', query);
+      
+      const apiResponse = ApiResponseBuilder.paginated(result.data, result.pagination);
+
+      response.status(200).json(apiResponse);
+    } catch (error) {
+      const apiResponse = ApiResponseBuilder.error(
+        'HOMEPAGE_DOWN_SECTION_RETRIEVAL_ERROR',
+        error.message
+      );
+
+      response.status(500).json(apiResponse);
+    }
+  }
 } 

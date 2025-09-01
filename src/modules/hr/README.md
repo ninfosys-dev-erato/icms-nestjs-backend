@@ -21,6 +21,8 @@ The HR Management module provides comprehensive functionality for managing depar
 - **Bilingual Support:** Employee names and positions in English and Nepali
 - **Position Management:** Track employee positions and roles
 - **Status Management:** Active/inactive employee states
+- **Homepage Display Control:** Control which employees appear on homepage with `showUpInHomepage` and `showDownInHomepage` flags
+- **Display Ordering:** Custom ordering for homepage display with `order` field
 
 ### **Photo Management (NEW!)**
 - **Photo Upload:** Upload employee photos with validation (JPG, PNG, WebP, GIF)
@@ -61,6 +63,11 @@ The HR Management module provides comprehensive functionality for managing depar
 - `GET /employees/department/:departmentId/photos` - Get employee photos by department
 - `GET /employees/position/:position/photos` - Get employee photos by position
 - `GET /employees/:id/photo` - Get specific employee photo with presigned URL
+
+#### **Homepage Endpoints (Public)**
+- `GET /employees/homepage/all` - Get all homepage employees (up and down sections)
+- `GET /employees/homepage/up` - Get employees for homepage top section
+- `GET /employees/homepage/down` - Get employees for homepage bottom section
 
 ### Admin Endpoints
 - `GET /admin/departments` - Get all departments (Admin)
@@ -106,6 +113,11 @@ The HR Management module provides comprehensive functionality for managing depar
 - `POST /admin/employees/upload-with-employee` - Create employee with photo upload
 - `POST /admin/employees/bulk-remove-photos` - Bulk remove employee photos
 
+#### **Homepage Endpoints (Admin)**
+- `GET /admin/employees/homepage/all` - Get all homepage employees (up and down sections)
+- `GET /admin/employees/homepage/up` - Get employees for homepage top section
+- `GET /admin/employees/homepage/down` - Get employees for homepage bottom section
+
 ## Data Models
 
 ### Department
@@ -123,12 +135,14 @@ The HR Management module provides comprehensive functionality for managing depar
 - `name` - Translatable employee name (en/ne)
 - `departmentId` - Associated department ID
 - `position` - Translatable position title (en/ne)
-- `order` - Display order
+- `order` - Display order for homepage sections
 - `mobileNumber` - Mobile phone number
 - `telephone` - Office telephone number
 - `email` - Email address
 - `roomNumber` - Office room number
 - `isActive` - Active status
+- `showUpInHomepage` - Show in top section of homepage
+- `showDownInHomepage` - Show in bottom section of homepage
 - `createdAt` - Creation timestamp
 - `updatedAt` - Last update timestamp
 
@@ -184,6 +198,26 @@ const employee = await employeeService.uploadEmployeePhoto(employeeId, photoFile
 const employeeWithPhoto = await employeeService.createEmployeeWithImage(photoFile, employeeData, userId);
 ```
 
+### **Managing Homepage Display**
+```typescript
+// Create employee with homepage flags
+const employeeData = {
+  name: { en: "John Doe", ne: "जोन डो" },
+  departmentId: "dept-id",
+  position: { en: "Software Engineer", ne: "सफ्टवेयर इन्जिनियर" },
+  showUpInHomepage: true,    // Show in top section
+  showDownInHomepage: false, // Don't show in bottom section
+  order: 1                   // Display order within section
+};
+
+// Get homepage employees
+const homepageEmployees = await employeeService.getHomepageEmployees();
+
+// Get specific section
+const upSection = await employeeService.getEmployeesByHomepageSection('up');
+const downSection = await employeeService.getEmployeesByHomepageSection('down');
+```
+
 ### **Getting Employee Photos with Presigned URLs**
 ```typescript
 // Get all employee photos
@@ -236,6 +270,8 @@ const deptPhotos = await employeeService.getEmployeePhotosByDepartment(departmen
 - [x] **Create photo management endpoints for admin and public access**
 - [x] **Add photo validation and error handling**
 - [x] **Implement photo statistics and analytics**
+- [x] **Add homepage display control with up/down section flags**
+- [x] **Implement homepage-specific endpoints for frontend integration**
 - [ ] Implement CSV and PDF export functionality for photos
 - [ ] Add import functionality for bulk data upload
 - [ ] Implement advanced analytics and reporting
@@ -245,4 +281,6 @@ const deptPhotos = await employeeService.getEmployeePhotosByDepartment(departmen
 - [ ] Create employee performance evaluation system
 - [ ] **Add photo usage tracking and analytics**
 - [ ] **Implement photo compression and optimization**
-- [ ] **Add photo watermarking capabilities** 
+- [ ] **Add photo watermarking capabilities**
+- [ ] **Add homepage employee ordering management interface**
+- [ ] **Implement homepage employee statistics and analytics** 

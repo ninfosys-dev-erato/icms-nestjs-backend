@@ -41,6 +41,12 @@ export class CreateMenuDto {
   @IsEnum(MenuLocation) 
   location: MenuLocation;
   
+  @ApiPropertyOptional({ description: 'Display order for the menu (lower numbers appear first)' })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber()
+  order?: number;
+  
   @ApiPropertyOptional() 
   @IsBoolean() 
   @IsOptional() 
@@ -85,6 +91,12 @@ export class UpdateMenuDto {
   @IsOptional() 
   location?: MenuLocation;
   
+  @ApiPropertyOptional({ description: 'Display order for the menu (lower numbers appear first)' })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber()
+  order?: number;
+  
   @ApiPropertyOptional() 
   @IsBoolean() 
   @IsOptional() 
@@ -106,6 +118,7 @@ export class MenuResponseDto {
   @ApiProperty({ type: TranslatableEntityDto }) name: TranslatableEntity;
   @ApiPropertyOptional({ type: TranslatableEntityDto }) description?: TranslatableEntity;
   @ApiProperty({ enum: MenuLocation }) location: MenuLocation;
+  @ApiProperty() order: number;
   @ApiProperty() isActive: boolean;
   @ApiProperty() isPublished: boolean;
   @ApiPropertyOptional() categorySlug?: string;
@@ -143,6 +156,12 @@ export class MenuQueryDto {
   
   @ApiPropertyOptional() 
   @IsOptional() 
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber() 
+  order?: number;
+  
+  @ApiPropertyOptional() 
+  @IsOptional() 
   @Transform(({ value }) => value === 'true')
   @IsBoolean() 
   isActive?: boolean;
@@ -161,7 +180,7 @@ export class MenuQueryDto {
   @ApiPropertyOptional({ enum: ['asc', 'desc'] }) 
   @IsOptional() 
   @IsEnum(['asc', 'desc']) 
-  order?: 'asc' | 'desc';
+  sortOrder?: 'asc' | 'desc';
 }
 
 export class PaginatedMenuResponse {

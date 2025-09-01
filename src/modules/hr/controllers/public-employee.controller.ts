@@ -283,4 +283,38 @@ export class PublicEmployeeController {
       throw new HttpException('Employee photo not found', HttpStatus.NOT_FOUND);
     }
   }
+
+  @Get('homepage/all')
+  @ApiOperation({ summary: 'Get all homepage employees (up and down sections)' })
+  @ApiResponse({ status: 200, description: 'Homepage employees retrieved successfully' })
+  async getHomepageEmployees() {
+    const result = await this.employeeService.getHomepageEmployees();
+    return result;
+  }
+
+  @Get('homepage/up')
+  @ApiOperation({ summary: 'Get employees for homepage top section' })
+  @ApiResponse({ status: 200, description: 'Up section employees retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  async getHomepageUpSection(
+    @Query() query?: EmployeeQueryDto
+  ) {
+    const result = await this.employeeService.getEmployeesByHomepageSection('up', query);
+    return result;
+  }
+
+  @Get('homepage/down')
+  @ApiOperation({ summary: 'Get employees for homepage bottom section' })
+  @ApiResponse({ status: 200, description: 'Down section employees retrieved successfully' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  async getHomepageDownSection(
+    @Query() query?: EmployeeQueryDto
+  ) {
+    const result = await this.employeeService.getEmployeesByHomepageSection('down', query);
+    return result;
+  }
 } 

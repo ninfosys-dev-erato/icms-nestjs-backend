@@ -273,6 +273,17 @@ export class AdminNavigationController {
     return { message: 'Menu items reordered successfully' };
   }
 
+  @Put('menus/reorder')
+  @ApiOperation({ summary: 'Reorder menus' })
+  @ApiResponse({ status: 200, description: 'Menus reordered successfully' })
+  @Roles('ADMIN', 'EDITOR')
+  async reorderMenus(
+    @Body() orders: { id: string; order: number }[],
+  ): Promise<any> {
+    await this.menuService.reorderMenus(orders);
+    return { message: 'Menus reordered successfully' };
+  }
+
   // Menu Item Management Endpoints - Parameterized routes
 
   @Get('menu-items/:id')

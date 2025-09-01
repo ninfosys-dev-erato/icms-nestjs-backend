@@ -9,4 +9,7 @@ export { AdminDepartmentController } from './controllers/admin-department.contro
 export { AdminEmployeeController } from './controllers/admin-employee.controller';
 export * from './dto/hr.dto';
 export * from './entities/department.entity';
-export * from './entities/employee.entity'; 
+export * from './entities/employee.entity';
+
+// Export new homepage-specific types
+export { HomepageEmployeeDto, HomepageResponseDto } from './dto/hr.dto'; 

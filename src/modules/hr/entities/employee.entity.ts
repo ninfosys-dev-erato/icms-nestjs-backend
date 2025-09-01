@@ -12,6 +12,8 @@ export class Employee {
   roomNumber?: string;
   photoMediaId?: string;
   isActive: boolean;
+  showUpInHomepage: boolean;
+  showDownInHomepage: boolean;
   createdAt: Date;
   updatedAt: Date;
   
