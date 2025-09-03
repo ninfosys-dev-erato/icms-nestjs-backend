@@ -10,9 +10,8 @@ RUN yarn install --frozen-lockfile --production=false
 # Copy source code and build
 COPY . .
 RUN npx prisma generate && \
-    yarn build && 
-    yarn install --frozen-lockfile --production=true && \
-    yarn cache clean
+    yarn build && \
+    yarn install --frozen-lockfile --production=true
 
 # Production stage
 FROM node:22-alpine AS production

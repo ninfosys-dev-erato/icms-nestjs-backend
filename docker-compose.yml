@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: icms-backend
+        # container_name: icms-backend
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:3000"
@@ -16,6 +16,7 @@ services:
       - API_PREFIX=${API_PREFIX:-api/v1}
       - APP_NAME=${APP_NAME:-ICMS Backend}
       - APP_VERSION=${APP_VERSION:-1.0.0}
+      - APP_ABBREVIATION=${APP_ABBREVIATION}
       
       # Database Configuration
       - DATABASE_URL=${DATABASE_URL}
