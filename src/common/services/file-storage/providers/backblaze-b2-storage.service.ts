@@ -12,6 +12,7 @@ export interface BackblazeB2Config {
   endpoint: string;
   maxRetries: number;
   retryDelay: number;
+  appAbbreviation: string;
 }
 
 export interface BackblazeAuthResponse {
@@ -65,6 +66,7 @@ export class BackblazeB2StorageService extends FileStorageService {
       endpoint: this.configService.get<string>('BACKBLAZE_ENDPOINT', 'https://api.backblazeb2.com'),
       maxRetries: this.configService.get<number>('BACKBLAZE_MAX_RETRIES', 3),
       retryDelay: this.configService.get<number>('BACKBLAZE_RETRY_DELAY', 1000),
+      appAbbreviation: this.configService.get<string>('APP_ABBREVIATION', ''),
     };
 
     if (!this.config.applicationKeyId || !this.config.applicationKey || 
@@ -100,8 +102,11 @@ export class BackblazeB2StorageService extends FileStorageService {
     metadata?: Record<string, string>
   ): Promise<UploadResult> {
     try {
+      const fullKey = this.buildFullKey(key);
+      
       console.log('☁️ BackblazeB2: Starting upload');
-      console.log('  Key:', key);
+      console.log('  Original Key:', key);
+      console.log('  Full Key (with APP_ABBREVIATION):', fullKey);
       console.log('  Buffer size:', buffer.length);
       console.log('  Content type:', contentType);
       console.log('  Metadata:', metadata);
@@ -120,7 +125,7 @@ export class BackblazeB2StorageService extends FileStorageService {
       // Prepare headers for Backblaze B2
       const headers = {
         'Authorization': this.uploadAuthToken!,
-        'X-Bz-File-Name': key, // Required by Backblaze B2
+        'X-Bz-File-Name': fullKey, // Use full key with APP_ABBREVIATION
         'X-Bz-Content-Sha1': sha1Hash, // Required by Backblaze B2
         'Content-Type': contentType || 'application/octet-stream',
         'Content-Length': buffer.length
@@ -167,7 +172,7 @@ export class BackblazeB2StorageService extends FileStorageService {
         // Try again without metadata
         const simpleHeaders = {
           ...headers,
-          'X-Bz-File-Name': key, // Required by Backblaze B2
+          'X-Bz-File-Name': fullKey, // Use full key with APP_ABBREVIATION
           'Content-Type': contentType || 'application/octet-stream',
           'Content-Length': buffer.length
         };
@@ -180,7 +185,7 @@ export class BackblazeB2StorageService extends FileStorageService {
       }
 
       const uploadData = response.data;
-      const publicUrl = `${this.downloadUrl}/file/${this.config.bucketName}/${key}`;
+      const publicUrl = `${this.downloadUrl}/file/${this.config.bucketName}/${fullKey}`;
 
       console.log('✅ BackblazeB2: Upload successful!');
       console.log('  Upload data:', uploadData);
@@ -189,7 +194,7 @@ export class BackblazeB2StorageService extends FileStorageService {
       this.logger.debug(`File uploaded successfully: ${key}`);
 
       return {
-        key,
+        key: key, // Return original key, not fullKey with APP_ABBREVIATION
         url: publicUrl,
         size: buffer.length,
         etag: uploadData.contentSha1,
@@ -231,10 +236,12 @@ export class BackblazeB2StorageService extends FileStorageService {
 
   async download(key: string): Promise<DownloadResult> {
     try {
+      const fullKey = this.buildFullKey(key);
+      
       await this.ensureAuthenticated();
 
       const response = await this.retryOperation(async () => {
-        return this.httpClient.get(`${this.downloadUrl}/file/${this.config.bucketName}/${key}`, {
+        return this.httpClient.get(`${this.downloadUrl}/file/${this.config.bucketName}/${fullKey}`, {
           headers: {
             'Authorization': this.authToken!,
           },
@@ -258,10 +265,12 @@ export class BackblazeB2StorageService extends FileStorageService {
 
   async delete(key: string): Promise<void> {
     try {
+      const fullKey = this.buildFullKey(key);
+      
       await this.ensureAuthenticated();
 
       // First, get file info to get the file ID
-      const fileInfo = await this.getFileInfo(key);
+      const fileInfo = await this.getFileInfo(fullKey);
       
       if (!fileInfo) {
         this.logger.warn(`File not found for deletion: ${key}`);
@@ -272,7 +281,7 @@ export class BackblazeB2StorageService extends FileStorageService {
         return this.httpClient.post(
           `${this.apiUrl}/b2api/v2/b2_delete_file_version`,
           {
-            fileName: key,
+            fileName: fullKey,
             fileId: fileInfo.fileId,
           },
           {
@@ -292,7 +301,8 @@ export class BackblazeB2StorageService extends FileStorageService {
 
   async exists(key: string): Promise<boolean> {
     try {
-      const fileInfo = await this.getFileInfo(key);
+      const fullKey = this.buildFullKey(key);
+      const fileInfo = await this.getFileInfo(fullKey);
       return !!fileInfo;
     } catch (error) {
       this.logger.debug(`File existence check failed for ${key}: ${error.message}`);
@@ -301,20 +311,24 @@ export class BackblazeB2StorageService extends FileStorageService {
   }
 
   async getUrl(key: string, expiresIn?: number): Promise<string> {
+    const fullKey = this.buildFullKey(key);
+    
     // Backblaze B2 provides public URLs, but we can generate signed URLs if needed
     if (expiresIn) {
       return this.generatePresignedUrl(key, 'get', expiresIn);
     }
     
     await this.ensureAuthenticated();
-    return `${this.downloadUrl}/file/${this.config.bucketName}/${key}`;
+    return `${this.downloadUrl}/file/${this.config.bucketName}/${fullKey}`;
   }
 
   async getMetadata(key: string): Promise<FileMetadata> {
     try {
+      const fullKey = this.buildFullKey(key);
+      
       await this.ensureAuthenticated();
 
-      const fileInfo = await this.getFileInfo(key);
+      const fileInfo = await this.getFileInfo(fullKey);
       
       if (!fileInfo) {
         throw new Error('File not found');
@@ -335,9 +349,12 @@ export class BackblazeB2StorageService extends FileStorageService {
 
   async copy(sourceKey: string, destinationKey: string): Promise<void> {
     try {
+      const fullSourceKey = this.buildFullKey(sourceKey);
+      const fullDestinationKey = this.buildFullKey(destinationKey);
+      
       await this.ensureAuthenticated();
 
-      const fileInfo = await this.getFileInfo(sourceKey);
+      const fileInfo = await this.getFileInfo(fullSourceKey);
       
       if (!fileInfo) {
         throw new Error('Source file not found');
@@ -349,7 +366,7 @@ export class BackblazeB2StorageService extends FileStorageService {
           {
             sourceFileId: fileInfo.fileId,
             destinationBucketId: this.config.bucketId,
-            destinationFileName: destinationKey,
+            destinationFileName: fullDestinationKey,
           },
           {
             headers: {
@@ -372,11 +389,13 @@ export class BackblazeB2StorageService extends FileStorageService {
     expiresIn?: number
   ): Promise<string> {
     try {
+      const fullKey = this.buildFullKey(key);
+      
       await this.ensureAuthenticated();
 
       if (operation === 'get') {
         // For Backblaze B2, we need to get the file info first to get the file ID
-        const fileInfo = await this.getFileInfo(key);
+        const fileInfo = await this.getFileInfo(fullKey);
         
         if (!fileInfo) {
           throw new Error('File not found');
@@ -391,7 +410,7 @@ export class BackblazeB2StorageService extends FileStorageService {
             `${this.apiUrl}/b2api/v2/b2_get_download_authorization`,
             {
               bucketId: this.config.bucketId,
-              fileNamePrefix: key,
+              fileNamePrefix: fullKey,
               validDurationInSeconds: expirySeconds,
             },
             {
@@ -403,10 +422,11 @@ export class BackblazeB2StorageService extends FileStorageService {
         });
 
         const authData = authResponse.data;
-        const downloadUrl = `${this.downloadUrl}/file/${this.config.bucketName}/${key}?Authorization=${authData.authorizationToken}`;
+        const downloadUrl = `${this.downloadUrl}/file/${this.config.bucketName}/${fullKey}?Authorization=${authData.authorizationToken}`;
         
         console.log('🔗 BackblazeB2: Generated presigned download URL');
         console.log('  File:', key);
+        console.log('  Full Key:', fullKey);
         console.log('  Download URL:', downloadUrl);
         console.log('  Expires in:', expirySeconds, 'seconds');
         
@@ -550,6 +570,14 @@ export class BackblazeB2StorageService extends FileStorageService {
       this.logger.error(`Failed to get file info for ${key}: ${error.message}`);
       return null;
     }
+  }
+
+
+  private buildFullKey(key: string): string {
+    if (this.config.appAbbreviation) {
+      return `${this.config.appAbbreviation}/${key}`;
+    }
+    return key;
   }
 
   private async retryOperation<T>(operation: () => Promise<T>): Promise<T> {
