@@ -31,10 +31,7 @@ async function bootstrap() {
   // CORS - Admin + Public
   // =====================
   if (configService.get<boolean>('app.features.enableCors', true)) {
-    const allowedOrigins = configService.get<string[]>('app.cors.origin', [
-      'https://admin.icms.csiodadeldhura.easypalika.com',
-      'https://icms.csiodadeldhura.easypalika.com'
-    ]);
+    const allowedOrigins = configService.get<string[]>('app.cors.origin');
 
     app.enableCors({
       origin: (origin, callback) => {
