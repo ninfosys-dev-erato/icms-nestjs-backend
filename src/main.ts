@@ -31,10 +31,10 @@ async function bootstrap() {
   // CORS - Admin + Public
   // =====================
   if (configService.get<boolean>('app.features.enableCors', true)) {
-    const allowedOrigins = configService.get<string[]>('app.cors.origin', [
-      'https://admin.icms.csiodadeldhura.easypalika.com',
-      'https://icms.csiodadeldhura.easypalika.com'
-    ]);
+    const allowedOrigins = [
+      'https://admin.icms.demo.easypalika.com',
+      'https://icms.demo.easypalika.com'
+    ];
 
     app.enableCors({
       origin: (origin, callback) => {
@@ -44,7 +44,7 @@ async function bootstrap() {
           callback(new Error('Not allowed by CORS'));
         }
       },
-      credentials: configService.get<boolean>('app.cors.credentials', true),
+      credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
       allowedHeaders: [
         'Content-Type',
@@ -60,7 +60,6 @@ async function bootstrap() {
     });
 
     console.log('🌐 CORS enabled for admin and public frontends');
-    console.log('🌐 Allowed origins:', allowedOrigins);
   }
 
   // Cookie parser
@@ -129,4 +128,3 @@ bootstrap().catch((error) => {
   console.error('Failed to start application:', error);
   process.exit(1);
 });
-
