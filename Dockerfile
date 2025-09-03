@@ -29,10 +29,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY package.json ./
 
 # Verify dist directory contents
-RUN ls -la dist/ && \
-    chown -R nestjs:nestjs /app
+RUN ls -la dist/
 
-USER nestjs
 
 # Environment configuration
 ENV NODE_ENV=production
