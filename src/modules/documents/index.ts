@@ -1,0 +1,10 @@
+export { DocumentsModule } from './documents.module';
+export { DocumentService } from './services/document.service';
+export { DocumentRepository } from './repositories/document.repository';
+export { DocumentDownloadRepository } from './repositories/document-download.repository';
+export { DocumentVersionRepository } from './repositories/document-version.repository';
+export { PublicDocumentController } from './controllers/public-document.controller';
+export { AdminDocumentController } from './controllers/admin-document.controller';
+export * from './dto/documents.dto';
+export * from './entities/document-download.entity';
+export * from './entities/document-version.entity'; 

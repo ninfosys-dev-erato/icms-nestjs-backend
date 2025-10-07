@@ -1,0 +1,338 @@
+HR MODULE ENDPOINTS
+==================
+
+BASE URL: http://localhost:3005/api/v1
+
+================================================================================
+PUBLIC ENDPOINTS (No Authentication Required)
+================================================================================
+
+📋 DEPARTMENT ENDPOINTS (Public)
+--------------------------------
+
+1. Get all active departments
+   GET /api/v1/departments
+   Query Parameters:
+   - page (optional): Page number (default: 1)
+   - limit (optional): Items per page (default: 10)
+   - search (optional): Search term
+   - parentId (optional): Filter by parent department ID
+   - sort (optional): Sort field (default: 'createdAt')
+   - order (optional): Sort order ('asc' or 'desc', default: 'desc')
+   - dateFrom (optional): Filter from date
+   - dateTo (optional): Filter to date
+
+2. Get department hierarchy
+   GET /api/v1/departments/hierarchy
+
+3. Search departments
+   GET /api/v1/departments/search?q={search_term}
+   Required Parameters:
+   - q: Search term
+   Optional Parameters:
+   - page, limit, isActive
+
+4. Get department by ID
+   GET /api/v1/departments/{id}
+
+👥 EMPLOYEE ENDPOINTS (Public)
+-------------------------------
+
+1. Get all active employees
+   GET /api/v1/employees
+   Query Parameters:
+   - page (optional): Page number (default: 1)
+   - limit (optional): Items per page (default: 10)
+   - search (optional): Search term
+   - departmentId (optional): Filter by department ID
+   - sort (optional): Sort field (default: 'createdAt')
+   - order (optional): Sort order ('asc' or 'desc', default: 'desc')
+   - dateFrom (optional): Filter from date
+   - dateTo (optional): Filter to date
+
+2. Search employees
+   GET /api/v1/employees/search?q={search_term}
+   Required Parameters:
+   - q: Search term
+   Optional Parameters:
+   - page, limit, departmentId, isActive
+
+3. Get employees by department
+   GET /api/v1/employees/department/{departmentId}
+
+4. Get employees by position
+   GET /api/v1/employees/position/{position}
+
+5. Get employee by ID
+   GET /api/v1/employees/{id}
+
+================================================================================
+ADMIN ENDPOINTS (Require JWT Authentication)
+================================================================================
+
+BASE URL: http://localhost:3005/api/v1/admin
+AUTHENTICATION: Include Authorization: Bearer <jwt-token> header
+
+📋 ADMIN DEPARTMENT ENDPOINTS
+-----------------------------
+
+1. Get all departments (Admin)
+   GET /api/v1/admin/departments
+   Roles: ADMIN, EDITOR
+   Query Parameters: Same as public endpoints + isActive
+
+2. Get HR statistics
+   GET /api/v1/admin/departments/statistics
+   Roles: ADMIN, EDITOR
+
+3. Get department hierarchy (Admin)
+   GET /api/v1/admin/departments/hierarchy
+   Roles: ADMIN, EDITOR
+
+4. Search departments (Admin)
+   GET /api/v1/admin/departments/search?q={search_term}
+   Roles: ADMIN, EDITOR
+
+5. Export departments
+   GET /api/v1/admin/departments/export?format={format}
+   Roles: ADMIN, EDITOR
+   Format Options: json, csv, pdf
+
+6. Get department by ID (Admin)
+   GET /api/v1/admin/departments/{id}
+   Roles: ADMIN, EDITOR
+
+7. Create department
+   POST /api/v1/admin/departments
+   Roles: ADMIN, EDITOR
+   Body:
+   {
+     "departmentName": {
+       "en": "IT Department",
+       "ne": "आईटी विभाग"
+     },
+     "parentId": "parent-dept-id",
+     "departmentHeadId": "head-user-id",
+     "order": 1,
+     "isActive": true
+   }
+
+8. Update department
+   PUT /api/v1/admin/departments/{id}
+   Roles: ADMIN, EDITOR
+
+9. Delete department
+   DELETE /api/v1/admin/departments/{id}
+   Roles: ADMIN only
+
+10. Import departments
+    POST /api/v1/admin/departments/import
+    Roles: ADMIN only
+    Content-Type: multipart/form-data
+    Body: file (CSV/Excel file)
+
+11. Bulk activate departments
+    POST /api/v1/admin/departments/bulk-activate
+    Roles: ADMIN, EDITOR
+    Body:
+    {
+      "ids": ["dept-id-1", "dept-id-2"]
+    }
+
+12. Bulk deactivate departments
+    POST /api/v1/admin/departments/bulk-deactivate
+    Roles: ADMIN, EDITOR
+
+13. Bulk delete departments
+    POST /api/v1/admin/departments/bulk-delete
+    Roles: ADMIN only
+
+👥 ADMIN EMPLOYEE ENDPOINTS
+---------------------------
+
+1. Get all employees (Admin)
+   GET /api/v1/admin/employees
+   Roles: ADMIN, EDITOR
+   Query Parameters: Same as public endpoints + isActive
+
+2. Search employees (Admin)
+   GET /api/v1/admin/employees/search?q={search_term}
+   Roles: ADMIN, EDITOR
+
+3. Get employees by department (Admin)
+   GET /api/v1/admin/employees/department/{departmentId}
+   Roles: ADMIN, EDITOR
+
+4. Get employees by position (Admin)
+   GET /api/v1/admin/employees/position/{position}
+   Roles: ADMIN, EDITOR
+
+5. Get employee by ID (Admin)
+   GET /api/v1/admin/employees/{id}
+   Roles: ADMIN, EDITOR
+
+6. Create employee
+   POST /api/v1/admin/employees
+   Roles: ADMIN, EDITOR
+   Body:
+   {
+     "name": {
+       "en": "John Doe",
+       "ne": "जोन डो"
+     },
+     "departmentId": "dept-id",
+     "position": {
+       "en": "Software Engineer",
+       "ne": "सफ्टवेयर इन्जिनियर"
+     },
+     "order": 1,
+     "mobileNumber": "+977-9841234567",
+     "telephone": "+977-1-1234567",
+     "email": "john@example.com",
+     "roomNumber": "Room 101",
+     "isActive": true
+   }
+
+7. Update employee
+   PUT /api/v1/admin/employees/{id}
+   Roles: ADMIN, EDITOR
+
+8. Delete employee
+   DELETE /api/v1/admin/employees/{id}
+   Roles: ADMIN only
+
+9. Export employees
+   GET /api/v1/admin/employees/export?format={format}
+   Roles: ADMIN, EDITOR
+   Format Options: json, csv, pdf
+
+10. Import employees
+    POST /api/v1/admin/employees/import
+    Roles: ADMIN only
+    Content-Type: multipart/form-data
+    Body: file (CSV/Excel file)
+
+11. Bulk activate employees
+    POST /api/v1/admin/employees/bulk-activate
+    Roles: ADMIN, EDITOR
+
+12. Bulk deactivate employees
+    POST /api/v1/admin/employees/bulk-deactivate
+    Roles: ADMIN, EDITOR
+
+13. Bulk delete employees
+    POST /api/v1/admin/employees/bulk-delete
+    Roles: ADMIN only
+
+📊 ADMIN HR ENDPOINTS
+---------------------
+
+1. Get HR statistics
+   GET /api/v1/admin/hr/statistics
+   Roles: ADMIN, EDITOR
+
+================================================================================
+FRONTEND IMPLEMENTATION NOTES
+================================================================================
+
+AUTHENTICATION
+-------------
+For admin endpoints, include the JWT token in the Authorization header:
+const headers = {
+  'Authorization': `Bearer ${jwtToken}`,
+  'Content-Type': 'application/json'
+};
+
+MULTILINGUAL SUPPORT
+-------------------
+All name fields support both English (en) and Nepali (ne):
+{
+  "name": {
+    "en": "English Name",
+    "ne": "नेपाली नाम"
+  }
+}
+
+PAGINATION
+----------
+All list endpoints support pagination with consistent response format:
+{
+  "success": true,
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 50,
+    "totalPages": 5,
+    "hasNext": true,
+    "hasPrev": false
+  }
+}
+
+ERROR HANDLING
+-------------
+All endpoints return consistent error format:
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Error description"
+  }
+}
+
+FILE UPLOAD
+-----------
+For import endpoints, use multipart/form-data:
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+
+fetch('/api/v1/admin/departments/import', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwtToken}`
+  },
+  body: formData
+});
+
+ROLE-BASED ACCESS
+-----------------
+- ADMIN: Full access to all endpoints
+- EDITOR: Can create, update, view, but cannot delete
+- Public: Read-only access to active records
+
+EXAMPLE USAGE
+-------------
+
+1. Get all departments (Public):
+   fetch('/api/v1/departments?page=1&limit=10')
+
+2. Create department (Admin):
+   fetch('/api/v1/admin/departments', {
+     method: 'POST',
+     headers: {
+       'Authorization': `Bearer ${jwtToken}`,
+       'Content-Type': 'application/json'
+     },
+     body: JSON.stringify({
+       departmentName: {
+         en: "IT Department",
+         ne: "आईटी विभाग"
+       },
+       isActive: true
+     })
+   })
+
+3. Search employees (Public):
+   fetch('/api/v1/employees/search?q=john&page=1&limit=10')
+
+4. Get employees by department (Public):
+   fetch('/api/v1/employees/department/dept-123')
+
+5. Export departments (Admin):
+   fetch('/api/v1/admin/departments/export?format=csv', {
+     headers: {
+       'Authorization': `Bearer ${jwtToken}`
+     }
+   })
+
+================================================================================

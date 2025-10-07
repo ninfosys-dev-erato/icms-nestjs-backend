@@ -1,0 +1,206 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../../database/prisma.service';
+import { OfficeSettings } from '../entities/office-settings.entity';
+import { CreateOfficeSettingsDto } from '../dto/create-office-settings.dto';
+import { UpdateOfficeSettingsDto } from '../dto/update-office-settings.dto';
+
+@Injectable()
+export class OfficeSettingsRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async findById(id: string): Promise<OfficeSettings | null> {
+    const settings = await this.prisma.officeSettings.findUnique({
+      where: { id },
+    });
+
+    if (!settings) return null;
+
+    return {
+      id: settings.id,
+      directorate: settings.directorate as any,
+      officeName: settings.officeName as any,
+      officeAddress: settings.officeAddress as any,
+      backgroundPhoto: settings.backgroundPhotoId,
+      email: settings.email,
+      phoneNumber: settings.phoneNumber as any,
+      xLink: settings.xLink,
+      mapIframe: settings.mapIframe,
+      website: settings.website,
+      youtube: settings.youtube,
+      createdAt: settings.createdAt,
+      updatedAt: settings.updatedAt,
+    };
+  }
+
+  async findFirst(): Promise<OfficeSettings | null> {
+    const settings = await this.prisma.officeSettings.findFirst();
+
+    if (!settings) return null;
+
+    return {
+      id: settings.id,
+      directorate: settings.directorate as any,
+      officeName: settings.officeName as any,
+      officeAddress: settings.officeAddress as any,
+      backgroundPhoto: settings.backgroundPhotoId,
+      email: settings.email,
+      phoneNumber: settings.phoneNumber as any,
+      xLink: settings.xLink,
+      mapIframe: settings.mapIframe,
+      website: settings.website,
+      youtube: settings.youtube,
+      createdAt: settings.createdAt,
+      updatedAt: settings.updatedAt,
+    };
+  }
+
+  async create(data: CreateOfficeSettingsDto): Promise<OfficeSettings> {
+    const settings = await this.prisma.officeSettings.create({
+      data: {
+        directorate: data.directorate as any,
+        officeName: data.officeName as any,
+        officeAddress: data.officeAddress as any,
+        backgroundPhotoId: data.backgroundPhoto,
+        email: data.email,
+        phoneNumber: data.phoneNumber as any,
+        xLink: data.xLink,
+        mapIframe: data.mapIframe,
+        website: data.website,
+        youtube: data.youtube,
+      },
+    });
+
+    return {
+      id: settings.id,
+      directorate: settings.directorate as any,
+      officeName: settings.officeName as any,
+      officeAddress: settings.officeAddress as any,
+      backgroundPhoto: settings.backgroundPhoto,
+      email: settings.email,
+      phoneNumber: settings.phoneNumber as any,
+      xLink: settings.xLink,
+      mapIframe: settings.mapIframe,
+      website: settings.website,
+      youtube: settings.youtube,
+      createdAt: settings.createdAt,
+      updatedAt: settings.updatedAt,
+    };
+  }
+
+  async update(id: string, data: UpdateOfficeSettingsDto): Promise<OfficeSettings> {
+    const settings = await this.prisma.officeSettings.update({
+      where: { id },
+      data: {
+        ...(data.directorate && { directorate: data.directorate as any }),
+        ...(data.officeName && { officeName: data.officeName as any }),
+        ...(data.officeAddress && { officeAddress: data.officeAddress as any }),
+        ...(data.backgroundPhoto !== undefined && { backgroundPhotoId: data.backgroundPhoto }),
+        ...(data.email && { email: data.email }),
+        ...(data.phoneNumber && { phoneNumber: data.phoneNumber as any }),
+        ...(data.xLink !== undefined && { xLink: data.xLink }),
+        ...(data.mapIframe !== undefined && { mapIframe: data.mapIframe }),
+        ...(data.website !== undefined && { website: data.website }),
+        ...(data.youtube !== undefined && { youtube: data.youtube }),
+      },
+    });
+
+    return {
+      id: settings.id,
+      directorate: settings.directorate as any,
+      officeName: settings.officeName as any,
+      officeAddress: settings.officeAddress as any,
+      backgroundPhoto: settings.backgroundPhoto,
+      email: settings.email,
+      phoneNumber: settings.phoneNumber as any,
+      xLink: settings.xLink,
+      mapIframe: settings.mapIframe,
+      website: settings.website,
+      youtube: settings.youtube,
+      createdAt: settings.createdAt,
+      updatedAt: settings.updatedAt,
+    };
+  }
+
+  async upsert(data: CreateOfficeSettingsDto): Promise<OfficeSettings> {
+    // First try to find existing settings
+    const existingSettings = await this.prisma.officeSettings.findFirst();
+    
+    if (existingSettings) {
+      // Update existing settings
+      const settings = await this.prisma.officeSettings.update({
+        where: { id: existingSettings.id },
+        data: {
+          directorate: data.directorate as any,
+          officeName: data.officeName as any,
+          officeAddress: data.officeAddress as any,
+          backgroundPhoto: data.backgroundPhoto,
+          email: data.email,
+          phoneNumber: data.phoneNumber as any,
+          xLink: data.xLink,
+          mapIframe: data.mapIframe,
+          website: data.website,
+          youtube: data.youtube,
+        },
+      });
+
+      return {
+        id: settings.id,
+        directorate: settings.directorate as any,
+        officeName: settings.officeName as any,
+        officeAddress: settings.officeAddress as any,
+        backgroundPhoto: settings.backgroundPhoto,
+        email: settings.email,
+        phoneNumber: settings.phoneNumber as any,
+        xLink: settings.xLink,
+        mapIframe: settings.mapIframe,
+        website: settings.website,
+        youtube: settings.youtube,
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+      };
+    } else {
+      // Create new settings
+      const settings = await this.prisma.officeSettings.create({
+        data: {
+          directorate: data.directorate as any,
+          officeName: data.officeName as any,
+          officeAddress: data.officeAddress as any,
+          backgroundPhoto: data.backgroundPhoto,
+          email: data.email,
+          phoneNumber: data.phoneNumber as any,
+          xLink: data.xLink,
+          mapIframe: data.mapIframe,
+          website: data.website,
+          youtube: data.youtube,
+        },
+      });
+
+      return {
+        id: settings.id,
+        directorate: settings.directorate as any,
+        officeName: settings.officeName as any,
+        officeAddress: settings.officeAddress as any,
+        backgroundPhoto: settings.backgroundPhoto,
+        email: settings.email,
+        phoneNumber: settings.phoneNumber as any,
+        xLink: settings.xLink,
+        mapIframe: settings.mapIframe,
+        website: settings.website,
+        youtube: settings.youtube,
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+      };
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.officeSettings.delete({
+      where: { id },
+    });
+  }
+
+  async exists(): Promise<boolean> {
+    const count = await this.prisma.officeSettings.count();
+    return count > 0;
+  }
+} 

@@ -1,0 +1,632 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String             @id @default(cuid())
+  email                  String             @unique
+  password               String
+  firstName              String
+  lastName               String
+  role                   UserRole           @default(VIEWER)
+  isActive               Boolean            @default(true)
+  isEmailVerified        Boolean            @default(false)
+  lastLoginAt            DateTime?
+  passwordChangedAt      DateTime?
+  emailVerificationToken String?
+  passwordResetToken     String?
+  passwordResetExpires   DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  profilePictureId       String?
+  auditLogs              AuditLog[]
+  createdContents        Content[]          @relation("CreatedBy")
+  updatedContents        Content[]          @relation("UpdatedBy")
+  departmentHead         Department[]       @relation("DepartmentHead")
+  documentDownloads      DocumentDownload[]
+  createdHeaderConfigs   HeaderConfig[]     @relation("CreatedHeaderConfigs")
+  updatedHeaderConfigs   HeaderConfig[]     @relation("UpdatedHeaderConfigs")
+  loginAttempts          LoginAttempt[]
+  uploadedMedia          Media[]            @relation("UploadedMedia")
+  createdMenuItems       MenuItem[]         @relation("CreatedMenuItems")
+  updatedMenuItems       MenuItem[]         @relation("UpdatedMenuItems")
+  createdMenus           Menu[]             @relation("CreatedMenus")
+  updatedMenus           Menu[]             @relation("UpdatedMenus")
+  searchQueries          SearchQuery[]      @relation("SearchQueries")
+  sliderClicks           SliderClick[]
+  sliderViews            SliderView[]
+  sessions               UserSession[]
+  profilePicture         Media?             @relation("ProfilePicture", fields: [profilePictureId], references: [id])
+
+  @@map("users")
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  refreshToken String   @unique
+  ipAddress    String
+  userAgent    String
+  isActive     Boolean  @default(true)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model LoginAttempt {
+  id            String   @id @default(cuid())
+  email         String
+  ipAddress     String
+  userAgent     String
+  success       Boolean
+  failureReason String?
+  attemptedAt   DateTime @default(now())
+  userId        String?
+  User          User?    @relation(fields: [userId], references: [id])
+
+  @@map("login_attempts")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  details    Json
+  ipAddress  String
+  userAgent  String
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model GlobalTranslation {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  enValue   String
+  neValue   String
+  groupName String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("global_translations")
+}
+
+model OfficeSettings {
+  id                String   @id @default(cuid())
+  directorate       Json
+  officeName        Json
+  officeAddress     Json
+  backgroundPhotoId String?
+  email             String
+  phoneNumber       Json
+  xLink             String?
+  mapIframe         String?
+  website           String?
+  youtube           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  backgroundPhoto   Media?   @relation(fields: [backgroundPhotoId], references: [id])
+
+  @@map("office_settings")
+}
+
+model OfficeDescription {
+  id                    String                @id @default(cuid())
+  officeDescriptionType OfficeDescriptionType
+  content               Json
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@map("office_descriptions")
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        Json
+  description Json?
+  slug        String     @unique
+  parentId    String?
+  order       Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  contents    Content[]
+
+  @@map("categories")
+}
+
+model Content {
+  id          String              @id @default(cuid())
+  title       Json
+  content     Json
+  excerpt     Json?
+  slug        String              @unique
+  categoryId  String
+  status      ContentStatus       @default(DRAFT)
+  publishedAt DateTime?
+  featured    Boolean             @default(false)
+  order       Int                 @default(0)
+  createdById String
+  updatedById String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  attachments ContentAttachment[]
+  category    Category            @relation(fields: [categoryId], references: [id])
+  createdBy   User                @relation("CreatedBy", fields: [createdById], references: [id])
+  updatedBy   User                @relation("UpdatedBy", fields: [updatedById], references: [id])
+
+  @@map("contents")
+}
+
+model ContentAttachment {
+  id        String   @id @default(cuid())
+  contentId String
+  fileName  String
+  filePath  String
+  fileSize  Int
+  mimeType  String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("content_attachments")
+}
+
+model ImportantLink {
+  id        String   @id @default(cuid())
+  linkTitle Json
+  linkUrl   String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("important_links")
+}
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  Json
+  answer    Json
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+model Media {
+  id              String           @id @default(cuid())
+  fileName        String
+  originalName    String
+  url             String
+  fileId          String
+  size            Int
+  contentType     String
+  uploadedBy      String
+  folder          String
+  category        String
+  altText         String?
+  title           String?
+  description     String?
+  tags            String[]
+  isPublic        Boolean          @default(true)
+  isActive        Boolean          @default(true)
+  metadata        Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  employeePhotos  Employee[]       @relation("EmployeePhoto")
+  user            User             @relation("UploadedMedia", fields: [uploadedBy], references: [id])
+  officeSettings  OfficeSettings[]
+  sliders         Slider[]
+  profilePictures User[]           @relation("ProfilePicture")
+
+  @@map("media")
+}
+
+model MediaAlbum {
+  id          String            @id @default(cuid())
+  name        Json
+  description Json?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  media       MediaAlbumMedia[]
+
+  @@map("media_albums")
+}
+
+model MediaAlbumMedia {
+  id           String     @id @default(cuid())
+  mediaId      String
+  mediaAlbumId String
+  createdAt    DateTime   @default(now())
+  mediaAlbum   MediaAlbum @relation(fields: [mediaAlbumId], references: [id], onDelete: Cascade)
+
+  @@unique([mediaId, mediaAlbumId])
+  @@map("media_album_media")
+}
+
+model Slider {
+  id          String        @id @default(cuid())
+  position    Int           @default(0)
+  displayTime Int           @default(5000)
+  title       Json?
+  mediaId     String
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  clicks      SliderClick[]
+  views       SliderView[]
+  media       Media         @relation(fields: [mediaId], references: [id])
+
+  @@map("sliders")
+}
+
+model SliderClick {
+  id        String   @id @default(cuid())
+  sliderId  String
+  userId    String?
+  ipAddress String
+  userAgent String
+  createdAt DateTime @default(now())
+  slider    Slider   @relation(fields: [sliderId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@map("slider_clicks")
+}
+
+model SliderView {
+  id           String   @id @default(cuid())
+  sliderId     String
+  userId       String?
+  ipAddress    String
+  userAgent    String
+  viewDuration Int?
+  createdAt    DateTime @default(now())
+  slider       Slider   @relation(fields: [sliderId], references: [id], onDelete: Cascade)
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@map("slider_views")
+}
+
+model Department {
+  id               String       @id @default(cuid())
+  departmentName   Json
+  parentId         String?
+  departmentHeadId String?
+  order            Int          @default(0)
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  departmentHead   User?        @relation("DepartmentHead", fields: [departmentHeadId], references: [id])
+  parent           Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children         Department[] @relation("DepartmentHierarchy")
+  employees        Employee[]
+
+  @@map("departments")
+}
+
+model Employee {
+  id                 String     @id @default(cuid())
+  name               Json
+  departmentId       String
+  position           Json
+  order              Int        @default(0)
+  mobileNumber       String?
+  telephone          String?
+  email              String?
+  roomNumber         String?
+  photoMediaId       String?
+  isActive           Boolean    @default(true)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  showUpInHomepage   Boolean    @default(false)
+  showDownInHomepage Boolean    @default(false)
+  department         Department @relation(fields: [departmentId], references: [id])
+  photo              Media?     @relation("EmployeePhoto", fields: [photoMediaId], references: [id])
+
+  @@map("employees")
+}
+
+model Menu {
+  id           String       @id @default(cuid())
+  name         Json
+  description  Json?
+  location     MenuLocation
+  order        Int          @default(0) // Display order for menus
+  isActive     Boolean      @default(true)
+  isPublished  Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  createdById  String?
+  updatedById  String?
+  categorySlug String?
+  menuItems    MenuItem[]
+  createdBy    User?        @relation("CreatedMenus", fields: [createdById], references: [id])
+  updatedBy    User?        @relation("UpdatedMenus", fields: [updatedById], references: [id])
+
+  @@map("menus")
+}
+
+model MenuItem {
+  id           String       @id @default(cuid())
+  menuId       String
+  parentId     String?
+  title        Json
+  description  Json?
+  url          String?
+  target       String       @default("self")
+  icon         String?
+  order        Int          @default(0)
+  isActive     Boolean      @default(true)
+  isPublished  Boolean      @default(false)
+  itemType     MenuItemType
+  itemId       String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  createdById  String?
+  updatedById  String?
+  categorySlug String?
+  contentSlug  String?
+  createdBy    User?        @relation("CreatedMenuItems", fields: [createdById], references: [id])
+  menu         Menu         @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  parent       MenuItem?    @relation("MenuItemHierarchy", fields: [parentId], references: [id])
+  children     MenuItem[]   @relation("MenuItemHierarchy")
+  updatedBy    User?        @relation("UpdatedMenuItems", fields: [updatedById], references: [id])
+
+  @@map("menu_items")
+}
+
+model HeaderConfig {
+  id          String          @id @default(cuid())
+  name        Json
+  order       Int             @default(0)
+  isActive    Boolean         @default(true)
+  isPublished Boolean         @default(false)
+  typography  Json
+  alignment   HeaderAlignment @default(LEFT)
+  logo        Json
+  layout      Json
+  createdById String?
+  updatedById String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  createdBy   User?           @relation("CreatedHeaderConfigs", fields: [createdById], references: [id])
+  updatedBy   User?           @relation("UpdatedHeaderConfigs", fields: [updatedById], references: [id])
+
+  @@map("header_configs")
+}
+
+model Document {
+  id             String             @id @default(cuid())
+  title          Json
+  description    Json?
+  fileName       String
+  originalName   String
+  filePath       String
+  fileSize       Int
+  mimeType       String
+  documentType   DocumentType
+  category       DocumentCategory
+  status         DocumentStatus     @default(DRAFT)
+  documentNumber String?
+  version        String?
+  publishDate    DateTime?
+  expiryDate     DateTime?
+  tags           String[]
+  isPublic       Boolean            @default(true)
+  requiresAuth   Boolean            @default(false)
+  order          Int                @default(0)
+  isActive       Boolean            @default(true)
+  downloadCount  Int                @default(0)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  downloads      DocumentDownload[]
+  versions       DocumentVersion[]
+
+  @@map("documents")
+}
+
+model DocumentDownload {
+  id           String   @id @default(cuid())
+  documentId   String
+  userId       String?
+  ipAddress    String
+  userAgent    String
+  downloadedAt DateTime @default(now())
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@map("document_downloads")
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  version    String
+  fileName   String
+  filePath   String
+  fileSize   Int
+  mimeType   String
+  changeLog  Json?
+  createdAt  DateTime @default(now())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_versions")
+}
+
+model SearchIndex {
+  id            String      @id @default(cuid())
+  contentId     String
+  contentType   ContentType
+  title         Json
+  content       Json
+  description   Json?
+  tags          String[]
+  language      String
+  isPublished   Boolean     @default(true)
+  isActive      Boolean     @default(true)
+  searchScore   Float       @default(0)
+  lastIndexedAt DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("search_indices")
+}
+
+model SearchQuery {
+  id            String         @id @default(cuid())
+  userId        String?
+  query         String
+  language      String
+  contentType   ContentType?
+  filters       Json?
+  resultsCount  Int
+  executionTime Float
+  ipAddress     String
+  userAgent     String
+  createdAt     DateTime       @default(now())
+  user          User?          @relation("SearchQueries", fields: [userId], references: [id])
+  results       SearchResult[]
+
+  @@map("search_queries")
+}
+
+model SearchResult {
+  id             String      @id @default(cuid())
+  searchQueryId  String
+  contentId      String
+  contentType    ContentType
+  title          String
+  snippet        String
+  relevanceScore Float
+  rank           Int
+  searchQuery    SearchQuery @relation(fields: [searchQueryId], references: [id], onDelete: Cascade)
+
+  @@map("search_results")
+}
+
+model SearchSuggestion {
+  id          String       @id @default(cuid())
+  term        String
+  language    String
+  contentType ContentType?
+  frequency   Int          @default(1)
+  lastUsedAt  DateTime     @default(now())
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("search_suggestions")
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+enum OfficeDescriptionType {
+  INTRODUCTION
+  OBJECTIVE
+  WORK_DETAILS
+  ORGANIZATIONAL_STRUCTURE
+  DIGITAL_CHARTER
+  EMPLOYEE_SANCTIONS
+}
+
+enum MenuLocation {
+  HEADER
+  FOOTER
+  SIDEBAR
+  MOBILE
+  CUSTOM
+}
+
+enum MenuItemType {
+  LINK
+  CONTENT
+  PAGE
+  CATEGORY
+  CUSTOM
+}
+
+enum HeaderAlignment {
+  LEFT
+  CENTER
+  RIGHT
+  JUSTIFY
+}
+
+enum DocumentType {
+  PDF
+  DOC
+  DOCX
+  XLS
+  XLSX
+  PPT
+  PPTX
+  TXT
+  RTF
+  CSV
+  ZIP
+  RAR
+  OTHER
+}
+
+enum DocumentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  EXPIRED
+}
+
+enum DocumentCategory {
+  OFFICIAL
+  REPORT
+  FORM
+  POLICY
+  PROCEDURE
+  GUIDELINE
+  NOTICE
+  CIRCULAR
+  OTHER
+}
+
+enum ContentType {
+  CONTENT
+  DOCUMENT
+  MEDIA
+  FAQ
+  USER
+  DEPARTMENT
+  EMPLOYEE
+}

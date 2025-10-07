@@ -1,0 +1,657 @@
+{
+  "id": "priya-document-manager-bulk-link-operations",
+  "title": "Priya Basnet: Perform Bulk Important Links Operations",
+  "persona": {
+    "id": "priya-document-manager",
+    "name": "Priya Basnet",
+    "role": "ADMIN",
+    "age": 34,
+    "occupation": "Document Manager",
+    "technicalLevel": "ADVANCED",
+    "background": "\n    Priya Basnet is a 34-year-old document manager who has been working with \n    digital document systems for over 12 years. She started her career as a \n    librarian and evolved into digital document management when the government \n    began transitioning to electronic record keeping.\n    \n    Priya is responsible for maintaining the entire document repository of the \n    government office. She manages document uploads, ensures proper categorization, \n    maintains version control, and monitors document usage analytics. Her role \n    is critical in ensuring that citizens and officials can access the right \n    documents efficiently.\n    \n    She's highly technical and understands the importance of metadata, version \n    control, and proper document lifecycle management. Priya often works with \n    large document collections and needs efficient tools for bulk operations \n    and analytics.\n  ",
+    "goals": [
+      "Maintain a well-organized document repository",
+      "Ensure all documents are properly categorized and tagged",
+      "Track document versions and maintain update history",
+      "Monitor document usage and access patterns",
+      "Perform bulk operations efficiently for large document sets",
+      "Generate comprehensive analytics and reports on document usage",
+      "Ensure document security and proper access controls",
+      "Migrate and backup document collections safely"
+    ],
+    "painPoints": [
+      "Manual document categorization is time-consuming",
+      "Difficulty tracking which documents need updates",
+      "No bulk operations for managing hundreds of documents",
+      "Limited analytics on document usage patterns",
+      "File size limitations affecting document uploads",
+      "Inconsistent document naming and versioning by different users",
+      "Lack of automated backup and migration tools",
+      "Difficulty identifying duplicate or outdated documents"
+    ],
+    "email": "priya.basnet@icms.gov.np",
+    "password": "PriyaDocs@2024",
+    "avatar": "👩🏽‍📚"
+  },
+  "scenario": {
+    "id": "bulk-link-operations",
+    "title": "Perform Bulk Important Links Operations",
+    "description": "An administrator performs bulk operations on important links including bulk create, update, and reordering.",
+    "category": "Administration",
+    "prerequisites": [
+      "Admin access to bulk operations",
+      "Multiple links for testing",
+      "Proper validation for bulk data"
+    ],
+    "estimatedDuration": "3 minutes",
+    "difficulty": "HARD"
+  },
+  "introduction": "Priya Basnet, a 34-year-old Document Manager, arrives at the office ready to efficiently manage large sets of important links using bulk operations.",
+  "steps": [
+    {
+      "id": "bulk-create-links",
+      "narrative": "Priya Basnet uses bulk create to efficiently add multiple important links at once",
+      "expectation": "The system should validate and create all links in a single operation",
+      "apiCall": {
+        "method": "POST",
+        "endpoint": "/api/v1/admin/important-links/bulk-create",
+        "headers": {
+          "Authorization": "Bearer [TOKEN]"
+        },
+        "payload": {
+          "links": [
+            {
+              "linkTitle": {
+                "en": "Bulk Link 1",
+                "ne": "बल्क लिङ्क १"
+              },
+              "linkUrl": "https://bulk1.gov.np",
+              "order": 20,
+              "isActive": true
+            },
+            {
+              "linkTitle": {
+                "en": "Bulk Link 2",
+                "ne": "बल्क लिङ्क २"
+              },
+              "linkUrl": "https://bulk2.gov.np",
+              "order": 21,
+              "isActive": true
+            },
+            {
+              "linkTitle": {
+                "en": "Bulk Link 3",
+                "ne": "बल्क लिङ्क ३"
+              },
+              "linkUrl": "https://bulk3.gov.np",
+              "order": 22,
+              "isActive": false
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "success": true,
+          "data": [
+            {
+              "id": "cmdlktgfo000jjsvctrufseex",
+              "linkTitle": {
+                "en": "Bulk Link 1",
+                "ne": "बल्क लिङ्क १"
+              },
+              "linkUrl": "https://bulk1.gov.np",
+              "order": 20,
+              "isActive": true,
+              "createdAt": "2025-07-27T11:08:56.820Z",
+              "updatedAt": "2025-07-27T11:08:56.820Z"
+            },
+            {
+              "id": "cmdlktgfp000kjsvci2gamg7x",
+              "linkTitle": {
+                "en": "Bulk Link 2",
+                "ne": "बल्क लिङ्क २"
+              },
+              "linkUrl": "https://bulk2.gov.np",
+              "order": 21,
+              "isActive": true,
+              "createdAt": "2025-07-27T11:08:56.822Z",
+              "updatedAt": "2025-07-27T11:08:56.822Z"
+            },
+            {
+              "id": "cmdlktgfq000ljsvczf29wwud",
+              "linkTitle": {
+                "en": "Bulk Link 3",
+                "ne": "बल्क लिङ्क ३"
+              },
+              "linkUrl": "https://bulk3.gov.np",
+              "order": 22,
+              "isActive": false,
+              "createdAt": "2025-07-27T11:08:56.823Z",
+              "updatedAt": "2025-07-27T11:08:56.823Z"
+            }
+          ],
+          "meta": {
+            "timestamp": "2025-07-27T11:08:56.823Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 14
+      },
+      "explanation": "Bulk creation allows efficient management of multiple important links simultaneously"
+    },
+    {
+      "id": "reorder-links",
+      "narrative": "Priya Basnet reorders the important links to prioritize the most relevant resources",
+      "expectation": "The system should update the display order of all specified links",
+      "apiCall": {
+        "method": "POST",
+        "endpoint": "/api/v1/admin/important-links/reorder",
+        "headers": {
+          "Authorization": "Bearer [TOKEN]"
+        },
+        "payload": {
+          "orders": [
+            {
+              "id": "cmdlktfdw0003jsvcsymy91ay",
+              "order": 30
+            },
+            {
+              "id": "cmdlktfe00004jsvctdciymgb",
+              "order": 25
+            },
+            {
+              "id": "cmdlktfe10005jsvcqdlp5q7q",
+              "order": 35
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "message": "Important links reordered successfully"
+          },
+          "meta": {
+            "timestamp": "2025-07-27T11:08:56.846Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 23
+      },
+      "explanation": "Reordering allows administrators to control the priority and visibility of important links"
+    },
+    {
+      "id": "import-links",
+      "narrative": "Priya Basnet imports important links from an external source for system migration",
+      "expectation": "The system should validate and import links with detailed success/failure reporting",
+      "apiCall": {
+        "method": "POST",
+        "endpoint": "/api/v1/admin/important-links/import",
+        "headers": {
+          "Authorization": "Bearer [TOKEN]"
+        },
+        "payload": {
+          "links": [
+            {
+              "linkTitle": {
+                "en": "Imported Portal 1",
+                "ne": "आयातित पोर्टल १"
+              },
+              "linkUrl": "https://imported1.gov.np",
+              "order": 40,
+              "isActive": true
+            },
+            {
+              "linkTitle": {
+                "en": "Imported Portal 2",
+                "ne": "आयातित पोर्टल २"
+              },
+              "linkUrl": "https://imported2.gov.np",
+              "order": 41,
+              "isActive": true
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "success": 2,
+            "failed": 0,
+            "errors": []
+          },
+          "meta": {
+            "timestamp": "2025-07-27T11:08:56.857Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 11
+      },
+      "explanation": "Import functionality enables migration and bulk addition of important links from external sources"
+    },
+    {
+      "id": "export-links",
+      "narrative": "Priya Basnet exports all important links for backup and documentation purposes",
+      "expectation": "The system should generate a complete export of all important links with metadata",
+      "apiCall": {
+        "method": "GET",
+        "endpoint": "/api/v1/admin/important-links/export",
+        "headers": {
+          "Authorization": "Bearer [TOKEN]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "data": {
+            "data": [
+              {
+                "id": "cmdlktfe20006jsvcutek23fj",
+                "linkTitle": {
+                  "en": "Tourist Information",
+                  "ne": "पर्यटक सूचना"
+                },
+                "linkUrl": "https://tourism.gov.np",
+                "order": 4,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:55.467Z",
+                "updatedAt": "2025-07-27T11:08:55.467Z"
+              },
+              {
+                "id": "cmdlktfe30007jsvctmn1pqhe",
+                "linkTitle": {
+                  "en": "Inactive Link",
+                  "ne": "निष्क्रिय लिङ्क"
+                },
+                "linkUrl": "https://old.gov.np",
+                "order": 5,
+                "isActive": false,
+                "createdAt": "2025-07-27T11:08:55.468Z",
+                "updatedAt": "2025-07-27T11:08:55.468Z"
+              },
+              {
+                "id": "cmdlktg6b000djsvccybkudxi",
+                "linkTitle": {
+                  "en": "Updated Government Portal",
+                  "ne": "अपडेटेड सरकारी पोर्टल"
+                },
+                "linkUrl": "https://newportal.gov.np",
+                "order": 5,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:56.483Z",
+                "updatedAt": "2025-07-27T11:08:56.493Z"
+              },
+              {
+                "id": "cmdlktgfo000jjsvctrufseex",
+                "linkTitle": {
+                  "en": "Bulk Link 1",
+                  "ne": "बल्क लिङ्क १"
+                },
+                "linkUrl": "https://bulk1.gov.np",
+                "order": 20,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:56.820Z",
+                "updatedAt": "2025-07-27T11:08:56.820Z"
+              },
+              {
+                "id": "cmdlktgfp000kjsvci2gamg7x",
+                "linkTitle": {
+                  "en": "Bulk Link 2",
+                  "ne": "बल्क लिङ्क २"
+                },
+                "linkUrl": "https://bulk2.gov.np",
+                "order": 21,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:56.822Z",
+                "updatedAt": "2025-07-27T11:08:56.822Z"
+              },
+              {
+                "id": "cmdlktgfq000ljsvczf29wwud",
+                "linkTitle": {
+                  "en": "Bulk Link 3",
+                  "ne": "बल्क लिङ्क ३"
+                },
+                "linkUrl": "https://bulk3.gov.np",
+                "order": 22,
+                "isActive": false,
+                "createdAt": "2025-07-27T11:08:56.823Z",
+                "updatedAt": "2025-07-27T11:08:56.823Z"
+              },
+              {
+                "id": "cmdlktfe00004jsvctdciymgb",
+                "linkTitle": {
+                  "en": "Ministry of Education",
+                  "ne": "शिक्षा मन्त्रालय"
+                },
+                "linkUrl": "https://moe.gov.np",
+                "order": 25,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:55.464Z",
+                "updatedAt": "2025-07-27T11:08:56.845Z"
+              },
+              {
+                "id": "cmdlktfdw0003jsvcsymy91ay",
+                "linkTitle": {
+                  "en": "Government Portal",
+                  "ne": "सरकारी पोर्टल"
+                },
+                "linkUrl": "https://www.gov.np",
+                "order": 30,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:55.461Z",
+                "updatedAt": "2025-07-27T11:08:56.845Z"
+              },
+              {
+                "id": "cmdlktfe10005jsvcqdlp5q7q",
+                "linkTitle": {
+                  "en": "National Portal",
+                  "ne": "राष्ट्रिय पोर्टल"
+                },
+                "linkUrl": "https://nepal.gov.np",
+                "order": 35,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:55.465Z",
+                "updatedAt": "2025-07-27T11:08:56.846Z"
+              },
+              {
+                "id": "cmdlktggn000mjsvc8ig9vxzv",
+                "linkTitle": {
+                  "en": "Imported Portal 1",
+                  "ne": "आयातित पोर्टल १"
+                },
+                "linkUrl": "https://imported1.gov.np",
+                "order": 40,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:56.855Z",
+                "updatedAt": "2025-07-27T11:08:56.855Z"
+              },
+              {
+                "id": "cmdlktggp000njsvcpxo0t5qb",
+                "linkTitle": {
+                  "en": "Imported Portal 2",
+                  "ne": "आयातित पोर्टल २"
+                },
+                "linkUrl": "https://imported2.gov.np",
+                "order": 41,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:56.857Z",
+                "updatedAt": "2025-07-27T11:08:56.857Z"
+              }
+            ],
+            "total": 11,
+            "exportedAt": "2025-07-27T11:08:56.864Z"
+          },
+          "meta": {
+            "timestamp": "2025-07-27T11:08:56.864Z",
+            "version": "1.0.0"
+          }
+        },
+        "timing": 7
+      },
+      "explanation": "Export functionality provides backup capabilities and data portability for important links"
+    }
+  ],
+  "conclusion": "✅ **Journey Completed Successfully**\n        \n        Priya Basnet successfully completed all 4 steps of their journey. \n        The system responded appropriately at each stage, allowing them to achieve their goal \n        of perform bulk important links operations.\n        \n        This demonstrates that the API is working correctly for this user scenario.",
+  "metadata": {
+    "generatedAt": "2025-07-27T11:08:56.866Z",
+    "testResults": [
+      {
+        "stepId": "bulk-create-links",
+        "success": true,
+        "actualResponse": {
+          "status": 201,
+          "body": {
+            "success": true,
+            "data": [
+              {
+                "id": "cmdlktgfo000jjsvctrufseex",
+                "linkTitle": {
+                  "en": "Bulk Link 1",
+                  "ne": "बल्क लिङ्क १"
+                },
+                "linkUrl": "https://bulk1.gov.np",
+                "order": 20,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:56.820Z",
+                "updatedAt": "2025-07-27T11:08:56.820Z"
+              },
+              {
+                "id": "cmdlktgfp000kjsvci2gamg7x",
+                "linkTitle": {
+                  "en": "Bulk Link 2",
+                  "ne": "बल्क लिङ्क २"
+                },
+                "linkUrl": "https://bulk2.gov.np",
+                "order": 21,
+                "isActive": true,
+                "createdAt": "2025-07-27T11:08:56.822Z",
+                "updatedAt": "2025-07-27T11:08:56.822Z"
+              },
+              {
+                "id": "cmdlktgfq000ljsvczf29wwud",
+                "linkTitle": {
+                  "en": "Bulk Link 3",
+                  "ne": "बल्क लिङ्क ३"
+                },
+                "linkUrl": "https://bulk3.gov.np",
+                "order": 22,
+                "isActive": false,
+                "createdAt": "2025-07-27T11:08:56.823Z",
+                "updatedAt": "2025-07-27T11:08:56.823Z"
+              }
+            ],
+            "meta": {
+              "timestamp": "2025-07-27T11:08:56.823Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 14
+        },
+        "actualTiming": 14
+      },
+      {
+        "stepId": "reorder-links",
+        "success": true,
+        "actualResponse": {
+          "status": 200,
+          "body": {
+            "success": true,
+            "data": {
+              "message": "Important links reordered successfully"
+            },
+            "meta": {
+              "timestamp": "2025-07-27T11:08:56.846Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 23
+        },
+        "actualTiming": 23
+      },
+      {
+        "stepId": "import-links",
+        "success": true,
+        "actualResponse": {
+          "status": 200,
+          "body": {
+            "success": true,
+            "data": {
+              "success": 2,
+              "failed": 0,
+              "errors": []
+            },
+            "meta": {
+              "timestamp": "2025-07-27T11:08:56.857Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 11
+        },
+        "actualTiming": 11
+      },
+      {
+        "stepId": "export-links",
+        "success": true,
+        "actualResponse": {
+          "status": 200,
+          "body": {
+            "success": true,
+            "data": {
+              "data": [
+                {
+                  "id": "cmdlktfe20006jsvcutek23fj",
+                  "linkTitle": {
+                    "en": "Tourist Information",
+                    "ne": "पर्यटक सूचना"
+                  },
+                  "linkUrl": "https://tourism.gov.np",
+                  "order": 4,
+                  "isActive": true,
+                  "createdAt": "2025-07-27T11:08:55.467Z",
+                  "updatedAt": "2025-07-27T11:08:55.467Z"
+                },
+                {
+                  "id": "cmdlktfe30007jsvctmn1pqhe",
+                  "linkTitle": {
+                    "en": "Inactive Link",
+                    "ne": "निष्क्रिय लिङ्क"
+                  },
+                  "linkUrl": "https://old.gov.np",
+                  "order": 5,
+                  "isActive": false,
+                  "createdAt": "2025-07-27T11:08:55.468Z",
+                  "updatedAt": "2025-07-27T11:08:55.468Z"
+                },
+                {
+                  "id": "cmdlktg6b000djsvccybkudxi",
+                  "linkTitle": {
+                    "en": "Updated Government Portal",
+                    "ne": "अपडेटेड सरकारी पोर्टल"
+                  },
+                  "linkUrl": "https://newportal.gov.np",
+                  "order": 5,
+                  "isActive": true,
+                  "createdAt": "2025-07-27T11:08:56.483Z",
+                  "updatedAt": "2025-07-27T11:08:56.493Z"
+                },
+                {
+                  "id": "cmdlktgfo000jjsvctrufseex",
+                  "linkTitle": {
+                    "en": "Bulk Link 1",
+                    "ne": "बल्क लिङ्क १"
+                  },
+                  "linkUrl": "https://bulk1.gov.np",
+                  "order": 20,
+                  "isActive": true,
+                  "createdAt": "2025-07-27T11:08:56.820Z",
+                  "updatedAt": "2025-07-27T11:08:56.820Z"
+                },
+                {
+                  "id": "cmdlktgfp000kjsvci2gamg7x",
+                  "linkTitle": {
+                    "en": "Bulk Link 2",
+                    "ne": "बल्क लिङ्क २"
+                  },
+                  "linkUrl": "https://bulk2.gov.np",
+                  "order": 21,
+                  "isActive": true,
+                  "createdAt": "2025-07-27T11:08:56.822Z",
+                  "updatedAt": "2025-07-27T11:08:56.822Z"
+                },
+                {
+                  "id": "cmdlktgfq000ljsvczf29wwud",
+                  "linkTitle": {
+                    "en": "Bulk Link 3",
+                    "ne": "बल्क लिङ्क ३"
+                  },
+                  "linkUrl": "https://bulk3.gov.np",
+                  "order": 22,
+                  "isActive": false,
+                  "createdAt": "2025-07-27T11:08:56.823Z",
+                  "updatedAt": "2025-07-27T11:08:56.823Z"
+                },
+                {
+                  "id": "cmdlktfe00004jsvctdciymgb",
+                  "linkTitle": {
+                    "en": "Ministry of Education",
+                    "ne": "शिक्षा मन्त्रालय"
+                  },
+                  "linkUrl": "https://moe.gov.np",
+                  "order": 25,
+                  "isActive": true,
+                  "createdAt": "2025-07-27T11:08:55.464Z",
+                  "updatedAt": "2025-07-27T11:08:56.845Z"
+                },
+                {
+                  "id": "cmdlktfdw0003jsvcsymy91ay",
+                  "linkTitle": {
+                    "en": "Government Portal",
+                    "ne": "सरकारी पोर्टल"
+                  },
+                  "linkUrl": "https://www.gov.np",
+                  "order": 30,
+                  "isActive": true,
+                  "createdAt": "2025-07-27T11:08:55.461Z",
+                  "updatedAt": "2025-07-27T11:08:56.845Z"
+                },
+                {
+                  "id": "cmdlktfe10005jsvcqdlp5q7q",
+                  "linkTitle": {
+                    "en": "National Portal",
+                    "ne": "राष्ट्रिय पोर्टल"
+                  },
+                  "linkUrl": "https://nepal.gov.np",
+                  "order": 35,
+                  "isActive": true,
+                  "createdAt": "2025-07-27T11:08:55.465Z",
+                  "updatedAt": "2025-07-27T11:08:56.846Z"
+                },
+                {
+                  "id": "cmdlktggn000mjsvc8ig9vxzv",
+                  "linkTitle": {
+                    "en": "Imported Portal 1",
+                    "ne": "आयातित पोर्टल १"
+                  },
+                  "linkUrl": "https://imported1.gov.np",
+                  "order": 40,
+                  "isActive": true,
+                  "createdAt": "2025-07-27T11:08:56.855Z",
+                  "updatedAt": "2025-07-27T11:08:56.855Z"
+                },
+                {
+                  "id": "cmdlktggp000njsvcpxo0t5qb",
+                  "linkTitle": {
+                    "en": "Imported Portal 2",
+                    "ne": "आयातित पोर्टल २"
+                  },
+                  "linkUrl": "https://imported2.gov.np",
+                  "order": 41,
+                  "isActive": true,
+                  "createdAt": "2025-07-27T11:08:56.857Z",
+                  "updatedAt": "2025-07-27T11:08:56.857Z"
+                }
+              ],
+              "total": 11,
+              "exportedAt": "2025-07-27T11:08:56.864Z"
+            },
+            "meta": {
+              "timestamp": "2025-07-27T11:08:56.864Z",
+              "version": "1.0.0"
+            }
+          },
+          "timing": 7
+        },
+        "actualTiming": 7
+      }
+    ],
+    "duration": 55,
+    "success": true
+  }
+}

@@ -1,0 +1,13 @@
+export { SearchModule } from './search.module';
+export { SearchService } from './services/search.service';
+export { SearchIndexService } from './services/search-index.service';
+export { SearchSuggestionService } from './services/search-suggestion.service';
+export { SearchIndexRepository } from './repositories/search-index.repository';
+export { SearchQueryRepository } from './repositories/search-query.repository';
+export { SearchSuggestionRepository } from './repositories/search-suggestion.repository';
+export { PublicSearchController } from './controllers/public-search.controller';
+export { AdminSearchController } from './controllers/admin-search.controller';
+export * from './dto/search.dto';
+export * from './entities/search-index.entity';
+export * from './entities/search-query.entity';
+export * from './entities/search-suggestion.entity'; 
