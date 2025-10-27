@@ -1,25 +1,32 @@
 import { Module, Global } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { FileStorageFactory } from './file-storage.factory';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { FileStorageService } from './interfaces/file-storage.interface';
 import { S3StorageService } from './providers/s3-storage.service';
 import { LocalStorageService } from './providers/local-storage.service';
 import { BackblazeB2StorageService } from './providers/backblaze-b2-storage.service';
-import { FileStorageService } from './interfaces/file-storage.interface';
 
 @Global()
 @Module({
   imports: [ConfigModule],
   providers: [
-    S3StorageService,
-    LocalStorageService,
-    BackblazeB2StorageService,
-    FileStorageFactory,
     {
       provide: FileStorageService,
-      useFactory: (factory: FileStorageFactory) => factory.getStorageService(),
-      inject: [FileStorageFactory],
+      useFactory: (configService: ConfigService) => {
+        const provider = configService.get<string>('STORAGE_PROVIDER');
+        switch (provider) {
+          case 's3':
+            return new S3StorageService(configService);
+          case 'local':
+            return new LocalStorageService(configService);
+          case 'backblaze-b2':
+            return new BackblazeB2StorageService(configService);
+          default:
+            throw new Error(`Unknown STORAGE_PROVIDER: ${provider}. Supported values: 's3', 'local', 'backblaze-b2'`);
+        }
+      },
+      inject: [ConfigService],
     },
   ],
-  exports: [FileStorageService, FileStorageFactory],
+  exports: [FileStorageService],
 })
-export class FileStorageModule {} 
+export class FileStorageModule {}

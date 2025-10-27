@@ -16,7 +16,7 @@ export class S3StorageService extends FileStorageService {
     
     this.config = {
       endpoint: this.configService.get<string>('STORAGE_S3_ENDPOINT'),
-      region: this.configService.get<string>('STORAGE_S3_REGION', 'us-east-1'),
+      region: this.configService.get<string>('STORAGE_S3_REGION', 'auto'), // updated for R2
       bucket: this.configService.get<string>('STORAGE_S3_BUCKET'),
       accessKeyId: this.configService.get<string>('STORAGE_S3_ACCESS_KEY_ID'),
       secretAccessKey: this.configService.get<string>('STORAGE_S3_SECRET_ACCESS_KEY'),
@@ -30,7 +30,7 @@ export class S3StorageService extends FileStorageService {
 
     this.bucket = this.config.bucket;
 
-    // Configure S3 client for AWS S3 or MinIO
+    // Configure S3 client for R2
     const clientConfig: any = {
       region: this.config.region,
       credentials: {
@@ -39,7 +39,7 @@ export class S3StorageService extends FileStorageService {
       },
     };
 
-    // If endpoint is provided (MinIO), configure accordingly
+    // Set endpoint and path style for R2
     if (this.config.endpoint) {
       clientConfig.endpoint = this.config.endpoint;
       clientConfig.forcePathStyle = this.config.forcePathStyle;
@@ -237,4 +237,4 @@ export class S3StorageService extends FileStorageService {
       stream.on('end', () => resolve(Buffer.concat(chunks)));
     });
   }
-} 
+}

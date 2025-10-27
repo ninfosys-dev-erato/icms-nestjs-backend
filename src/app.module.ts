@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TerminusModule } from '@nestjs/terminus';
 
+
 import { DatabaseModule } from '@/database/database.module';
 import { FileStorageModule } from '@/common/services/file-storage/file-storage.module';
 import { AuthModule } from '@/modules/auth/auth.module';
@@ -24,6 +25,7 @@ import { BootstrapModule } from '@/modules/bootstrap/bootstrap.module';
 import { DashboardModule } from '@/modules/dashboard';
 import { HealthModule } from '@/modules/health/health.module';
 import { RequestIdMiddleware } from '@/common/middleware/request-id.middleware';
+import { AnnouncementModule } from './modules/announcement/announcement.module';
 import configuration from '@/config/configuration';
 
 @Module({
@@ -102,9 +104,16 @@ import configuration from '@/config/configuration';
     
     // Dashboard Module
     DashboardModule,
+
     
     // Health Module
     HealthModule,
+
+    //anouncement module
+    AnnouncementModule,
+    
+    
+   
   ],
   controllers: [],
   providers: [],
