@@ -25,7 +25,6 @@ import { BootstrapModule } from '@/modules/bootstrap/bootstrap.module';
 import { DashboardModule } from '@/modules/dashboard';
 import { HealthModule } from '@/modules/health/health.module';
 import { RequestIdMiddleware } from '@/common/middleware/request-id.middleware';
-import { AnnouncementModule } from './modules/announcement/announcement.module';
 import configuration from '@/config/configuration';
 
 @Module({
@@ -109,8 +108,6 @@ import configuration from '@/config/configuration';
     // Health Module
     HealthModule,
 
-    //anouncement module
-    AnnouncementModule,
     
     
    
