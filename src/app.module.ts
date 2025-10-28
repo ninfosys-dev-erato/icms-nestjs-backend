@@ -105,7 +105,7 @@ import configuration from '@/config/configuration';
     // Health Module
     HealthModule,
 
-    
+    // removed announcement module
     
    
   ],

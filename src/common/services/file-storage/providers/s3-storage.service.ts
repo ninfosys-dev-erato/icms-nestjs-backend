@@ -206,7 +206,7 @@ export class S3StorageService extends FileStorageService {
     expiresIn?: number
   ): Promise<string> {
     try {
-      const expires = expiresIn || this.config.signedUrlExpires || 86400; // 24 hours default
+      const expires = expiresIn || this.config.signedUrlExpires || 86400; 
       
       let command;
       if (operation === 'get') {
