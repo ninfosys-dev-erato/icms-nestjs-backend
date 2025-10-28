@@ -2,8 +2,6 @@ import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TerminusModule } from '@nestjs/terminus';
-
-
 import { DatabaseModule } from '@/database/database.module';
 import { FileStorageModule } from '@/common/services/file-storage/file-storage.module';
 import { AuthModule } from '@/modules/auth/auth.module';
@@ -25,7 +23,6 @@ import { BootstrapModule } from '@/modules/bootstrap/bootstrap.module';
 import { DashboardModule } from '@/modules/dashboard';
 import { HealthModule } from '@/modules/health/health.module';
 import { RequestIdMiddleware } from '@/common/middleware/request-id.middleware';
-import { AnnouncementModule } from './modules/announcement/announcement.module';
 import configuration from '@/config/configuration';
 
 @Module({
@@ -56,64 +53,57 @@ import configuration from '@/config/configuration';
 
     // Auth Module
     AuthModule,
-    
+
     // Users Module
     UsersModule,
-    
+
     // Content Management Module
     ContentManagementModule,
-    
+
     // Office Settings Module
     OfficeSettingsModule,
-    
+
     // Office Description Module
     OfficeDescriptionModule,
-    
+
     // Important Links Module
     ImportantLinksModule,
-    
+
     // FAQ Module
     FAQModule,
-    
+
     // Media Module
-   MediaModule,
-    
+    MediaModule,
+
     // Translation Module
     TranslationModule,
-    
+
     // Search Module
     SearchModule,
-    
+
     // Documents Module
     DocumentsModule,
-    
+
     // Header Module
     HeaderModule,
-    
+
     // HR Module
     HRModule,
-    
+
     // Navigation Module
     NavigationModule,
-    
+
     // Slider Module
     SliderModule,
-    
+
     // Bootstrap Module
     BootstrapModule,
-    
+
     // Dashboard Module
     DashboardModule,
 
-    
     // Health Module
     HealthModule,
-
-    //anouncement module
-    AnnouncementModule,
-    
-    
-   
   ],
   controllers: [],
   providers: [],
@@ -124,4 +114,4 @@ export class AppModule {
       .apply(RequestIdMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
-} 
+}
