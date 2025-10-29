@@ -10,6 +10,7 @@ export class S3StorageService extends FileStorageService {
   private readonly s3Client: S3Client;
   private readonly bucket: string;
   private readonly config: FileStorageConfig['s3'];
+  private readonly appAbbreviation?: string;
 
   constructor(private readonly configService: ConfigService) {
     super();
@@ -29,6 +30,9 @@ export class S3StorageService extends FileStorageService {
     }
 
     this.bucket = this.config.bucket;
+    // Normalize and store app abbreviation (optional)
+    const rawAbbrev = this.configService.get<string>('APP_ABBREVIATION', '') || '';
+    this.appAbbreviation = rawAbbrev.trim() || undefined;
 
     // Configure S3 client for R2
     const clientConfig: any = {
@@ -57,9 +61,10 @@ export class S3StorageService extends FileStorageService {
     metadata?: Record<string, string>
   ): Promise<UploadResult> {
     try {
+      const fullKey = this.buildFullKey(key);
       const command = new PutObjectCommand({
         Bucket: this.bucket,
-        Key: key,
+        Key: fullKey,
         Body: buffer,
         ContentType: contentType,
         Metadata: metadata,
@@ -68,10 +73,10 @@ export class S3StorageService extends FileStorageService {
       const result = await this.s3Client.send(command);
       const url = await this.getUrl(key);
 
-      this.logger.debug(`File uploaded successfully: ${key}`);
+      this.logger.debug(`File uploaded successfully: logicalKey='${key}', fullKey='${fullKey}'`);
 
       return {
-        key,
+        key, // return the logical key used by callers (provider adds prefix internally)
         url,
         size: buffer.length,
         etag: result.ETag?.replace(/"/g, ''),
@@ -85,9 +90,10 @@ export class S3StorageService extends FileStorageService {
 
   async download(key: string): Promise<DownloadResult> {
     try {
+      const fullKey = this.buildFullKey(key);
       const command = new GetObjectCommand({
         Bucket: this.bucket,
-        Key: key,
+        Key: fullKey,
       });
 
       const result = await this.s3Client.send(command);
@@ -98,7 +104,7 @@ export class S3StorageService extends FileStorageService {
 
       const buffer = await this.streamToBuffer(result.Body as any);
 
-      this.logger.debug(`File downloaded successfully: ${key}`);
+      this.logger.debug(`File downloaded successfully: logicalKey='${key}', fullKey='${fullKey}'`);
 
       return {
         buffer,
@@ -114,13 +120,14 @@ export class S3StorageService extends FileStorageService {
 
   async delete(key: string): Promise<void> {
     try {
+      const fullKey = this.buildFullKey(key);
       const command = new DeleteObjectCommand({
         Bucket: this.bucket,
-        Key: key,
+        Key: fullKey,
       });
 
       await this.s3Client.send(command);
-      this.logger.debug(`File deleted successfully: ${key}`);
+      this.logger.debug(`File deleted successfully: logicalKey='${key}', fullKey='${fullKey}'`);
     } catch (error) {
       this.logger.error(`Failed to delete file ${key}: ${error.message}`);
       throw new Error(`Failed to delete file: ${error.message}`);
@@ -129,9 +136,10 @@ export class S3StorageService extends FileStorageService {
 
   async exists(key: string): Promise<boolean> {
     try {
+      const fullKey = this.buildFullKey(key);
       const command = new HeadObjectCommand({
         Bucket: this.bucket,
-        Key: key,
+        Key: fullKey,
       });
 
       await this.s3Client.send(command);
@@ -147,9 +155,10 @@ export class S3StorageService extends FileStorageService {
 
   async getUrl(key: string, expiresIn?: number): Promise<string> {
     try {
+      const fullKey = this.buildFullKey(key);
       const command = new GetObjectCommand({
         Bucket: this.bucket,
-        Key: key,
+        Key: fullKey,
       });
 
       const expires = expiresIn || this.config.signedUrlExpires || 86400; // 24 hours default
@@ -164,9 +173,10 @@ export class S3StorageService extends FileStorageService {
 
   async getMetadata(key: string): Promise<FileMetadata> {
     try {
+      const fullKey = this.buildFullKey(key);
       const command = new HeadObjectCommand({
         Bucket: this.bucket,
-        Key: key,
+        Key: fullKey,
       });
 
       const result = await this.s3Client.send(command);
@@ -186,14 +196,16 @@ export class S3StorageService extends FileStorageService {
 
   async copy(sourceKey: string, destinationKey: string): Promise<void> {
     try {
+      const sourceFullKey = this.buildFullKey(sourceKey);
+      const destinationFullKey = this.buildFullKey(destinationKey);
       const command = new CopyObjectCommand({
         Bucket: this.bucket,
-        CopySource: `${this.bucket}/${sourceKey}`,
-        Key: destinationKey,
+        CopySource: `${this.bucket}/${sourceFullKey}`,
+        Key: destinationFullKey,
       });
 
       await this.s3Client.send(command);
-      this.logger.debug(`File copied from ${sourceKey} to ${destinationKey}`);
+      this.logger.debug(`File copied from logical='${sourceKey}' (full='${sourceFullKey}') to logical='${destinationKey}' (full='${destinationFullKey}')`);
     } catch (error) {
       this.logger.error(`Failed to copy file from ${sourceKey} to ${destinationKey}: ${error.message}`);
       throw new Error(`Failed to copy file: ${error.message}`);
@@ -207,17 +219,18 @@ export class S3StorageService extends FileStorageService {
   ): Promise<string> {
     try {
       const expires = expiresIn || this.config.signedUrlExpires || 86400; 
+      const fullKey = this.buildFullKey(key);
       
       let command;
       if (operation === 'get') {
         command = new GetObjectCommand({
           Bucket: this.bucket,
-          Key: key,
+          Key: fullKey,
         });
       } else {
         command = new PutObjectCommand({
           Bucket: this.bucket,
-          Key: key,
+          Key: fullKey,
         });
       }
 
@@ -227,6 +240,15 @@ export class S3StorageService extends FileStorageService {
       this.logger.error(`Failed to generate presigned URL for ${key}: ${error.message}`);
       throw new Error(`Failed to generate presigned URL: ${error.message}`);
     }
+  }
+
+  private buildFullKey(key: string): string {
+    const cleanKey = key.replace(/^\/+/, '');
+    if (this.appAbbreviation) {
+      const cleanAbbrev = this.appAbbreviation.replace(/^\/+|\/+$/g, '');
+      return `${cleanAbbrev}/${cleanKey}`;
+    }
+    return cleanKey;
   }
 
   private async streamToBuffer(stream: any): Promise<Buffer> {
