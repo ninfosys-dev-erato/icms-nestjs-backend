@@ -523,13 +523,33 @@ export class MediaRepository {
     return this.prisma.mediaAlbum.delete({ where: { id } });
   }
 
-  async attachMediaToAlbum(albumId: string, mediaIds: string[]) {
-    const records = mediaIds.map((mediaId) =>
-      this.prisma.mediaAlbumMedia.create({ data: { mediaAlbumId: albumId, mediaId } })
-    );
-    await this.prisma.$transaction(records);
-    return { attached: mediaIds.length };
-  }
+    async attachMediaToAlbum(albumId: string, mediaIds: string[]) {
+      // Ensure unique input IDs to avoid redundant work
+      const uniqueIds = Array.from(new Set(mediaIds || []));
+
+      if (uniqueIds.length === 0) {
+        return { attached: 0, skipped: 0 };
+      }
+
+      // Find already linked media to make operation idempotent
+      const existingLinks = await this.prisma.mediaAlbumMedia.findMany({
+        where: { mediaAlbumId: albumId, mediaId: { in: uniqueIds } },
+        select: { mediaId: true },
+      });
+      const existingSet = new Set(existingLinks.map((l) => l.mediaId));
+
+      const toInsert = uniqueIds.filter((id) => !existingSet.has(id));
+
+      if (toInsert.length === 0) {
+        return { attached: 0, skipped: uniqueIds.length };
+      }
+
+      await this.prisma.mediaAlbumMedia.createMany({
+        data: toInsert.map((mediaId) => ({ mediaAlbumId: albumId, mediaId })),
+      });
+
+      return { attached: toInsert.length, skipped: uniqueIds.length - toInsert.length };
+    }
 
   async detachMediaFromAlbum(albumId: string, mediaId: string) {
     await this.prisma.mediaAlbumMedia.deleteMany({ where: { mediaAlbumId: albumId, mediaId } });
@@ -673,6 +693,43 @@ export class MediaRepository {
   }
 
   private transformToResponseDto(media: any): MediaResponseDto {
+    // NOTE: Translatable fields are physically stored in VARCHAR/TEXT columns as serialized JSON strings
+    // e.g. '{"en":"Hello","ne":"नमस्ते"}'. Plain legacy strings are treated as English-only. A legacy
+    // delimiter form 'en|||ne' is also supported. This parser normalizes every stored value into
+    // the shape { en: string; ne: string } for API responses without requiring DB migrations.
+    const parseTranslatable = (raw: any) => {
+      if (raw === null || raw === undefined) return undefined;
+      if (typeof raw === 'object') {
+        // Already object (maybe legacy future state)
+        const en = (raw.en ?? '').toString();
+        const ne = (raw.ne ?? '').toString();
+        if (!en && !ne && typeof raw.value === 'string') {
+          return { en: raw.value, ne: '' };
+        }
+        return { en, ne };
+      }
+      if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        if (!trimmed) return { en: '', ne: '' };
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && (parsed.en !== undefined || parsed.ne !== undefined)) {
+            return { en: parsed.en || '', ne: parsed.ne || '' };
+          }
+          // Not in expected shape, treat entire string as English
+          return { en: trimmed, ne: '' };
+        } catch {
+          // Plain string
+            // Support legacy delimiter '|||'
+          if (trimmed.includes('|||')) {
+            const [enPart, nePart] = trimmed.split('|||');
+            return { en: enPart, ne: nePart || '' };
+          }
+          return { en: trimmed, ne: '' };
+        }
+      }
+      return { en: String(raw), ne: '' };
+    };
     return {
       id: media.id,
       fileName: media.fileName,
@@ -685,9 +742,9 @@ export class MediaRepository {
       uploadedBy: media.uploadedBy,
       folder: media.folder,
       category: media.category,
-      altText: media.altText,
-      title: media.title,
-      description: media.description,
+  altText: parseTranslatable(media.altText),
+  title: parseTranslatable(media.title),
+  description: parseTranslatable(media.description),
       tags: media.tags || [],
       isPublic: media.isPublic,
       isActive: media.isActive,
