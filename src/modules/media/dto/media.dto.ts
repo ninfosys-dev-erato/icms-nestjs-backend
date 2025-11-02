@@ -127,19 +127,49 @@ export class CreateMediaDto {
 // Update Media DTO
 export class UpdateMediaDto {
   @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  altText?: string;
+  @Transform(({ value }) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value; // already { en, ne }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try { const parsed = JSON.parse(trimmed); if (parsed.en !== undefined || parsed.ne !== undefined) { return parsed; } } catch {}
+      }
+      return trimmed; // plain string; service will wrap/merge
+    }
+    return value;
+  })
+  altText?: any;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  title?: string;
+  @Transform(({ value }) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try { const parsed = JSON.parse(trimmed); if (parsed.en !== undefined || parsed.ne !== undefined) { return parsed; } } catch {}
+      }
+      return trimmed;
+    }
+    return value;
+  })
+  title?: any;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  description?: string;
+  @Transform(({ value }) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try { const parsed = JSON.parse(trimmed); if (parsed.en !== undefined || parsed.ne !== undefined) { return parsed; } } catch {}
+      }
+      return trimmed;
+    }
+    return value;
+  })
+  description?: any;
 
   @IsOptional()
   @IsArray()
@@ -172,9 +202,10 @@ export class MediaResponseDto {
   uploadedBy: string;
   folder: string;
   category: MediaCategory;
-  altText?: string;
-  title?: string;
-  description?: string;
+  // Bilingual parsed objects returned to client; stored as JSON string or plain string in DB
+  altText?: { en: string; ne: string };
+  title?: { en: string; ne: string };
+  description?: { en: string; ne: string };
   tags?: string[];
   isPublic: boolean;
   isActive: boolean;
@@ -343,19 +374,49 @@ export class FileUploadValidationDto {
   folder: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  altText?: string;
+  @Transform(({ value }) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value; // already { en, ne }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try { const parsed = JSON.parse(trimmed); if (parsed.en !== undefined || parsed.ne !== undefined) { return parsed; } } catch {}
+      }
+      return trimmed; // plain string; service will wrap
+    }
+    return value;
+  })
+  altText?: any;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  title?: string;
+  @Transform(({ value }) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try { const parsed = JSON.parse(trimmed); if (parsed.en !== undefined || parsed.ne !== undefined) { return parsed; } } catch {}
+      }
+      return trimmed;
+    }
+    return value;
+  })
+  title?: any;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  description?: string;
+  @Transform(({ value }) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try { const parsed = JSON.parse(trimmed); if (parsed.en !== undefined || parsed.ne !== undefined) { return parsed; } } catch {}
+      }
+      return trimmed;
+    }
+    return value;
+  })
+  description?: any;
 
   @IsOptional()
   @IsArray()
@@ -366,6 +427,16 @@ export class FileUploadValidationDto {
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
+
+  // --- Bilingual variant raw fields (kept so ValidationPipe whitelist does not remove them) ---
+  // These are not exposed in final API response; the FormDataArrayPipe will consume and
+  // consolidate them into the altText/title/description objects (or strings) before service layer.
+  @IsOptional() @IsString() titleEn?: string;
+  @IsOptional() @IsString() titleNe?: string;
+  @IsOptional() @IsString() altTextEn?: string;
+  @IsOptional() @IsString() altTextNe?: string;
+  @IsOptional() @IsString() descriptionEn?: string;
+  @IsOptional() @IsString() descriptionNe?: string;
 }
 
 // Bulk Upload Metadata DTO (does not require per-file fields like originalName/size/mimetype)
@@ -375,19 +446,31 @@ export class BulkUploadMetadataDto {
   folder: string;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  altText?: string;
+  @Transform(({ value }) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value;
+    if (typeof value === 'string') { try { const p = JSON.parse(value); if (p.en !== undefined || p.ne !== undefined) return p; } catch {} return value; }
+    return value;
+  })
+  altText?: any;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  title?: string;
+  @Transform(({ value }) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value;
+    if (typeof value === 'string') { try { const p = JSON.parse(value); if (p.en !== undefined || p.ne !== undefined) return p; } catch {} return value; }
+    return value;
+  })
+  title?: any;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  description?: string;
+  @Transform(({ value }) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value;
+    if (typeof value === 'string') { try { const p = JSON.parse(value); if (p.en !== undefined || p.ne !== undefined) return p; } catch {} return value; }
+    return value;
+  })
+  description?: any;
 
   @IsOptional()
   @IsArray()
@@ -398,6 +481,14 @@ export class BulkUploadMetadataDto {
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
+
+  // Bilingual variant raw fields to survive whitelist for bulk uploads
+  @IsOptional() @IsString() titleEn?: string;
+  @IsOptional() @IsString() titleNe?: string;
+  @IsOptional() @IsString() altTextEn?: string;
+  @IsOptional() @IsString() altTextNe?: string;
+  @IsOptional() @IsString() descriptionEn?: string;
+  @IsOptional() @IsString() descriptionNe?: string;
 }
 
 // Media Processing Options DTO

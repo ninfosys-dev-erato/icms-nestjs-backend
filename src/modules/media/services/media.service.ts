@@ -47,6 +47,32 @@ export class MediaService {
     userId: string
   ): Promise<UploadResponseDto> {
     try {
+      // Helper to serialize possible bilingual value into a stored string.
+      const serializeTranslatable = (val: any): string | undefined => {
+        if (val === null || val === undefined) return undefined;
+        // DEBUG: show raw inbound value
+        this.logger.debug(`[serializeTranslatable][upload] raw value: ${JSON.stringify(val)}`);
+        if (typeof val === 'string') {
+          // If it already looks like JSON with en/ne keep as-is
+            try {
+              const parsed = JSON.parse(val);
+              if (parsed && (parsed.en !== undefined || parsed.ne !== undefined)) {
+                this.logger.debug(`[serializeTranslatable][upload] detected JSON string: ${val}`);
+                return JSON.stringify({ en: parsed.en || '', ne: parsed.ne || '' });
+              }
+            } catch { /* not JSON => wrap */ }
+          // Plain string path: treat as English only; ne empty
+          this.logger.debug(`[serializeTranslatable][upload] wrapping plain string => en:'${val}', ne:''`);
+          return JSON.stringify({ en: val, ne: '' });
+        }
+        if (typeof val === 'object') {
+          const serialized = JSON.stringify({ en: (val.en || '').toString(), ne: (val.ne || '').toString() });
+          this.logger.debug(`[serializeTranslatable][upload] object -> ${serialized}`);
+          return serialized;
+        }
+        this.logger.debug(`[serializeTranslatable][upload] fallback primitive -> ${String(val)}`);
+        return JSON.stringify({ en: String(val), ne: '' });
+      };
       console.log('🚀 MediaService: Starting upload process');
       console.log('  File:', file.originalname, 'Size:', file.size, 'Type:', file.mimetype);
       console.log('  Metadata:', metadata);
@@ -104,9 +130,9 @@ export class MediaService {
           uploadedBy: userId,
           folder: metadata.folder,
           category: category,
-          altText: metadata.altText,
-          title: metadata.title,
-          description: metadata.description,
+          altText: typeof metadata.altText === 'string' ? metadata.altText : (metadata.altText ? (metadata.altText as any).en || (metadata.altText as any).ne : undefined),
+          title: typeof metadata.title === 'string' ? metadata.title : (metadata.title ? (metadata.title as any).en || (metadata.title as any).ne : undefined),
+          description: typeof metadata.description === 'string' ? metadata.description : (metadata.description ? (metadata.description as any).en || (metadata.description as any).ne : undefined),
           ...(metadata.tags && metadata.tags.length > 0 && { tags: metadata.tags.join('-') }),
           isPublic: metadata.isPublic?.toString() || 'true',
         }
@@ -140,14 +166,15 @@ export class MediaService {
         uploadedBy: userId,
         folder: metadata.folder,
         category: category,
-        altText: metadata.altText,
-        title: metadata.title,
-        description: metadata.description,
+        altText: serializeTranslatable(metadata.altText),
+        title: serializeTranslatable(metadata.title),
+        description: serializeTranslatable(metadata.description),
         tags: metadata.tags || [],
         isPublic: metadata.isPublic ?? true,
         isActive: true,
         metadata: processedMetadata,
       };
+      this.logger.debug(`📦 Prepared CreateMediaDto bilingual fields: title=${createMediaDto.title} altText=${createMediaDto.altText} description=${createMediaDto.description}`);
 
       const media = await this.mediaRepository.create(createMediaDto);
       console.log('✅ MediaService: Database record created:', media.id);
@@ -175,6 +202,17 @@ export class MediaService {
     userId: string
   ): Promise<MediaResponseDto> {
     try {
+      const serializeTranslatable = (val: any): string | undefined => {
+        if (val === null || val === undefined) return undefined;
+        if (typeof val === 'string') {
+          try { const p = JSON.parse(val); if (p && (p.en !== undefined || p.ne !== undefined)) { return JSON.stringify({ en: p.en || '', ne: p.ne || '' }); } } catch {}
+          return JSON.stringify({ en: val, ne: '' });
+        }
+        if (typeof val === 'object') {
+          return JSON.stringify({ en: (val.en || '').toString(), ne: (val.ne || '').toString() });
+        }
+        return JSON.stringify({ en: String(val), ne: '' });
+      };
       this.logger.log(`Replacing media file for ${mediaId}`);
       const existing = await this.mediaRepository.findById(mediaId);
       if (!existing) {
@@ -204,9 +242,9 @@ export class MediaService {
           uploadedBy: userId,
           folder: targetFolder,
           category,
-          altText: metadata.altText ?? existing.altText,
-          title: metadata.title ?? existing.title,
-          description: metadata.description ?? existing.description,
+          altText: (metadata.altText && typeof metadata.altText === 'object') ? (metadata.altText as any).en || (metadata.altText as any).ne : (metadata.altText ?? (existing as any).altText?.en ?? (existing as any).altText?.ne ?? existing.altText),
+          title: (metadata.title && typeof metadata.title === 'object') ? (metadata.title as any).en || (metadata.title as any).ne : (metadata.title ?? (existing as any).title?.en ?? (existing as any).title?.ne ?? existing.title),
+          description: (metadata.description && typeof metadata.description === 'object') ? (metadata.description as any).en || (metadata.description as any).ne : (metadata.description ?? (existing as any).description?.en ?? (existing as any).description?.ne ?? existing.description),
           ...(metadata.tags && metadata.tags.length > 0 && { tags: metadata.tags.join('-') }),
           isPublic: (metadata.isPublic ?? existing.isPublic).toString(),
         }
@@ -221,9 +259,9 @@ export class MediaService {
 
       // Build update payload
       const updatePayload: UpdateMediaDto = {
-        altText: metadata.altText ?? existing.altText,
-        title: metadata.title ?? existing.title,
-        description: metadata.description ?? existing.description,
+        altText: serializeTranslatable(metadata.altText ?? existing.altText),
+        title: serializeTranslatable(metadata.title ?? existing.title),
+        description: serializeTranslatable(metadata.description ?? existing.description),
         tags: (metadata.tags as string[] | undefined) ?? existing.tags,
         isPublic: metadata.isPublic ?? existing.isPublic,
         isActive: metadata.isActive ?? existing.isActive,
@@ -481,8 +519,45 @@ export class MediaService {
     if (!media) {
       throw new NotFoundException('Media not found');
     }
+    // Merge incoming translatable values with existing to preserve missing locales (e.g., keep existing 'ne')
+    const toParsed = (val: any): { en: string; ne: string } => {
+      if (val == null) return { en: '', ne: '' };
+      if (typeof val === 'object') {
+        return { en: (val.en ?? '').toString(), ne: (val.ne ?? '').toString() };
+      }
+      if (typeof val === 'string') {
+        const raw = val.trim();
+        // Try JSON first
+        if (raw.startsWith('{') && raw.endsWith('}')) {
+          try { const p = JSON.parse(raw); if (p && (p.en !== undefined || p.ne !== undefined)) { return { en: (p.en ?? '').toString(), ne: (p.ne ?? '').toString() }; } } catch {}
+        }
+        // Support legacy delimiter en|||ne
+        if (raw.includes('|||')) {
+          const [enPart, nePart] = raw.split('|||');
+          return { en: (enPart ?? '').toString(), ne: (nePart ?? '').toString() };
+        }
+        // Treat as English-only string
+        return { en: raw, ne: '' };
+      }
+      return { en: String(val), ne: '' };
+    };
 
-    return this.mediaRepository.update(id, data);
+    const mergeSerialize = (existing: any, incoming: any): string => {
+      const e = toParsed(existing);
+      const i = toParsed(incoming);
+      const merged = { en: i.en !== '' ? i.en : e.en, ne: i.ne !== '' ? i.ne : e.ne };
+      return JSON.stringify(merged);
+    };
+
+    const updatePayload: UpdateMediaDto = {
+      ...data,
+      // Only include fields that are provided; when provided, merge with existing
+      altText: data.altText !== undefined ? (mergeSerialize(media.altText, data.altText) as any) : undefined,
+      title: data.title !== undefined ? (mergeSerialize(media.title, data.title) as any) : undefined,
+      description: data.description !== undefined ? (mergeSerialize(media.description, data.description) as any) : undefined,
+    };
+    this.logger.debug(`[updateMedia] Serialized payload title=${updatePayload.title} altText=${updatePayload.altText}`);
+    return this.mediaRepository.update(id, updatePayload);
   }
 
   async deleteMedia(id: string): Promise<void> {
@@ -550,7 +625,27 @@ export class MediaService {
   }
 
   async bulkUpdate(ids: string[], data: UpdateMediaDto): Promise<BulkOperationResultDto> {
-    const result = await this.mediaRepository.bulkUpdate(ids, data);
+    const serializeTranslatable = (val: any): string | undefined => {
+      if (val === null || val === undefined) return undefined;
+      if (typeof val === 'string') {
+        try { const p = JSON.parse(val); if (p && (p.en !== undefined || p.ne !== undefined)) { return JSON.stringify({ en: p.en || '', ne: p.ne || '' }); } } catch {}
+        return JSON.stringify({ en: val, ne: '' });
+      }
+      if (typeof val === 'object') {
+        return JSON.stringify({ en: (val.en || '').toString(), ne: (val.ne || '').toString() });
+      }
+      return JSON.stringify({ en: String(val), ne: '' });
+    };
+
+    const updatePayload: UpdateMediaDto = {
+      ...data,
+      altText: data.altText !== undefined ? serializeTranslatable(data.altText) : undefined,
+      title: data.title !== undefined ? serializeTranslatable(data.title) : undefined,
+      description: data.description !== undefined ? serializeTranslatable(data.description) : undefined,
+    };
+    this.logger.debug(`[bulkUpdate] Serialized bilingual fields: title=${updatePayload.title} altText=${updatePayload.altText}`);
+
+    const result = await this.mediaRepository.bulkUpdate(ids, updatePayload);
 
     return {
       success: result.failed === 0,
@@ -643,6 +738,34 @@ export class MediaService {
 
   async detachMediaFromAlbum(albumId: string, mediaId: string) {
     return this.mediaRepository.detachMediaFromAlbum(albumId, mediaId);
+  }
+
+  // Idempotent single attach for live toggle UX
+  async attachSingleMediaToAlbum(albumId: string, mediaId: string) {
+    // Reuse bulk attach to leverage existing idempotency/constraints
+    await this.mediaRepository.attachMediaToAlbum(albumId, [mediaId]);
+    return { attached: true };
+  }
+
+  // Bulk detach helper returning per-item results
+  async detachMediaFromAlbumBulk(albumId: string, mediaIds: string[]) {
+    const results = await Promise.all(
+      mediaIds.map(async (id) => {
+        try {
+          await this.mediaRepository.detachMediaFromAlbum(albumId, id);
+          return { id, ok: true };
+        } catch (e: any) {
+          this.logger.warn(`Detach failed for ${id} in album ${albumId}: ${e?.message || e}`);
+          return { id, ok: false, error: e?.message || 'UNKNOWN_ERROR' };
+        }
+      })
+    );
+
+    const success = results.filter(r => r.ok).length;
+    const failed = results.length - success;
+    const errors = results.filter(r => !r.ok).map(r => `${r.id}:${r.error}`);
+
+    return { success, failed, errors };
   }
 
   async getAlbumMedia(albumId: string, query: AlbumMediaQueryDto) {

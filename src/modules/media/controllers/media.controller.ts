@@ -70,6 +70,88 @@ export class FormDataArrayPipe implements PipeTransform {
             .filter(tag => tag.length > 0 && tag.length <= 50);
         }
       }
+
+      // Aggregate translatable fields that might come in as JSON strings or bracket notation
+      const translatableKeys = ['title', 'altText', 'description'];
+      for (const key of translatableKeys) {
+        const enKey = `${key}[en]`;
+        const neKey = `${key}[ne]`;
+        const dotEnKey = `${key}.en`;
+        const dotNeKey = `${key}.ne`;
+        const usEnKey = `${key}_en`;
+        const usNeKey = `${key}_ne`;
+        const camelEnKey = `${key}En`; // e.g. titleEn
+        const camelNeKey = `${key}Ne`; // e.g. titleNe
+
+        // If already an object (frontend might send via JSON body for tests), skip
+        if (value[key] && typeof value[key] === 'object') continue;
+
+        // If provided as JSON string
+        if (typeof value[key] === 'string') {
+          const raw = value[key].trim();
+          if (raw.startsWith('{') && raw.endsWith('}')) {
+            try {
+              const parsed = JSON.parse(raw);
+              if (parsed && (parsed.en !== undefined || parsed.ne !== undefined)) {
+                value[key] = { en: parsed.en || '', ne: parsed.ne || '' };
+                continue;
+              }
+            } catch { /* ignore parse error, will treat as plain string */ }
+          }
+          // Support legacy delimiter form en|||ne
+          if (raw.includes('|||')) {
+            const [enPart, nePart] = raw.split('|||');
+            value[key] = { en: enPart || '', ne: nePart || '' };
+            continue;
+          }
+        }
+
+        // If bracket notation form present
+        if (value[enKey] !== undefined || value[neKey] !== undefined) {
+          value[key] = {
+            en: (value[enKey] ?? '').toString(),
+            ne: (value[neKey] ?? '').toString(),
+          };
+          delete value[enKey];
+          delete value[neKey];
+          continue;
+        }
+
+        // If dot notation present (title.en / title.ne)
+        if (value[dotEnKey] !== undefined || value[dotNeKey] !== undefined) {
+          value[key] = {
+            en: (value[dotEnKey] ?? '').toString(),
+            ne: (value[dotNeKey] ?? '').toString(),
+          };
+          delete value[dotEnKey];
+            delete value[dotNeKey];
+          continue;
+        }
+
+        // If underscore notation present (title_en / title_ne)
+        if (value[usEnKey] !== undefined || value[usNeKey] !== undefined) {
+          value[key] = {
+            en: (value[usEnKey] ?? '').toString(),
+            ne: (value[usNeKey] ?? '').toString(),
+          };
+          delete value[usEnKey];
+          delete value[usNeKey];
+          continue;
+        }
+
+        // If camelCase notation present (titleEn / titleNe)
+        if (value[camelEnKey] !== undefined || value[camelNeKey] !== undefined) {
+          value[key] = {
+            en: (value[camelEnKey] ?? '').toString(),
+            ne: (value[camelNeKey] ?? '').toString(),
+          };
+          delete value[camelEnKey];
+          delete value[camelNeKey];
+          continue;
+        }
+
+        // If plain string value, wrap later in service; leave as-is
+      }
     }
     return value;
   }
@@ -367,12 +449,37 @@ export class MediaController {
     return this.mediaService.attachMediaToAlbum(id, dto.mediaIds);
   }
 
+  // Single attach endpoint for immediate toggle selection on click
+  @Post('albums/:id/media/:mediaId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Attach a single media to album (idempotent)' })
+  @ApiBearerAuth()
+  async attachSingleMedia(
+    @Param('id') id: string,
+    @Param('mediaId') mediaId: string,
+  ) {
+    await this.mediaService.attachSingleMediaToAlbum(id, mediaId);
+    return { attached: true, albumId: id, mediaId };
+  }
+
   @Delete('albums/:id/media/:mediaId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Detach media from album' })
   @ApiBearerAuth()
   async detachMedia(@Param('id') id: string, @Param('mediaId') mediaId: string) {
     return this.mediaService.detachMediaFromAlbum(id, mediaId);
+  }
+
+  // Bulk detach for multi-select removal in album edit
+  @Delete('albums/:id/media')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Detach multiple media from album' })
+  @ApiBearerAuth()
+  async bulkDetachMedia(
+    @Param('id') id: string,
+    @Body() dto: AttachMediaToAlbumDto,
+  ) {
+    return this.mediaService.detachMediaFromAlbumBulk(id, dto.mediaIds);
   }
 
   @Get('albums/:id/media')
@@ -547,7 +654,7 @@ export class MediaController {
   @ApiBearerAuth()
   async updateMedia(
     @Param('id') id: string,
-    @Body() updateDto: UpdateMediaDto,
+    @Body(new FormDataArrayPipe()) updateDto: UpdateMediaDto,
     @Request() req: any,
   ) {
     // Check if user owns the media or is admin
